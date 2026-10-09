@@ -31,3 +31,7 @@ src/main.ts     TypeScript entry point
 src/style.css   Global styles
 tsconfig.json   TypeScript configuration
 ```
+
+## License
+
+[MIT](LICENSE)
