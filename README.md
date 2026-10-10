@@ -24,7 +24,23 @@ npm run dev:server   # the local Worker, on http://localhost:8787
 npm run dev:viewer   # the Viewer, on http://localhost:5173 (in a second terminal)
 ```
 
-Local development is the local Worker plus the locally served Viewer; there is no stdio entry point. Point an MCP client at `http://localhost:8787/mcp` and call `open_viewer`, or do it by hand:
+Local development is the local Worker plus the locally served Viewer; there is no stdio entry point.
+
+An MCP client running on this machine can use `http://localhost:8787/mcp` directly, for example Claude Code:
+
+```sh
+claude mcp add --transport http igv-bot-dev http://localhost:8787/mcp
+```
+
+A custom connector in Claude (desktop or web) or ChatGPT cannot: those Hosts connect from their own servers and need a public `https://` URL. Until the Worker is deployed, give the local Worker one with a tunnel and use the address it prints, with `/mcp` appended, as the connector URL:
+
+```sh
+cloudflared tunnel --url http://localhost:8787
+```
+
+Only the MCP endpoint needs the tunnel. The Join link still points at `http://localhost:5173`, which your own browser opens, and the Viewer reaches the Worker at `http://localhost:8787` as before.
+
+Or call the tool by hand:
 
 ```sh
 # initialize: the mcp-session-id response header is the Room id
