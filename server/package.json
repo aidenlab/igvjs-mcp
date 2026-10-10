@@ -1,0 +1,20 @@
+{
+  "name": "igvjs-mcp-server",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "igv-bot server: a Cloudflare Worker with the MCP endpoint (/mcp) and one Durable Object per Room (/ws)",
+  "scripts": {
+    "dev": "wrangler dev",
+    "types": "wrangler types --strict-vars false",
+    "typecheck": "npm run types && tsc"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.1",
+    "igvjs-mcp-viewer": "*"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "^0.23.0",
+    "wrangler": "^4.149.0"
+  }
+}

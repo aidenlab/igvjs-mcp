@@ -3,13 +3,20 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "workspaces": [
+    "server",
+    "viewer"
+  ],
   "scripts": {
-    "dev": "vite",
-    "build": "tsc && vite build",
-    "preview": "vite preview"
+    "dev:server": "npm run dev --workspace server",
+    "dev:viewer": "npm run dev --workspace viewer",
+    "build": "npm run build --workspace viewer",
+    "typecheck": "npm run typecheck --workspaces",
+    "test": "vitest",
+    "test:run": "vitest run"
   },
   "devDependencies": {
     "typescript": "~6.0.2",
-    "vite": "^8.3.0"
+    "vitest": "^4.1.0"
   }
 }

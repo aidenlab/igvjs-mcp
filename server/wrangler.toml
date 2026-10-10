@@ -1,0 +1,22 @@
+name = "igvjs-mcp"
+main = "src/index.ts"
+compatibility_date = "2026-08-01"
+compatibility_flags = ["nodejs_compat"]
+
+[[durable_objects.bindings]]
+name = "ROOM"
+class_name = "Room"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Room"]
+
+[vars]
+# The Viewer's address: a Join link is this URL carrying ?room=. The Viewer is
+# hosted on its own origin, not by this Worker (ADR 0001).
+VIEWER_URL = "http://localhost:5173/"
+# Pages that may open /ws (exact Origin match). WebSockets are not covered by CORS.
+VIEWER_ORIGINS = [
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
+]

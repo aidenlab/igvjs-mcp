@@ -1,0 +1,23 @@
+// Only classes this project writes live here, named with BEM. igv.js styles
+// its own DOM; nothing below reaches into it.
+
+$status-colour: #5f6b7a;
+$status-joined-colour: #1a7f37;
+
+body {
+  margin: 0;
+}
+
+.viewer {
+  &__status {
+    margin: 0;
+    font-family: system-ui, sans-serif;
+    padding: 4px 12px;
+    font-size: 12px;
+    color: $status-colour;
+
+    &--joined {
+      color: $status-joined-colour;
+    }
+  }
+}

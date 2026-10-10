@@ -1,0 +1,23 @@
+{
+  "name": "igvjs-mcp-viewer",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "igv-bot Viewer: the web page that houses igv.js and joins a Room",
+  "exports": {
+    "./protocol": "./src/protocol.ts"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc"
+  },
+  "dependencies": {
+    "igv": "^3.8.9"
+  },
+  "devDependencies": {
+    "sass": "^1.105.1",
+    "vite": "^8.3.0"
+  }
+}
