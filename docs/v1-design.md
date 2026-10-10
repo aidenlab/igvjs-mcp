@@ -17,6 +17,7 @@ A **Connector** for Claude and ChatGPT (desktop and web; no mobile) that lets th
 - **Reopening**: the Room keeps the last Session. A Viewer joining a Room that has one restores it; otherwise it shows the default.
 - **Default Viewer**: hg38, whole-genome view, the genome's default gene annotation track, nothing else.
 - **Code**: this repository, with `server` and `viewer` packages joined by npm workspaces. Plain TypeScript and Vite. It depends on the published `igv` package, not a fork.
+- **Viewer styling**: Sass for stylesheets and BEM (Block Element Modifier) naming for the classes we write. Widgets are hand-built: no Bootstrap or other CSS framework, because global framework styles bleed into igv.js's own popups and menus.
 - **Prior art**: `~/JuiceboxDevelopment/weiszd/juicebox-mcp` is the model for the whole mechanism: Room, Join link, join card, command and ack protocol, binding a Room to an MCP session (including the ChatGPT path), and Catalogue search. `igvweb-mcp` is ignored and deprecated by this work.
 
 ## What the model can do
