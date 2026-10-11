@@ -28,7 +28,7 @@ function start(name: string, cwd: string, args: string[]): ChildProcess {
   return child
 }
 
-async function answers(url: string, name: string, child: ChildProcess): Promise<void> {
+async function untilUp(url: string, name: string, child: ChildProcess): Promise<void> {
   for (let attempt = 0; attempt < 120; attempt++) {
     if (child.exitCode !== null) throw new Error(`${name} stopped before it answered at ${url}`)
     try {
@@ -68,7 +68,7 @@ export default async function setup(): Promise<() => void> {
   }
 
   try {
-    await Promise.all([answers(SERVER_URL, 'wrangler dev', children[0]), answers(VIEWER_URL, 'vite preview', children[1])])
+    await Promise.all([untilUp(SERVER_URL, 'wrangler dev', children[0]), untilUp(VIEWER_URL, 'vite preview', children[1])])
   } catch (error) {
     stop()
     throw error

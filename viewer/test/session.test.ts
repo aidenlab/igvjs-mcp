@@ -26,7 +26,7 @@ describe('sessionSummary', () => {
       genome: 'hg38',
       loci: ['chr8:127,735,434-127,742,951'],
       tracks: [
-        { name: 'sequence', type: 'sequence' }, // igv.js gives the reference sequence no name and sizes it itself
+        { name: 'sequence', type: 'sequence' }, // no name of its own, so its type; no height stated, so none given
         { name: 'Refseq All', type: 'annotation', url: 'https://example.org/ncbiRefSeq.txt.gz', height: 70 },
       ],
       crosshairs: false,
@@ -77,9 +77,15 @@ describe('sessionSummary', () => {
     expect(sessionSummary(session({ reference: { name: 'My assembly' } })).genome).toBe('My assembly')
   })
 
-  it("names a track that has no name after its file, and gives a track with no height igv.js's default", () => {
-    const [track] = sessionSummary(session({ tracks: [{ type: 'wig', url: 'https://example.org/data/signal.bw?download=1' }] })).tracks
+  it('names a track that has no name after its file', () => {
+    const [track] = sessionSummary(session({ tracks: [{ type: 'wig', url: 'https://example.org/data/signal.bw?download=1', height: 50 }] })).tracks
 
     expect(track).toEqual({ name: 'signal.bw', type: 'wig', url: 'https://example.org/data/signal.bw?download=1', height: 50 })
+  })
+
+  it('gives no height for a track whose Session entry states none, rather than guess one', () => {
+    const [track] = sessionSummary(session({ tracks: [{ name: 'reads', type: 'alignment', url: 'https://example.org/reads.bam' }] })).tracks
+
+    expect(track).toEqual({ name: 'reads', type: 'alignment', url: 'https://example.org/reads.bam' })
   })
 })

@@ -41,7 +41,7 @@ export interface SessionSummaryTrack {
   type: string
   /** Absent for tracks that have no file of their own, such as the reference sequence. */
   url?: string
-  /** In pixels. Absent for the reference sequence, which igv.js sizes itself. */
+  /** In pixels. Absent when the Session states none. */
   height?: number
 }
 

@@ -10,6 +10,7 @@
  */
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js'
+import type { Command } from 'igvjs-mcp-viewer/protocol'
 import { deriveRoomId, isRoomId, mintRoomId } from './roomId.ts'
 import { registerTools } from './tools.ts'
 
@@ -21,6 +22,10 @@ const CORS_HEADERS = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, mcp-session-id, mcp-protocol-version',
   'Access-Control-Expose-Headers': 'mcp-session-id',
+}
+
+function roomStub(env: Env, roomId: string) {
+  return env.ROOM.get(env.ROOM.idFromName(roomId))
 }
 
 function withCors(response: Response): Response {
@@ -41,7 +46,7 @@ export default {
       }
       const room = url.searchParams.get('room')
       if (!isRoomId(room)) return new Response('Missing or malformed room', { status: 400 })
-      return env.ROOM.get(env.ROOM.idFromName(room)).fetch(request)
+      return roomStub(env, room).fetch(request)
     }
 
     if (url.pathname === '/mcp') {
@@ -105,11 +110,8 @@ async function handleMcpRequest(request: Request, env: Env): Promise<Response> {
     }
 
     const mcpServer = new McpServer({ name: 'igv-bot', version: '0.0.0' })
-    registerTools(mcpServer, {
-      roomId,
-      viewerUrl: env.VIEWER_URL,
-      sendCommand: async (command) => (roomId ? env.ROOM.get(env.ROOM.idFromName(roomId)).send(command) : { status: 'no-viewer' }),
-    })
+    const room = roomId ? { id: roomId, send: (command: Command) => roomStub(env, roomId).send(command) } : null
+    registerTools(mcpServer, { room, viewerUrl: env.VIEWER_URL })
     const transport = new WebStandardStreamableHTTPServerTransport({
       sessionIdGenerator: undefined,
       enableJsonResponse: true,

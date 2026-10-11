@@ -50,7 +50,7 @@
   {
     "name": "zoom_in",
     "title": "Zoom in",
-    "description": "Zoom igv-bot in by a factor of two, keeping the centre of the view where it is. Call it again to zoom further. The reply carries the resulting Session summary; its loci do not change once the view is as close as igv.js allows.",
+    "description": "Zoom igv-bot in by a factor of two, keeping the centre of the view where it is. Call it again to zoom further. The reply carries the resulting Session summary; its loci do not change once the view is as close as igv.js allows. igv.js does not zoom the whole-genome view (loci \"all\"): go to a chromosome, locus or gene first.",
     "inputSchema": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "type": "object",
@@ -60,7 +60,7 @@
   {
     "name": "zoom_out",
     "title": "Zoom out",
-    "description": "Zoom igv-bot out by a factor of two, keeping the centre of the view where it is when the chromosome allows. Call it again to zoom further. The reply carries the resulting Session summary; its loci do not change once the whole chromosome is in view.",
+    "description": "Zoom igv-bot out by a factor of two, keeping the centre of the view where it is when the chromosome allows. Call it again to zoom further. The reply carries the resulting Session summary; its loci do not change once the whole chromosome is in view, or in the whole-genome view (loci \"all\").",
     "inputSchema": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "type": "object",

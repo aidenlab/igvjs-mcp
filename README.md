@@ -116,8 +116,8 @@ server/                  The Cloudflare Worker
   wrangler.toml          Worker configuration: the Room binding, VIEWER_URL, VIEWER_ORIGINS, the dev deployment
   .dev.vars.example      Local stand-ins for the Worker's secrets; copy to .dev.vars
   src/index.ts           Entry point: routes /mcp and /ws
-  src/tools.ts           The MCP tools: open_viewer, and one per row of the command catalogue
-  src/commandTools.ts    The catalogue of command tools; adding a tool is adding a row and its applier in the Viewer
+  src/tools.ts           The MCP tools: open_viewer, and one per row of the table of command tools
+  src/commandTools.ts    The table of command tools; adding a tool is adding a row and its applier in the Viewer
   src/joinCard.ts        The Join card, the one MCP App
   src/room.ts            The Room Durable Object: holds the Viewers' sockets, pushes commands, waits for the ack
   src/roomId.ts          Minting, deriving and recognising Room ids

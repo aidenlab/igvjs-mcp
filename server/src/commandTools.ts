@@ -17,7 +17,7 @@ export interface CommandTool {
 }
 
 /**
- * The catalogue of command tools. Adding one is adding a row here, plus its
+ * The table of command tools. Adding one is adding a row here, plus its
  * CommandType and its applier in the Viewer (viewer/src/applyCommand.ts).
  */
 export const COMMAND_TOOLS: CommandTool[] = [
@@ -52,7 +52,7 @@ export const COMMAND_TOOLS: CommandTool[] = [
     name: 'zoom_in',
     title: 'Zoom in',
     description:
-      'Zoom igv-bot in by a factor of two, keeping the centre of the view where it is. Call it again to zoom further. The reply carries the resulting Session summary; its loci do not change once the view is as close as igv.js allows.',
+      'Zoom igv-bot in by a factor of two, keeping the centre of the view where it is. Call it again to zoom further. The reply carries the resulting Session summary; its loci do not change once the view is as close as igv.js allows. igv.js does not zoom the whole-genome view (loci "all"): go to a chromosome, locus or gene first.',
     inputSchema: {},
     type: CommandType.ZOOM_IN,
     done: () => 'Zoomed in.',
@@ -61,7 +61,7 @@ export const COMMAND_TOOLS: CommandTool[] = [
     name: 'zoom_out',
     title: 'Zoom out',
     description:
-      'Zoom igv-bot out by a factor of two, keeping the centre of the view where it is when the chromosome allows. Call it again to zoom further. The reply carries the resulting Session summary; its loci do not change once the whole chromosome is in view.',
+      'Zoom igv-bot out by a factor of two, keeping the centre of the view where it is when the chromosome allows. Call it again to zoom further. The reply carries the resulting Session summary; its loci do not change once the whole chromosome is in view, or in the whole-genome view (loci "all").',
     inputSchema: {},
     type: CommandType.ZOOM_OUT,
     done: () => 'Zoomed out.',

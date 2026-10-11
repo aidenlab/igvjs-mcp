@@ -27,7 +27,7 @@ describe('with the Viewer open in the Room', () => {
       genome: 'hg38',
       loci: ['chr1:1,000,001-1,002,000'],
       tracks: [
-        { name: 'sequence', type: 'sequence' },
+        { name: 'sequence', type: 'sequence', height: 25 }, // a height igv.js leaves out of its Session, read from the track
         { name: 'Refseq All', type: 'annotation', url: 'https://igv.org/genomes/data/hg38/ncbiRefSeq.txt.gz', height: 70 },
       ],
       crosshairs: false,
