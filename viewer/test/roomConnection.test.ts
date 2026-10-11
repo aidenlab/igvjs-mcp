@@ -3,6 +3,7 @@
  * assert what the Viewer sends and the statuses it reports.
  */
 import { describe, it, expect, afterEach, vi } from 'vitest'
+import type { Command, SessionSummary } from '../src/protocol.ts'
 import { connectToRoom, roomSocketUrl, statusText, type RoomSocket, type RoomStatus } from '../src/roomConnection.ts'
 
 class FakeSocket implements RoomSocket {
@@ -35,12 +36,15 @@ class FakeSocket implements RoomSocket {
   }
 }
 
-function connect() {
+const SUMMARY: SessionSummary = { genome: 'hg38', loci: ['chr8:1-100'], tracks: [], crosshairs: false, centreLine: false }
+
+function connect(applyCommand: (command: Command) => Promise<SessionSummary> = async () => SUMMARY) {
   const sockets: FakeSocket[] = []
   const statuses: RoomStatus[] = []
   connectToRoom({
     url: 'ws://server.test/ws?room=7ZQH4M2K9X',
     onStatus: (status) => statuses.push(status),
+    applyCommand,
     createSocket: (url) => {
       const socket = new FakeSocket(url)
       sockets.push(socket)
@@ -67,6 +71,66 @@ describe('joining a Room', () => {
 
     sockets[0].receive({ type: 'joined', room: '7ZQH4M2K9X' })
     expect(statuses.at(-1)).toEqual({ state: 'joined', room: '7ZQH4M2K9X' })
+  })
+})
+
+describe('a command from the Room', () => {
+  function joined(applyCommand?: (command: Command) => Promise<SessionSummary>) {
+    const { sockets } = connect(applyCommand)
+    sockets[0].open()
+    sockets[0].receive({ type: 'joined', room: '7ZQH4M2K9X' })
+    sockets[0].sent.length = 0
+    return sockets[0]
+  }
+
+  it('is applied without its request id and acked ok with the resulting Session summary', async () => {
+    const applied: Command[] = []
+    const socket = joined(async (command) => {
+      applied.push(command)
+      return SUMMARY
+    })
+
+    socket.receive({ type: 'goToLocus', locus: 'chr8:1-100', requestId: 'request-1' })
+    await vi.waitFor(() => expect(socket.sent).toHaveLength(1))
+
+    expect(applied).toEqual([{ type: 'goToLocus', locus: 'chr8:1-100' }])
+    expect(socket.sent).toEqual([{ type: 'ack', requestId: 'request-1', ok: true, result: SUMMARY }])
+  })
+
+  it('that fails is acked not ok, carrying the message of the error raised', async () => {
+    const socket = joined(async () => {
+      throw new Error('Unrecognized locus: NOTAGENE')
+    })
+
+    socket.receive({ type: 'goToGene', gene: 'NOTAGENE', requestId: 'request-2' })
+    await vi.waitFor(() => expect(socket.sent).toHaveLength(1))
+
+    expect(socket.sent).toEqual([{ type: 'ack', requestId: 'request-2', ok: false, error: 'Unrecognized locus: NOTAGENE' }])
+  })
+
+  it('is acked once each, in the order the commands arrived', async () => {
+    const release: Array<() => void> = []
+    const socket = joined(() => new Promise((resolve) => release.push(() => resolve(SUMMARY))))
+
+    socket.receive({ type: 'zoomIn', requestId: 'first' })
+    socket.receive({ type: 'zoomOut', requestId: 'second' })
+    await vi.waitFor(() => expect(release).toHaveLength(1)) // the second waits for the first
+    release[0]()
+    await vi.waitFor(() => expect(release).toHaveLength(2))
+    release[1]()
+    await vi.waitFor(() => expect(socket.sent).toHaveLength(2))
+
+    expect(socket.sent.map((ack) => (ack as { requestId: string }).requestId)).toEqual(['first', 'second'])
+  })
+
+  it('a message that is not a command is ignored', async () => {
+    const socket = joined()
+
+    socket.receive({ type: 'somethingElse', requestId: 'request-3' })
+    socket.receive({ type: 'zoomIn' }) // no request id: nothing to ack
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(socket.sent).toEqual([])
   })
 })
 

@@ -1,4 +1,4 @@
-import { MessageType, type RoomMessage, type ViewerMessage } from './protocol.ts'
+import { MessageType, isCommand, type Command, type RoomMessage, type SessionSummary, type ViewerMessage } from './protocol.ts'
 
 /** The part of a WebSocket the connection uses; tests supply a fake. */
 export interface RoomSocket {
@@ -27,6 +27,11 @@ export interface RoomConnectionOptions {
   /** The Room's socket address; see `roomSocketUrl`. */
   url: string
   onStatus: (status: RoomStatus) => void
+  /**
+   * Applies a command from the Room to the genome browser and resolves with the
+   * resulting Session summary; a rejection's message is sent back as the error.
+   */
+  applyCommand: (command: Command) => Promise<SessionSummary>
   createSocket?: (url: string) => RoomSocket
 }
 
@@ -41,15 +46,18 @@ export function roomSocketUrl(serverUrl: string, room: string): string {
 /**
  * Connects the Viewer to its Room and joins it. When the socket drops it
  * reconnects by itself, waiting 1 s, 2 s, … up to 5 s between attempts, and
- * joins again.
+ * joins again. Commands from the Room are applied one at a time, in the order
+ * they arrive, and each is answered with one ack.
  */
 export function connectToRoom({
   url,
   onStatus,
+  applyCommand,
   createSocket = (socketUrl) => new WebSocket(socketUrl),
 }: RoomConnectionOptions): void {
   let current: RoomSocket | null = null
   let failedAttempts = 0
+  let lastCommand: Promise<unknown> = Promise.resolve()
 
   const send = (socket: RoomSocket, message: ViewerMessage) => socket.send(JSON.stringify(message))
 
@@ -73,6 +81,19 @@ export function connectToRoom({
         return // not ours; ignored
       }
       if (message?.type === MessageType.JOINED) onStatus({ state: 'joined', room: message.room })
+      else if (isCommand(message)) {
+        const { requestId, ...command } = message
+        lastCommand = lastCommand
+          .then(() => applyCommand(command))
+          .then(
+            (result): ViewerMessage => ({ type: MessageType.ACK, requestId, ok: true, result }),
+            (error): ViewerMessage => ({ type: MessageType.ACK, requestId, ok: false, error: errorMessage(error) }),
+          )
+          .then((ack) => {
+            // The Room that asked is the one on this socket; if it has dropped, the ack has nowhere to go.
+            if (socket === current) send(socket, ack)
+          })
+      }
     }
 
     socket.onclose = () => {
@@ -86,4 +107,8 @@ export function connectToRoom({
 
   onStatus({ state: 'connecting' })
   connect()
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error)
 }

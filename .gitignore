@@ -27,3 +27,6 @@ dist-ssr
 .wrangler
 .dev.vars
 worker-configuration.d.ts
+
+# Round-trip tests: the built Viewer
+roundtrip/.viewer

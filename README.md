@@ -62,6 +62,16 @@ curl -s http://localhost:8787/mcp \
 
 Open the Join link in a browser: the Viewer shows hg38 and reports "Connected · Room <Room id>".
 
+With the Viewer open, the command tools move it. Each replies with the resulting Session summary:
+
+```sh
+# go_to_gene; the others are go_to_locus {"locus":"chr8:127,735,434-127,742,951"}, zoom_in {} and zoom_out {}
+curl -s http://localhost:8787/mcp \
+  -H 'Content-Type: application/json' -H 'Accept: application/json, text/event-stream' \
+  -H 'mcp-session-id: <Room id>' \
+  -d '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"go_to_gene","arguments":{"gene":"MYC"}}}'
+```
+
 ## Deploying
 
 There is one deployed stack, for development. Nothing deploys from CI.
@@ -89,34 +99,42 @@ Run from the repository root.
 | `npm run dev:server` | Start the local Worker with `wrangler dev`                          |
 | `npm run dev:viewer` | Start the Viewer's Vite dev server with hot module reload           |
 | `npm run build`      | Type-check the Viewer and build it as a static site into `viewer/dist/` |
-| `npm run typecheck`  | Type-check both packages                                            |
+| `npm run typecheck`  | Type-check every package                                            |
 | `npm run test:run`   | Run every test once                                                 |
 | `npm test`           | Run the tests in watch mode                                         |
 
-Run one package's tests with `npx vitest run --project server` or `--project viewer`, and a single file by adding its path.
+Run one package's tests with `npx vitest run --project server`, `--project viewer` or `--project roundtrip`, and a single file by adding its path.
+
+The `roundtrip` tests build the Viewer, serve it beside a local Worker on ports of their own (4183 and 8798) and drive it in headless Chromium, calling tools as the model would. They need a network connection, since igv.js fetches the genome, and Playwright's browser, installed once with `npx playwright install chromium`.
 
 ## Project layout
 
-Two packages joined by npm workspaces.
+Two packages and the round-trip tests, joined by npm workspaces.
 
 ```
 server/                  The Cloudflare Worker
   wrangler.toml          Worker configuration: the Room binding, VIEWER_URL, VIEWER_ORIGINS, the dev deployment
   .dev.vars.example      Local stand-ins for the Worker's secrets; copy to .dev.vars
   src/index.ts           Entry point: routes /mcp and /ws
-  src/tools.ts           The MCP tools (open_viewer)
+  src/tools.ts           The MCP tools: open_viewer, and one per row of the command catalogue
+  src/commandTools.ts    The catalogue of command tools; adding a tool is adding a row and its applier in the Viewer
   src/joinCard.ts        The Join card, the one MCP App
-  src/room.ts            The Room Durable Object
+  src/room.ts            The Room Durable Object: holds the Viewers' sockets, pushes commands, waits for the ack
   src/roomId.ts          Minting, deriving and recognising Room ids
-  test/                  Tests, run inside the Workers runtime
+  test/                  Tests, run inside the Workers runtime; fixtures/tools.json pins every tool as the Host sees it
 viewer/                  The Viewer web page
   index.html             Page entry point
   .env                   VITE_SERVER_URL: the server the Viewer joins its Room on
   src/main.ts            Creates the igv.js browser and joins the Room
-  src/roomConnection.ts  The reconnecting connection to the Room
+  src/roomConnection.ts  The reconnecting connection to the Room; acks each command
+  src/applyCommand.ts    One applier per command type, calling igv.js
+  src/session.ts         The Session, and the pure function that builds the Session summary from it
   src/protocol.ts        The Viewer–Room wire protocol, shared with the server
   src/styles/            Sass stylesheets; class names follow BEM
   test/                  Tests
+roundtrip/               The command round-trip against the built Viewer and the local Worker
+  globalSetup.ts         Builds the Viewer, starts `vite preview` and `wrangler dev`
+  test/                  Tests, calling tools as the model would
 scripts/
   deploy-dev.sh          Deploy the dev Worker and Viewer
   deploy-wizard.sh       First-time deployment and the checks in each Host, step by step

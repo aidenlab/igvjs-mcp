@@ -5,7 +5,8 @@
   "type": "module",
   "workspaces": [
     "server",
-    "viewer"
+    "viewer",
+    "roundtrip"
   ],
   "scripts": {
     "dev:server": "npm run dev --workspace server",

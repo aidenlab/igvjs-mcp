@@ -25,6 +25,8 @@ VIEWER_URL = "http://localhost:5173/"
 VIEWER_ORIGINS = [
   "http://localhost:5173",
   "http://127.0.0.1:5173",
+  # The built Viewer in the round-trip tests (roundtrip/addresses.ts).
+  "http://localhost:4183",
 ]
 
 # Secrets (`wrangler secret put <NAME> --env <env>`, see scripts/deploy-wizard.sh;

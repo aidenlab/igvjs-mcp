@@ -1,4 +1,7 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js'
+import type { Command } from 'igvjs-mcp-viewer/protocol'
+import { COMMAND_TOOLS } from './commandTools.ts'
 import {
   JOIN_CARD_HTML,
   JOIN_CARD_META,
@@ -7,12 +10,21 @@ import {
   JOIN_CARD_URI,
   type JoinCardContent,
 } from './joinCard.ts'
+import { ACK_TIMEOUT_MS, type CommandOutcome } from './room.ts'
 
 export interface ToolDeps {
   /** The Room this MCP session is bound to, or null when the request carries no usable session id. */
   roomId: string | null
   /** The Viewer's address; a Join link is this URL carrying `?room=`. */
   viewerUrl: string
+  /** Pushes a command to every Viewer in the session's Room and waits for the first ack. */
+  sendCommand: (command: Command) => Promise<CommandOutcome>
+}
+
+const NO_ROOM = 'Error: this MCP session has no Room. Reconnect the igv-bot Connector and try again.'
+
+function errorReply(text: string): CallToolResult {
+  return { content: [{ type: 'text', text }], isError: true }
 }
 
 function joinLinkFor(viewerUrl: string, roomId: string): string {
@@ -21,7 +33,7 @@ function joinLinkFor(viewerUrl: string, roomId: string): string {
   return joinLink.toString()
 }
 
-export function registerTools(mcpServer: McpServer, { roomId, viewerUrl }: ToolDeps): void {
+export function registerTools(mcpServer: McpServer, { roomId, viewerUrl, sendCommand }: ToolDeps): void {
   mcpServer.registerResource(
     'igv-bot Join card',
     JOIN_CARD_URI,
@@ -42,12 +54,7 @@ export function registerTools(mcpServer: McpServer, { roomId, viewerUrl }: ToolD
       _meta: JOIN_CARD_TOOL_META,
     },
     async () => {
-      if (!roomId) {
-        return {
-          content: [{ type: 'text', text: 'Error: this MCP session has no Room. Reconnect the igv-bot Connector and try again.' }],
-          isError: true,
-        }
-      }
+      if (!roomId) return errorReply(NO_ROOM)
       const joinLink = joinLinkFor(viewerUrl, roomId)
       const structuredContent: JoinCardContent = { room: roomId, joinUrl: joinLink }
       // A bare URL on its own line: Hosts render it clickable, which a code block
@@ -65,4 +72,32 @@ export function registerTools(mcpServer: McpServer, { roomId, viewerUrl }: ToolD
       }
     },
   )
+
+  // The command tools: one registration per catalogue row. Every reply to a
+  // command the Viewer applied carries the resulting Session summary.
+  for (const { name, title, description, inputSchema, type, done } of COMMAND_TOOLS) {
+    mcpServer.registerTool(name, { title, description, inputSchema }, async (args: Record<string, unknown>) => {
+      if (!roomId) return errorReply(NO_ROOM)
+      const outcome = await sendCommand({ type, ...args } as Command)
+      switch (outcome.status) {
+        case 'no-viewer':
+          return errorReply('Error: no Viewer is in this Room. Use open_viewer to open igv-bot first, then try again.')
+        case 'unconfirmed':
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `${name} sent, unconfirmed: no Viewer answered within ${ACK_TIMEOUT_MS / 1000} s, so the resulting Session summary is not known.`,
+              },
+            ],
+          }
+        case 'acked':
+          if (!outcome.ok) return errorReply(`Error: ${outcome.error}`)
+          return {
+            content: [{ type: 'text', text: `${done(args)}\nSession summary: ${JSON.stringify(outcome.result)}` }],
+            structuredContent: { sessionSummary: outcome.result },
+          }
+      }
+    })
+  }
 }

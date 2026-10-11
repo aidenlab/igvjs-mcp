@@ -4,17 +4,10 @@
 import { SELF, env } from 'cloudflare:test'
 import { describe, it, expect } from 'vitest'
 import worker from '../src/index.ts'
+import pinnedTools from './fixtures/tools.json'
+import { callTool, rpc } from './mcp.ts'
 
 const ROOM_ID = /^[0-9A-HJKMNP-TV-Z]{10}$/ // Crockford base32: no I, L, O, U
-
-let rpcId = 0
-function rpc(method: string, params: object, headers: Record<string, string> = {}) {
-  return SELF.fetch('https://igv-bot.test/mcp', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Accept: 'application/json, text/event-stream', ...headers },
-    body: JSON.stringify({ jsonrpc: '2.0', id: ++rpcId, method, params }),
-  })
-}
 
 function initialize(headers?: Record<string, string>) {
   return rpc('initialize', { protocolVersion: '2025-03-26', capabilities: {}, clientInfo: { name: 'test', version: '0' } }, headers)
@@ -34,27 +27,21 @@ describe('initialize', () => {
   })
 })
 
-interface ToolResult {
-  content: Array<{ type: string; text?: string; uri?: string; name?: string; mimeType?: string }>
-  structuredContent?: Record<string, unknown>
-  isError?: boolean
-}
+describe('tools/list', () => {
+  // The contract with the Host: every tool's name, title, description and input
+  // schema, in the order served. Change the fixture only when the contract
+  // changes on purpose.
+  it('lists every tool with the pinned name, title, description and input schema', async () => {
+    const res = await rpc('tools/list', {})
+    const { tools } = (await res.json<{ result: { tools: Array<Record<string, unknown>> } }>()).result
 
-async function callTool(name: string, headers?: Record<string, string>) {
-  const res = await rpc('tools/call', { name, arguments: {} }, headers)
-  return (await res.json<{ result: ToolResult }>()).result
-}
+    expect(tools.map(({ name, title, description, inputSchema }) => ({ name, title, description, inputSchema }))).toEqual(pinnedTools)
+  })
+})
 
 describe('open_viewer', () => {
-  it('is the one tool the Connector lists', async () => {
-    const res = await rpc('tools/list', {})
-    const { result } = await res.json<{ result: { tools: Array<{ name: string; title: string }> } }>()
-
-    expect(result.tools.map((tool) => [tool.name, tool.title])).toEqual([['open_viewer', 'Open igv-bot']])
-  })
-
   it("returns the Join link for the session's Room, as text and as a resource link", async () => {
-    const result = await callTool('open_viewer', { 'mcp-session-id': '7ZQH4M2K9X' })
+    const result = await callTool('open_viewer', {}, { 'mcp-session-id': '7ZQH4M2K9X' })
 
     const joinLink = 'http://localhost:5173/?room=7ZQH4M2K9X' // VIEWER_URL in wrangler.toml
     expect(result.isError).toBeFalsy()
@@ -66,7 +53,7 @@ describe('open_viewer', () => {
   it('the Room of a session just initialized is the one in its Join link', async () => {
     const session = (await initialize()).headers.get('mcp-session-id')!
 
-    const result = await callTool('open_viewer', { 'mcp-session-id': session })
+    const result = await callTool('open_viewer', {}, { 'mcp-session-id': session })
 
     expect(result.content[1].uri).toBe(`http://localhost:5173/?room=${session}`)
   })
@@ -74,7 +61,7 @@ describe('open_viewer', () => {
   it('tells the model to use only the built-in browser, reply briefly and not repeat the link or Room id', async () => {
     const res = await rpc('tools/list', {})
     const { result } = await res.json<{ result: { tools: Array<{ description: string }> } }>()
-    const reply = (await callTool('open_viewer', { 'mcp-session-id': '7ZQH4M2K9X' })).content[0].text!
+    const reply = (await callTool('open_viewer', {}, { 'mcp-session-id': '7ZQH4M2K9X' })).content[0].text!
 
     for (const wording of [result.tools[0].description, reply]) {
       expect(wording).toMatch(/built-in browser/)
@@ -89,7 +76,7 @@ describe('open_viewer', () => {
     ['no session id', undefined],
     ['a session id that is not a Room id', { 'mcp-session-id': 'not a room' }],
   ])('with %s, replies with an error and no link', async (_, headers) => {
-    const result = await callTool('open_viewer', headers)
+    const result = await callTool('open_viewer', {}, headers)
 
     expect(result.isError).toBe(true)
     expect(result.content).toEqual([
@@ -134,7 +121,7 @@ describe('Join card', () => {
   })
 
   it("is handed the Join link and Room id as the tool's structured content", async () => {
-    const result = await callTool('open_viewer', { 'mcp-session-id': '7ZQH4M2K9X' })
+    const result = await callTool('open_viewer', {}, { 'mcp-session-id': '7ZQH4M2K9X' })
 
     expect(result.structuredContent).toEqual({ room: '7ZQH4M2K9X', joinUrl: 'http://localhost:5173/?room=7ZQH4M2K9X' })
     const read = await rpc('resources/read', { uri: 'ui://igv-bot/join' })
@@ -162,13 +149,13 @@ describe("ChatGPT's path: x-openai-session and no mcp-session-id", () => {
   it('open_viewer carrying only x-openai-session returns the Join link for that Room', async () => {
     const room = (await initialize({ 'x-openai-session': 'openai-c' })).headers.get('mcp-session-id')
 
-    const result = await callTool('open_viewer', { 'x-openai-session': 'openai-c' })
+    const result = await callTool('open_viewer', {}, { 'x-openai-session': 'openai-c' })
 
     expect(result.content[1].uri).toBe(`http://localhost:5173/?room=${room}`)
   })
 
   it('mcp-session-id is used when the Host sends it', async () => {
-    const result = await callTool('open_viewer', { 'mcp-session-id': '7ZQH4M2K9X', 'x-openai-session': 'openai-d' })
+    const result = await callTool('open_viewer', {}, { 'mcp-session-id': '7ZQH4M2K9X', 'x-openai-session': 'openai-d' })
 
     expect(result.content[1].uri).toBe('http://localhost:5173/?room=7ZQH4M2K9X')
   })

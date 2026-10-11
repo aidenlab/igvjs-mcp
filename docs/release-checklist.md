@@ -23,6 +23,16 @@ Run this list four times: Claude desktop, claude.ai on the web, ChatGPT desktop,
 - [ ] The Viewer launches as igv-webapp does: hg38 in whole-genome view with the ruler, the sequence track and RefSeq genes.
 - [ ] The status line reads "Connected · Room …".
 
+## Navigation
+
+Once in each Host, with the Viewer open.
+
+- [ ] "Go to MYC" moves the Viewer to the gene on chr8.
+- [ ] "Go to chr1:1,000,000-2,000,000" moves the Viewer there.
+- [ ] "Zoom in" and "zoom out" each change the scale by a factor of two.
+- [ ] "Go to NOTAGENE" leaves the Viewer where it was, and the model says the gene was not recognised.
+- [ ] With the Viewer closed, "zoom in" makes the model say that igv-bot must be opened first.
+
 ## Room and Conversation
 
 Once in Claude desktop and once in ChatGPT desktop. Read the Room id in the Viewer's status line.

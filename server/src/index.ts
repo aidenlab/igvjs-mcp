@@ -3,7 +3,7 @@
  *
  * Routes:
  *   GET  /ws?room= - WebSocket upgrade → the Room's Durable Object (Viewers); Origin must be a Viewer origin
- *   POST /mcp      - MCP protocol (stateless Streamable HTTP, JSON responses)
+ *   POST /mcp      - MCP protocol (stateless Streamable HTTP, JSON responses); command tools reach the Room by RPC
  *   GET  /mcp      - 405 (no SSE stream)
  *   OPTIONS /mcp   - CORS preflight
  *   GET  /*        - 404 (the Viewer is hosted on its own origin, not by this Worker)
@@ -105,7 +105,11 @@ async function handleMcpRequest(request: Request, env: Env): Promise<Response> {
     }
 
     const mcpServer = new McpServer({ name: 'igv-bot', version: '0.0.0' })
-    registerTools(mcpServer, { roomId, viewerUrl: env.VIEWER_URL })
+    registerTools(mcpServer, {
+      roomId,
+      viewerUrl: env.VIEWER_URL,
+      sendCommand: async (command) => (roomId ? env.ROOM.get(env.ROOM.idFromName(roomId)).send(command) : { status: 'no-viewer' }),
+    })
     const transport = new WebStandardStreamableHTTPServerTransport({
       sessionIdGenerator: undefined,
       enableJsonResponse: true,

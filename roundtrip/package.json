@@ -1,0 +1,17 @@
+{
+  "name": "igvjs-mcp-roundtrip",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "igv-bot round-trip tests: the built Viewer in a headless browser, joined to a Room on the local Worker",
+  "scripts": {
+    "typecheck": "tsc"
+  },
+  "dependencies": {
+    "igvjs-mcp-viewer": "*"
+  },
+  "devDependencies": {
+    "@types/node": "^26.0.0",
+    "playwright": "^1.64.0"
+  }
+}

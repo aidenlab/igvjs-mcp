@@ -1,0 +1,70 @@
+[
+  {
+    "name": "open_viewer",
+    "title": "Open igv-bot",
+    "description": "Get the Join link that opens igv-bot, an igv.js genome browser, connected to the Room bound to this MCP session. Use this when the user asks to open a genome browser or says things like \"open igv-bot\", \"open IGV\", \"launch igv-bot\" or \"show me the genome browser\". A greeting addressed to igv-bot (\"hello igv-bot\", \"hello IGV bot\", \"hi igv\") is also a request to open it: call this tool straight away instead of only greeting back. It opens on hg38 in whole-genome view with the default gene annotation track. A card is shown to the user with an Open igv-bot button. If, and only if, you have the built-in browser of the Claude desktop app (the browser panel beside the conversation), open the Join link in it right away: the page connects to this session's Room and later tool calls redraw it there. Never use Claude in Chrome or any other browser tool for this; if the built-in browser is not available, do not try anything else. Do not repeat the link or the Room id in your reply.",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {}
+    }
+  },
+  {
+    "name": "go_to_locus",
+    "title": "Go to locus",
+    "description": "Move igv-bot to a locus given by coordinates or a chromosome name. Use this when the user names a region (\"go to chr8:127,735,434-127,742,951\", \"show chr17\", \"whole genome\"). For a gene name use go_to_gene instead. The reply carries the resulting Session summary, or igv.js's own error if the locus is not recognised.",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {
+        "locus": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Coordinates such as \"chr8:127,735,434-127,742,951\", a chromosome such as \"chr8\", or \"all\" for the whole genome. Several loci separated by spaces are shown side by side."
+        }
+      },
+      "required": [
+        "locus"
+      ]
+    }
+  },
+  {
+    "name": "go_to_gene",
+    "title": "Go to gene",
+    "description": "Move igv-bot to a gene, by name. Use this when the user names a gene (\"go to MYC\", \"show me BRCA1\"), so they do not have to look up coordinates. For coordinates or a chromosome use go_to_locus instead. The reply carries the resulting Session summary, or igv.js's own error if the gene is not found in the current genome.",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {
+        "gene": {
+          "type": "string",
+          "minLength": 1,
+          "description": "A gene name such as \"MYC\" or \"BRCA1\"."
+        }
+      },
+      "required": [
+        "gene"
+      ]
+    }
+  },
+  {
+    "name": "zoom_in",
+    "title": "Zoom in",
+    "description": "Zoom igv-bot in by a factor of two, keeping the centre of the view where it is. Call it again to zoom further. The reply carries the resulting Session summary; its loci do not change once the view is as close as igv.js allows.",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {}
+    }
+  },
+  {
+    "name": "zoom_out",
+    "title": "Zoom out",
+    "description": "Zoom igv-bot out by a factor of two, keeping the centre of the view where it is when the chromosome allows. Call it again to zoom further. The reply carries the resulting Session summary; its loci do not change once the whole chromosome is in view.",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {}
+    }
+  }
+]

@@ -40,6 +40,13 @@ export async function openViewer(room: string) {
   return {
     send: (msg: ViewerMessage) => ws.send(JSON.stringify(msg)),
     next: () => (queued.length ? Promise.resolve(queued.shift()!) : new Promise<RoomMessage>((r) => waiting.push(r))),
+    /** Leave the Room; resolves once the Room has answered the close, that is, has seen the Viewer go. */
+    close: () => {
+      open.splice(open.indexOf(ws), 1)
+      const closed = new Promise((r) => ws.addEventListener('close', r))
+      ws.close()
+      return closed
+    },
   }
 }
 

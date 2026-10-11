@@ -1,5 +1,6 @@
 import igv from 'igv'
 import './styles/viewer.scss'
+import { applyCommand } from './applyCommand.ts'
 import { connectToRoom, roomSocketUrl, statusText, type RoomStatus } from './roomConnection.ts'
 
 const statusElement = document.querySelector<HTMLElement>('.viewer__status')!
@@ -12,14 +13,21 @@ function showStatus(status: RoomStatus) {
   else delete statusElement.dataset.room
 }
 
+// The default Viewer: hg38 in whole-genome view, with the genome's own default
+// gene annotation track and nothing else.
+const browser = igv.createBrowser(browserElement, { genome: 'hg38', locus: 'all' })
+
 // A Join link carries ?room=; without it there is no Room to join.
 const room = new URLSearchParams(location.search).get('room')
 if (room) {
-  connectToRoom({ url: roomSocketUrl(import.meta.env.VITE_SERVER_URL, room), onStatus: showStatus })
+  connectToRoom({
+    url: roomSocketUrl(import.meta.env.VITE_SERVER_URL, room),
+    onStatus: showStatus,
+    // A command that arrives while the genome is still loading waits for it.
+    applyCommand: async (command) => applyCommand(await browser, command),
+  })
 } else {
   statusElement.textContent = 'Not connected. Ask Claude or ChatGPT to open igv-bot.'
 }
 
-// The default Viewer: hg38 in whole-genome view, with the genome's own default
-// gene annotation track and nothing else.
-await igv.createBrowser(browserElement, { genome: 'hg38', locus: 'all' })
+await browser
