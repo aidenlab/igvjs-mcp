@@ -76,6 +76,8 @@ scripts/deploy-wizard.sh   # first time: login, the secret, the Pages project, t
 scripts/deploy-dev.sh      # afterwards: run the tests, deploy the Worker, build and upload the Viewer
 ```
 
+For now the Viewer is reached at `https://igv-bot-web-dev.pages.dev/` and Join links point there: the custom domain `igv-bot-dev.3dg.io` is not attached yet ([#15](https://github.com/aidenlab/igvjs-mcp/issues/15)).
+
 Both need a Cloudflare account that owns the `3dg.io` zone. The connector URL to give Claude or ChatGPT is `https://igv-bot-mcp-dev.3dg.io/mcp`. Before a release, go through [`docs/release-checklist.md`](docs/release-checklist.md) in both Hosts.
 
 ## Scripts

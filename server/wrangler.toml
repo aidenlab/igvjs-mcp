@@ -58,7 +58,10 @@ name = "ROOM"
 class_name = "Room"
 
 [env.dev.vars]
-VIEWER_URL = "https://igv-bot-dev.3dg.io/"
+# Stopgap: the custom domain igv-bot-dev.3dg.io is not attached to the Pages
+# project yet (#15), so Join links use the project's pages.dev address. Once it
+# is, this goes back to "https://igv-bot-dev.3dg.io/".
+VIEWER_URL = "https://igv-bot-web-dev.pages.dev/"
 VIEWER_ORIGINS = [
   "https://igv-bot-dev.3dg.io",
   "https://igv-bot-web-dev.pages.dev",
