@@ -8,7 +8,9 @@ The vocabulary used here (Host, Connector, Viewer, Room, Join link, …) is defi
 
 - The **Viewer** is an ordinary web page that houses igv.js. It opens on hg38 in whole-genome view with the genome's default gene annotation track.
 - The **server** is a Cloudflare Worker with two public faces: an MCP endpoint (`/mcp`, stateless Streamable HTTP) for the Host, and a WebSocket endpoint (`/ws`) for Viewers, backed by one Durable Object per **Room**.
-- Each MCP session is bound to a Room whose short id is minted on `initialize`. The `open_viewer` tool returns a **Join link**: the Viewer's URL carrying `?room=`. Opening it shows the Viewer, which joins that Room over WebSocket and reconnects by itself if the socket drops.
+- Each MCP session is bound to a Room whose short id is minted on `initialize`. ChatGPT does not echo that id back, so its Room id is derived by HMAC from the `x-openai-session` header it sends, under the `SESSION_HMAC_SECRET` secret.
+- The `open_viewer` tool returns a **Join link**: the Viewer's URL carrying `?room=`. Opening it shows the Viewer, which joins that Room over WebSocket, shows the Room id in its status line, and reconnects by itself if the socket drops.
+- Hosts that render MCP Apps also show a **Join card** in the Conversation: one line of status and an "Open igv-bot" button that opens the Join link through the Host.
 
 There are no commands yet: today the work ends with a Viewer that has joined its Room.
 
@@ -20,6 +22,7 @@ There are no commands yet: today the work ends with a Viewer that has joined its
 
 ```sh
 npm install
+cp server/.dev.vars.example server/.dev.vars   # local stand-ins for the Worker's secrets
 npm run dev:server   # the local Worker, on http://localhost:8787
 npm run dev:viewer   # the Viewer, on http://localhost:5173 (in a second terminal)
 ```
@@ -32,7 +35,7 @@ An MCP client running on this machine can use `http://localhost:8787/mcp` direct
 claude mcp add --transport http igv-bot-dev http://localhost:8787/mcp
 ```
 
-A custom connector in Claude (desktop or web) or ChatGPT cannot: those Hosts connect from their own servers and need a public `https://` URL. Until the Worker is deployed, give the local Worker one with a tunnel and use the address it prints, with `/mcp` appended, as the connector URL:
+A custom connector in Claude (desktop or web) or ChatGPT cannot: those Hosts connect from their own servers and need a public `https://` URL. To try a local Worker in those Hosts, give it one with a tunnel and use the address it prints, with `/mcp` appended, as the connector URL:
 
 ```sh
 cloudflared tunnel --url http://localhost:8787
@@ -55,7 +58,23 @@ curl -s http://localhost:8787/mcp \
   -d '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"open_viewer","arguments":{}}}'
 ```
 
-Open the Join link in a browser: the Viewer shows hg38 and reports "Connected".
+Open the Join link in a browser: the Viewer shows hg38 and reports "Connected · Room <Room id>".
+
+## Deploying
+
+There is one deployed stack, for development. Nothing deploys from CI.
+
+| Part   | Cloudflare name                 | Address                                                        |
+| ------ | ------------------------------- | -------------------------------------------------------------- |
+| Worker | `igv-bot-mcp-dev`               | `https://igv-bot-mcp-dev.3dg.io` (`/mcp` for Hosts, `/ws` for Viewers) |
+| Viewer | Pages project `igv-bot-web-dev` | `https://igv-bot-dev.3dg.io/`                                  |
+
+```sh
+scripts/deploy-wizard.sh   # first time: login, the secret, the Pages project, the custom domain, then each Host
+scripts/deploy-dev.sh      # afterwards: run the tests, deploy the Worker, build and upload the Viewer
+```
+
+Both need a Cloudflare account that owns the `3dg.io` zone. The connector URL to give Claude or ChatGPT is `https://igv-bot-mcp-dev.3dg.io/mcp`. Before a release, go through [`docs/release-checklist.md`](docs/release-checklist.md) in both Hosts.
 
 ## Scripts
 
@@ -78,11 +97,13 @@ Two packages joined by npm workspaces.
 
 ```
 server/                  The Cloudflare Worker
-  wrangler.toml          Worker configuration: the Room binding, VIEWER_URL, VIEWER_ORIGINS
+  wrangler.toml          Worker configuration: the Room binding, VIEWER_URL, VIEWER_ORIGINS, the dev deployment
+  .dev.vars.example      Local stand-ins for the Worker's secrets; copy to .dev.vars
   src/index.ts           Entry point: routes /mcp and /ws
   src/tools.ts           The MCP tools (open_viewer)
+  src/joinCard.ts        The Join card, the one MCP App
   src/room.ts            The Room Durable Object
-  src/roomId.ts          Minting and recognising Room ids
+  src/roomId.ts          Minting, deriving and recognising Room ids
   test/                  Tests, run inside the Workers runtime
 viewer/                  The Viewer web page
   index.html             Page entry point
@@ -92,15 +113,19 @@ viewer/                  The Viewer web page
   src/protocol.ts        The Viewer–Room wire protocol, shared with the server
   src/styles/            Sass stylesheets; class names follow BEM
   test/                  Tests
+scripts/
+  deploy-dev.sh          Deploy the dev Worker and Viewer
+  deploy-wizard.sh       First-time deployment and the checks in each Host, step by step
 ```
 
 ### Configuration
 
 - `server/wrangler.toml`, `VIEWER_URL`: where the Viewer is served. Join links are built from it.
 - `server/wrangler.toml`, `VIEWER_ORIGINS`: the origins allowed to open `/ws`. Any other `Origin` is refused with 403.
+- `server/.dev.vars` (git-ignored; copy `server/.dev.vars.example`), `SESSION_HMAC_SECRET`: the key that derives ChatGPT's Room ids. Deployed, it is a Worker secret. Without it requests carrying only `x-openai-session` fail; there is no fallback key.
 - `viewer/.env`, `VITE_SERVER_URL`: the server the Viewer connects to.
 
-The checked-in values are for local development.
+The checked-in values are for local development. The dev deployment's values are in `[env.dev]` of `server/wrangler.toml` and in `scripts/deploy-dev.sh`.
 
 ## License
 

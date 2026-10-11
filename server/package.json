@@ -6,7 +6,8 @@
   "description": "igv-bot server: a Cloudflare Worker with the MCP endpoint (/mcp) and one Durable Object per Room (/ws)",
   "scripts": {
     "dev": "wrangler dev",
-    "types": "wrangler types --strict-vars false",
+    "deploy:dev": "wrangler deploy --env dev",
+    "types": "wrangler types --strict-vars false --env-file .dev.vars.example",
     "typecheck": "npm run types && tsc"
   },
   "dependencies": {

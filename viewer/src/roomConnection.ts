@@ -11,6 +11,18 @@ export interface RoomSocket {
 
 export type RoomStatus = { state: 'connecting' } | { state: 'joined'; room: string } | { state: 'reconnecting' }
 
+/** The Viewer's status line. A joined Viewer names its Room, so Rooms can be compared across Conversations. */
+export function statusText(status: RoomStatus): string {
+  switch (status.state) {
+    case 'connecting':
+      return 'Connecting…'
+    case 'joined':
+      return `Connected · Room ${status.room}`
+    case 'reconnecting':
+      return 'Connection lost. Reconnecting…'
+  }
+}
+
 export interface RoomConnectionOptions {
   /** The Room's socket address; see `roomSocketUrl`. */
   url: string

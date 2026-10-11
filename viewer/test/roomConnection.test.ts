@@ -3,7 +3,7 @@
  * assert what the Viewer sends and the statuses it reports.
  */
 import { describe, it, expect, afterEach, vi } from 'vitest'
-import { connectToRoom, roomSocketUrl, type RoomSocket, type RoomStatus } from '../src/roomConnection.ts'
+import { connectToRoom, roomSocketUrl, statusText, type RoomSocket, type RoomStatus } from '../src/roomConnection.ts'
 
 class FakeSocket implements RoomSocket {
   onopen: RoomSocket['onopen'] = null
@@ -128,5 +128,15 @@ describe('roomSocketUrl', () => {
     ['https://igv-bot-mcp.example.org/', 'wss://igv-bot-mcp.example.org/ws?room=7ZQH4M2K9X'],
   ])("the Room's socket on %s is %s", (serverUrl, expected) => {
     expect(roomSocketUrl(serverUrl, '7ZQH4M2K9X')).toBe(expected)
+  })
+})
+
+describe('statusText', () => {
+  it.each<[RoomStatus, string]>([
+    [{ state: 'connecting' }, 'Connecting…'],
+    [{ state: 'joined', room: '7ZQH4M2K9X' }, 'Connected · Room 7ZQH4M2K9X'],
+    [{ state: 'reconnecting' }, 'Connection lost. Reconnecting…'],
+  ])('%o reads "%s"', (status, expected) => {
+    expect(statusText(status)).toBe(expected)
   })
 })

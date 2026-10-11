@@ -10,12 +10,12 @@ A **Connector** for Claude and ChatGPT (desktop and web; no mobile) that lets th
 
 ## Architecture
 
-- **Viewer**: an ordinary hosted web page on its own origin. "Open viewer" returns a **Join link**; the Host opens it in its Side panel. In Claude desktop the model opens the link in the built-in browser pane, and a small join card (the only MCP App) offers an "Open" button for when that does not happen. ChatGPT gets the Side panel if it supports one. Any Host without one opens the Join link in a browser tab. See ADR 0001.
+- **Viewer**: an ordinary hosted web page on its own origin. "Open viewer" returns a **Join link**; the Host opens it in its Side panel. In Claude desktop the model opens the link in the built-in browser pane, and a small **Join card** (the only MCP App) offers an "Open igv-bot" button for when that does not happen. ChatGPT gets the Side panel if it supports one. Any Host without one opens the Join link in a browser tab. See ADR 0001.
 - **Server**: remote, unauthenticated, hosted on Cloudflare (Workers). One Durable Object per **Room**, expired after inactivity (`juicebox-mcp` uses 24 hours).
 - **Command flow**: each MCP session is bound to a Room. The Viewer joins its Room by WebSocket. A tool call is pushed to the Viewer as a command; the tool waits up to about 15 seconds for an ack carrying the result or igv.js's own error. If no Viewer is in the Room, the reply says to open one. See ADR 0002.
 - **State**: the Session lives in the Viewer. After every change, by the model or by hand, the Viewer sends the Room a **Session summary**: genome, loci, ordered tracks (name, type, URL, height), and whether crosshairs and the centre line are showing. Every tool reply carries the current summary, so the model learns of hand changes on its next call. The summary will be extended with use.
 - **Reopening**: the Room keeps the last Session. A Viewer joining a Room that has one restores it; otherwise it shows the default.
-- **Default Viewer**: hg38, whole-genome view, the genome's default gene annotation track, nothing else.
+- **Default Viewer**: igv-webapp's launch state: hg38 in whole-genome view with the ruler, the sequence track and RefSeq genes. It is igv.js's own default for `genome: "hg38", locus: "all"` with no tracks added.
 - **Code**: this repository, with `server` and `viewer` packages joined by npm workspaces. Plain TypeScript and Vite. It depends on the published `igv` package, not a fork.
 - **Viewer styling**: Sass for stylesheets and BEM (Block Element Modifier) naming for the classes we write. Widgets are hand-built: no Bootstrap or other CSS framework, because global framework styles bleed into igv.js's own popups and menus.
 - **Prior art**: `~/JuiceboxDevelopment/weiszd/juicebox-mcp` is the model for the whole mechanism: Room, Join link, join card, command and ack protocol, binding a Room to an MCP session (including the ChatGPT path), and Catalogue search. `igvweb-mcp` is ignored and deprecated by this work.
@@ -59,11 +59,34 @@ Hi-C, reading features in view, track colour and display-mode tools, ROIs, reord
 
 ## First step
 
-A thin end-to-end slice before any other tool: "open viewer" showing hg38 with one ENCODE signal track and one 4DN signal track, in both Claude and ChatGPT. It settles what is not documented:
+A thin end-to-end slice before any other tool: "open viewer" showing the default Viewer, deployed and tried in both Claude and ChatGPT (#3). It settles what is not documented:
 
 - whether Claude desktop opens the Join link in the Side panel without the person pressing anything, and what claude.ai on the web does;
 - whether ChatGPT has a Side panel a Connector can reach, and what it does with the join card and the link;
 - whether one MCP session, and so one Room, corresponds to one Conversation in each Host.
+
+An earlier version of this step also loaded one ENCODE and one 4DN signal track. That was a misunderstanding: whether those servers can be reached from the deployed origin is shown by loading tracks (#9).
+
+### Findings
+
+Observed on 2026-10-11 with Claude Pro and ChatGPT Plus, before #3 was deployed. Juicebot is `juicebox-mcp`, which already had the Join card, the tool wording and the ChatGPT path; igv-bot then had only a link in the tool reply.
+
+| Host | Juicebot | igv-bot before #3 |
+| --- | --- | --- |
+| Claude desktop | Side panel | Chrome, after clicking the link in the reply |
+| claude.ai web | Chrome tab | Chrome, after clicking the link in the reply |
+| ChatGPT desktop | Side panel | Error: "this MCP session has no Room" |
+| ChatGPT web | Chrome tab | Error: "this MCP session has no Room" |
+
+So:
+
+- ChatGPT desktop has a Side panel a Connector can reach. Both Hosts' web versions open a browser tab.
+- ChatGPT does not echo `mcp-session-id`. Its Room id is derived by HMAC-SHA256 from `x-openai-session` under the `SESSION_HMAC_SECRET` secret, as ADR 0002 already said. With the secret unset those requests fail; there is no fallback key. There is no `join_room` tool.
+
+Still to observe on the deployed dev stack, with `scripts/deploy-wizard.sh` or `docs/release-checklist.md`:
+
+- Per Host: whether igv-bot opened by itself or only after pressing "Open igv-bot", and what the Host does with the Join card.
+- Room and Conversation: compare the Room id in the Viewer's status line across a new Conversation, two Conversations open at once, and an app restart. Two Conversations sharing a Room is recorded and accepted for v1. One Conversation changing Room partway through needs an ADR and a follow-up ticket (something like `juicebox-mcp`'s `join_room`).
 
 ## Testing
 
@@ -77,3 +100,7 @@ A thin end-to-end slice before any other tool: "open viewer" showing hg38 with o
 - **Local development entry point**: develop against the local Worker (`wrangler dev`) only, so there is one code path. This is also what `juicebox-mcp` settled on.
 - **Public name: igv-bot.** It is what a person sees: the Connector's name in the Host, the phrases the model responds to ("hello igv-bot"), the join card and its button, the Viewer's tab title and its hostname. "Viewer" stays the internal term and the package stays `viewer`.
 - **Shareable URL target**: igv-webapp.
+- **Join card** (#3): one status line and an "Open igv-bot" button that goes through the Host's open-link request. No QR code and no visible link. Its MCP Apps client loads from `unpkg` at a pinned version, as in `juicebox-mcp`.
+- **Tool wording** (#3): copied from `juicebox-mcp`'s `get_juicebox_url`. The model opens the Join link in Claude desktop's built-in browser and nowhere else, never uses Claude in Chrome, replies in one short sentence, and does not repeat the Join link or Room id.
+- **Room id in the Viewer** (#3): shown small in the status line ("Connected · Room …"), so Rooms can be compared across Conversations.
+- **Deployment** (#3): one `-dev` stack on the `3dg.io` zone, following `juicebox-mcp`. The Worker `igv-bot-mcp-dev` is at `igv-bot-mcp-dev.3dg.io`, with `workers.dev` and preview URLs off. The Pages project `igv-bot-web-dev` is at `igv-bot-dev.3dg.io`, by direct upload with `VITE_SERVER_URL` passed at build time. It is deployed by hand with `scripts/deploy-dev.sh`; `scripts/deploy-wizard.sh` covers the first-time steps. There is no CI deploy, and production names wait for a release ticket.
