@@ -4,6 +4,10 @@ name = "igvjs-mcp"
 main = "src/index.ts"
 compatibility_date = "2026-08-01"
 compatibility_flags = ["nodejs_compat"]
+# The Cloudflare account that owns the 3dg.io zone (Theaidenlab@gmail.com's
+# Account). Named so that a login with access to several accounts does not have
+# to choose; the deploy scripts read it from here for the Pages commands too.
+account_id = "1eadb18bb8557fd1bd06b1d0310a902e"
 
 [[durable_objects.bindings]]
 name = "ROOM"

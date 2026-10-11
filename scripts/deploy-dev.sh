@@ -20,6 +20,8 @@ PROJECT="${PROJECT:-igv-bot-web-dev}"
 VITE_SERVER_URL="${VITE_SERVER_URL:-https://igv-bot-mcp-dev.3dg.io}"
 TARGET="${1:-all}"
 cd "$REPO_ROOT"
+# Pages commands do not read wrangler.toml, so they are given its account here.
+export CLOUDFLARE_ACCOUNT_ID="${CLOUDFLARE_ACCOUNT_ID:-$(sed -n 's/^account_id = "\(.*\)"/\1/p' "$REPO_ROOT/server/wrangler.toml")}"
 
 deploy_worker() {
   npm run deploy:dev --workspace server

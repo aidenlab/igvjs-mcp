@@ -196,6 +196,8 @@ TOTAL_STAGES=13
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SERVER_DIR="$REPO_ROOT/server"
+# Pages commands do not read wrangler.toml, so they are given its account here.
+export CLOUDFLARE_ACCOUNT_ID="${CLOUDFLARE_ACCOUNT_ID:-$(sed -n 's/^account_id = "\(.*\)"/\1/p' "$REPO_ROOT/server/wrangler.toml")}"
 WORKER_NAME="igv-bot-mcp-dev"
 BASE_URL="https://igv-bot-mcp-dev.3dg.io"
 MCP_URL="$BASE_URL/mcp"
