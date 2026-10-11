@@ -53,7 +53,7 @@ export const JOIN_CARD_HTML = `<!DOCTYPE html>
     try { ctx = app.getHostContext?.(); } catch (e) { ctx = undefined; }
     if (!joinUrl) return;
     statusElement.textContent = ctx?.platform === "desktop"
-      ? "igv-bot should open in the panel on the right; if it does not, press Open igv-bot. If Claude asks, choose “Always allow for this website”."
+      ? "igv-bot is opening in the panel on the right, which can take half a minute. Only if it has not appeared by then, press Open igv-bot; if Claude then asks, choose “Always allow for this website”."
       : "igv-bot is ready.";
     openButton.hidden = false;
   };
