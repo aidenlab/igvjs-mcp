@@ -83,9 +83,20 @@ So:
 - ChatGPT desktop has a Side panel a Connector can reach. Both Hosts' web versions open a browser tab.
 - ChatGPT does not echo `mcp-session-id`. Its Room id is derived by HMAC-SHA256 from `x-openai-session` under the `SESSION_HMAC_SECRET` secret, as ADR 0002 already said. With the secret unset those requests fail; there is no fallback key. There is no `join_room` tool.
 
-Still to observe on the deployed dev stack, with `scripts/deploy-wizard.sh` or `docs/release-checklist.md`:
+Observed on 2026-10-11 with #3's code, on a local Worker reached through a tunnel:
 
-- Per Host: whether igv-bot opened by itself or only after pressing "Open igv-bot", and what the Host does with the Join card.
+| Host | What happened |
+| --- | --- |
+| Claude desktop | The model opens the Join link by itself and the Viewer appears in the Side panel after about 25 seconds, with nothing pressed. The Join card shows meanwhile. Pressing "Open igv-bot" during the wait raises a permission dialog over the Side panel. The model replies in one short sentence without the Join link or Room id. |
+| claude.ai web | The Join card shows; the Viewer opens in a browser tab only after pressing "Open igv-bot". |
+| ChatGPT desktop and web | Not working yet. See below. |
+
+**Only Claude is supported for now.** The server's ChatGPT path works when probed directly: a request carrying `x-openai-session` and no `mcp-session-id` gets a stable Room and its Join link. What failed is getting ChatGPT to offer the Connector to a Conversation. ChatGPT has separate places for MCP servers used by Codex and for apps used in chat, igv-bot could not be added the way Juicebot is, and no ChatGPT Conversation called `open_viewer`. What ChatGPT does with the Join card and the link is therefore unknown.
+
+Still to do:
+
+- Deploy the dev stack (`scripts/deploy-wizard.sh`); nothing is deployed yet.
+- ChatGPT: work out how to add the Connector, then observe both of its Hosts.
 - Room and Conversation: compare the Room id in the Viewer's status line across a new Conversation, two Conversations open at once, and an app restart. Two Conversations sharing a Room is recorded and accepted for v1. One Conversation changing Room partway through needs an ADR and a follow-up ticket (something like `juicebox-mcp`'s `join_room`).
 
 ## Testing

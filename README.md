@@ -2,6 +2,8 @@
 
 A Connector for Claude and ChatGPT that lets the model open and drive an [igv.js](https://github.com/igvteam/igv.js) genome browser shown beside the conversation. A person knows it as **igv-bot**.
 
+**Only Claude is supported for now.** ChatGPT is intended, and the server handles its requests, but igv-bot has not yet been made to work as a ChatGPT connector; see the findings in [`docs/v1-design.md`](docs/v1-design.md).
+
 The vocabulary used here (Host, Connector, Viewer, Room, Join link, …) is defined in [`GLOSSARY.md`](GLOSSARY.md). The design is in [`docs/v1-design.md`](docs/v1-design.md) and [`docs/adr/`](docs/adr/).
 
 ## How it works
