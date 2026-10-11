@@ -97,9 +97,9 @@ Seen again the same day on the deployed dev stack, in Claude desktop: "open the 
 
 Still to do:
 
-- Deploy the dev stack (`scripts/deploy-wizard.sh`); nothing is deployed yet.
-- ChatGPT: work out how to add the Connector, then observe both of its Hosts.
-- Room and Conversation: compare the Room id in the Viewer's status line across a new Conversation, two Conversations open at once, and an app restart. Two Conversations sharing a Room is recorded and accepted for v1. One Conversation changing Room partway through needs an ADR and a follow-up ticket (something like `juicebox-mcp`'s `join_room`).
+- ChatGPT: work out how to add the Connector, then observe both of its Hosts (#17).
+
+**Room and Conversation in Claude: not settled, and deferred.** Seen on 2026-10-11: asking one Conversation to show the IGV browser opens the Viewer in the Side panel; the same request in a new Conversation gets a reply that the browser is already open. Room ids were not compared, so this does not show whether the two Conversations share a Room. It was decided not to hold up further work on it and to revisit if it becomes a problem. The comparison, when it is wanted: the Room id in the Viewer's status line across a new Conversation, two Conversations open at once, and an app restart. Two Conversations sharing a Room is accepted for v1. One Conversation changing Room partway through needs an ADR and a follow-up ticket (something like `juicebox-mcp`'s `join_room`).
 
 ## Testing
 
