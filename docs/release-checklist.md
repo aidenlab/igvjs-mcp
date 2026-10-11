@@ -4,6 +4,8 @@ Done by hand in both Hosts before each release, against the deployed stack. For 
 
 Terms in capitals are defined in `GLOSSARY.md`.
 
+Only Claude is supported for now (see the findings in `docs/v1-design.md`). Until ChatGPT works, skip its items below.
+
 ## Before trying the Hosts
 
 - [ ] `npm run typecheck` and `npm run test:run` pass.
