@@ -44,6 +44,10 @@ _Avoid_: Session, channel
 The Viewer's URL carrying `?room=`; opening it shows the Viewer connected to that Room.
 _Avoid_: Viewer URL, connection URL, shareable URL
 
+**Join card**:
+The small card a Host shows in the Conversation when igv-bot is opened, carrying one line of status and an "Open" button for the Join link. It never holds the genome browser.
+_Avoid_: Widget, app, view
+
 **Shareable URL**:
 A link that opens the current Session in igv-webapp for someone else, with no Room involved.
 _Avoid_: Join link, share link

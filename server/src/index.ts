@@ -10,7 +10,7 @@
  */
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js'
-import { isRoomId, mintRoomId } from './roomId.ts'
+import { deriveRoomId, isRoomId, mintRoomId } from './roomId.ts'
 import { registerTools } from './tools.ts'
 
 // Re-exported so Cloudflare can find the Durable Object class.
@@ -60,13 +60,16 @@ export default {
 } satisfies ExportedHandler<Env>
 
 interface JsonRpcMessage {
+  id?: string | number | null
   method?: string
 }
 
 /**
  * Workers are stateless, so every request gets a fresh McpServer and transport.
  * The MCP session id is a Room id: minted on `initialize`, echoed back by the
- * Host on later requests, and read from the header here (ADR 0002).
+ * Host on later requests, and read from the header here. ChatGPT does not echo
+ * it but sends `x-openai-session` on every request; its Room id is derived from
+ * that by HMAC under the SESSION_HMAC_SECRET secret (ADR 0002).
  */
 async function handleMcpRequest(request: Request, env: Env): Promise<Response> {
   let body: JsonRpcMessage | JsonRpcMessage[]
@@ -77,11 +80,32 @@ async function handleMcpRequest(request: Request, env: Env): Promise<Response> {
   }
 
   try {
-
     const sessionId = request.headers.get('mcp-session-id')
+    const openaiSession = request.headers.get('x-openai-session')
+    const methods = [body].flat().map((message) => message.method ?? 'response')
+    console.log(
+      `[mcp] ${methods.join(',')} | mcp-session-id: ${sessionId ? 'present' : 'none'} | x-openai-session: ${openaiSession ? 'present' : 'none'}`,
+    )
+
+    let roomId = isRoomId(sessionId) ? sessionId : null
+    if (!roomId && openaiSession) {
+      // No secret, no Room: there is no fallback key.
+      if (!env.SESSION_HMAC_SECRET) {
+        console.error('[mcp] SESSION_HMAC_SECRET is not set; refusing x-openai-session request')
+        return Response.json(
+          {
+            jsonrpc: '2.0',
+            error: { code: -32603, message: 'Server misconfigured: SESSION_HMAC_SECRET is not set' },
+            id: Array.isArray(body) ? null : (body.id ?? null),
+          },
+          { status: 500 },
+        )
+      }
+      roomId = await deriveRoomId(openaiSession, env.SESSION_HMAC_SECRET)
+    }
 
     const mcpServer = new McpServer({ name: 'igv-bot', version: '0.0.0' })
-    registerTools(mcpServer, { roomId: isRoomId(sessionId) ? sessionId : null, viewerUrl: env.VIEWER_URL })
+    registerTools(mcpServer, { roomId, viewerUrl: env.VIEWER_URL })
     const transport = new WebStandardStreamableHTTPServerTransport({
       sessionIdGenerator: undefined,
       enableJsonResponse: true,
@@ -90,10 +114,9 @@ async function handleMcpRequest(request: Request, env: Env): Promise<Response> {
 
     const response = await transport.handleRequest(request, { parsedBody: body })
 
-    const isInitialize = [body].flat().some((message) => message.method === 'initialize')
-    if (!isInitialize || !response.ok) return response
+    if (!methods.includes('initialize') || !response.ok) return response
     const patched = new Response(response.body, response)
-    patched.headers.set('mcp-session-id', mintRoomId())
+    patched.headers.set('mcp-session-id', roomId ?? mintRoomId())
     return patched
   } catch (error) {
     console.error('Error handling MCP request:', error)

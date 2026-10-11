@@ -1,18 +1,12 @@
 import igv from 'igv'
 import './styles/viewer.scss'
-import { connectToRoom, roomSocketUrl, type RoomStatus } from './roomConnection.ts'
+import { connectToRoom, roomSocketUrl, statusText, type RoomStatus } from './roomConnection.ts'
 
 const statusElement = document.querySelector<HTMLElement>('.viewer__status')!
 const browserElement = document.querySelector<HTMLElement>('.viewer__browser')!
 
-const STATUS_TEXT: Record<RoomStatus['state'], string> = {
-  connecting: 'Connecting…',
-  joined: 'Connected',
-  reconnecting: 'Connection lost. Reconnecting…',
-}
-
 function showStatus(status: RoomStatus) {
-  statusElement.textContent = STATUS_TEXT[status.state]
+  statusElement.textContent = statusText(status)
   statusElement.classList.toggle('viewer__status--joined', status.state === 'joined')
   if (status.state === 'joined') statusElement.dataset.room = status.room
   else delete statusElement.dataset.room

@@ -1,3 +1,5 @@
+# The top level is local development (`wrangler dev`) and the tests; it is never
+# deployed. Deployments are the named environments at the bottom.
 name = "igvjs-mcp"
 main = "src/index.ts"
 compatibility_date = "2026-08-01"
@@ -19,4 +21,41 @@ VIEWER_URL = "http://localhost:5173/"
 VIEWER_ORIGINS = [
   "http://localhost:5173",
   "http://127.0.0.1:5173",
+]
+
+# Secrets (`wrangler secret put <NAME> --env <env>`, see scripts/deploy-wizard.sh;
+# for `wrangler dev`, in .dev.vars, see .dev.vars.example):
+# SESSION_HMAC_SECRET  - HMAC key deriving Room ids from x-openai-session (ChatGPT);
+#                        unset → those requests fail. There is no fallback key.
+
+# ── Development deployment: "igv-bot dev" ────────────────────────────────────
+# The dev stack carries a -dev suffix everywhere, so a production release only
+# adds the un-suffixed names: Worker igv-bot-mcp-dev at
+# https://igv-bot-mcp-dev.3dg.io (Hosts use /mcp, Viewers /ws), paired with the
+# Pages project igv-bot-web-dev at https://igv-bot-dev.3dg.io/
+# (scripts/deploy-dev.sh). Wrangler creates the DNS record for the custom
+# domain; the zone is on the same account. No *.workers.dev hostname and no
+# preview URLs, so there is one public address. Named environments do not
+# inherit `vars` or `durable_objects`, so those are repeated; migrations are
+# top-level and apply to every environment.
+[env.dev]
+name = "igv-bot-mcp-dev"
+routes = [
+  { pattern = "igv-bot-mcp-dev.3dg.io", custom_domain = true },
+]
+workers_dev = false
+preview_urls = false
+
+[env.dev.observability.logs]
+enabled = true
+
+[[env.dev.durable_objects.bindings]]
+name = "ROOM"
+class_name = "Room"
+
+[env.dev.vars]
+VIEWER_URL = "https://igv-bot-dev.3dg.io/"
+VIEWER_ORIGINS = [
+  "https://igv-bot-dev.3dg.io",
+  "https://igv-bot-web-dev.pages.dev",
 ]
