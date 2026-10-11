@@ -91,6 +91,8 @@ Observed on 2026-10-11 with #3's code, on a local Worker reached through a tunne
 | claude.ai web | The Join card shows; the Viewer opens in a browser tab only after pressing "Open igv-bot". |
 | ChatGPT desktop and web | Not working yet. See below. |
 
+Seen again the same day on the deployed dev stack, in Claude desktop: "open the igv browser" opens the Side panel by itself, and Claude asks once for permission to use the site. "hello igv-bot" shows the Join card but the model does not open the Side panel. The "Open igv-bot" button opens the Viewer in Chrome, so in Claude desktop only the model reaches the Side panel. Refinements to the Join card and the greeting are in #16.
+
 **Only Claude is supported for now.** The server's ChatGPT path works when probed directly: a request carrying `x-openai-session` and no `mcp-session-id` gets a stable Room and its Join link. What failed is getting ChatGPT to offer the Connector to a Conversation. ChatGPT has separate places for MCP servers used by Codex and for apps used in chat, igv-bot could not be added the way Juicebot is, and no ChatGPT Conversation called `open_viewer`. What ChatGPT does with the Join card and the link is therefore unknown.
 
 Still to do:
