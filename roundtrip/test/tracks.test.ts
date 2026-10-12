@@ -1,11 +1,11 @@
 /**
  * Loading and removing tracks, round trip: the built Viewer runs igv.js in a
- * headless browser, and igv.js fetches the tracks' files from UCSC.
- * ENCODE is not used: it refuses a headless browser.
+ * headless browser, and igv.js fetches the tracks' files from UCSC and
+ * ENCODE, and the local Worker reads the real ENCODE Catalogue.
  */
 import { describe, it, expect, afterAll } from 'vitest'
 import type { Browser } from 'playwright'
-import { callTool, newSession, openViewer } from '../model.ts'
+import { callTool, newSession, openViewer, toolReply } from '../model.ts'
 
 const browsers: Browser[] = []
 
@@ -48,6 +48,20 @@ describe('loading tracks, round trip', () => {
     expect(reply.summary.tracks).toEqual([SEQUENCE, PHASTCONS, PHYLOP, REFSEQ])
     // The tracks are part of the Session from then on.
     expect((await callTool(room, 'read_session_summary')).summary.tracks).toEqual([SEQUENCE, PHASTCONS, PHYLOP, REFSEQ])
+  })
+
+  it('a track found by search_catalogues in the ENCODE Catalogue loads from its url, under its name', async () => {
+    const room = await roomWithViewer()
+    const found = await toolReply(room, 'search_catalogues', { text: 'CTCF K562', outputType: 'fold change over control' })
+    const rows = found.text.slice(found.text.indexOf('Tracks:\n') + 'Tracks:\n'.length, found.text.indexOf('\n\nSession summary:'))
+    const [{ catalogue, name, url }] = JSON.parse(rows) as Array<{ catalogue: string; name: string; url: string }>
+    expect(catalogue).toBe('ENCODE')
+    expect(url).toMatch(/^https:\/\/www\.encodeproject\.org\/files\/.+\.bigWig$/)
+
+    const reply = await callTool(room, 'load_tracks', { tracks: [{ url, name }] })
+
+    expect(reply.isError).toBe(false)
+    expect(reply.summary.tracks).toEqual([SEQUENCE, { name, type: 'wig', url, height: 50 }, REFSEQ])
   })
 
   it("a file that does not exist replies with igv.js's own error, and no track is added", async () => {

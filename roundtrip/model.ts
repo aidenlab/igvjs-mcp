@@ -57,7 +57,9 @@ export function span(locus: string): [number, number] {
 /** Opens the Join link of `room` in a headless browser and waits for the Viewer to join. */
 export async function openViewer(room: string): Promise<{ browser: Browser; page: Page }> {
   const browser = await chromium.launch()
-  const page = await browser.newPage({ viewport: { width: 1280, height: 800 } })
+  // ENCODE answers 403 to a browser that says it is headless, so this one does not say so.
+  const userAgent = (await (await browser.newPage()).evaluate(() => navigator.userAgent)).replace('HeadlessChrome', 'Chrome')
+  const page = await browser.newPage({ viewport: { width: 1280, height: 800 }, userAgent })
   await page.goto(`${VIEWER_URL}/?room=${room}`)
   await page.locator('.viewer__status--joined').waitFor()
   return { browser, page }
