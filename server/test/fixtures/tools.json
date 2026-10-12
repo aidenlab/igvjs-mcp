@@ -9,7 +9,7 @@
       "properties": {
         "room": {
           "type": "string",
-          "description": "Only when igv-bot was already opened in this conversation: the Room id from that reply of open_viewer, to get the same igv-bot back. Leave it out the first time."
+          "description": "Only when igv-bot was already opened in this conversation: the Room id from that reply of open_viewer, to get the same igv-bot back, showing what it last showed. Leave it out the first time: igv-bot then opens in a new Room, on the default view."
         }
       }
     }

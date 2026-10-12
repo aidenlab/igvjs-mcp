@@ -140,7 +140,7 @@ describe('expiry', () => {
     await savedAndLeft('EXP1RY0005')
     await runDurableObjectAlarm(stub('EXP1RY0005'))
 
-    const result = await callTool('open_viewer', { 'mcp-session-id': 'EXP1RY0005' })
+    const result = await callTool('open_viewer', undefined, { room: 'EXP1RY0005' })
 
     expect(result.structuredContent).toMatchObject({ room: 'EXP1RY0005' })
     const viewer = await openViewer('EXP1RY0005')
@@ -150,7 +150,7 @@ describe('expiry', () => {
   it('open_viewer for a Room with a saved Session leaves the Session there', async () => {
     await savedAndLeft('EXP1RY0006')
 
-    await callTool('open_viewer', { 'mcp-session-id': 'EXP1RY0006' })
+    await callTool('open_viewer', undefined, { room: 'EXP1RY0006' })
 
     const viewer = await openViewer('EXP1RY0006')
     expect(await join(viewer)).toEqual({ type: MessageType.JOINED, room: 'EXP1RY0006', session: SESSION })
