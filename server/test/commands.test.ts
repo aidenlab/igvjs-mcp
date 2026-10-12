@@ -97,6 +97,21 @@ describe('a command tool with a Viewer in the Room', () => {
     expect(summaryIn(result.content[0].text!)).toEqual(SUMMARY)
   })
 
+  it('get_shareable_url asks the Viewer, and the link its ack carries is the reply, ahead of the Session summary', async () => {
+    const viewer = await joinedViewer('C0MMAND006')
+    const shareableUrl = 'https://igv.org/app/?sessionURL=blob:7ZQH4M2K9X.abc_def-'
+
+    const reply = callTool('get_shareable_url', { 'mcp-session-id': 'C0MMAND006' })
+    const message = await nextCommand(viewer)
+    expect(message.command).toEqual({ type: 'get_shareable_url' })
+    viewer.send({ type: MessageType.ACK, id: message.id, ok: true, summary: SUMMARY, shareableUrl })
+
+    const result = await reply
+    expect(result.isError).toBeFalsy()
+    expect(result.content[0].text).toMatch(/^Shareable URL:\nhttps:\/\/igv\.org\/app\/\?sessionURL=blob:7ZQH4M2K9X\.abc_def-\n\n/)
+    expect(summaryIn(result.content[0].text!)).toEqual(SUMMARY)
+  })
+
   it('every Viewer in the Room receives the command, and the first ack is the reply', async () => {
     const first = await joinedViewer('C0MMAND004')
     const second = await joinedViewer('C0MMAND004')

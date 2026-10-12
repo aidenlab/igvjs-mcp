@@ -291,6 +291,21 @@
     }
   },
   {
+    "name": "get_shareable_url",
+    "title": "Get the Shareable URL",
+    "description": "Get a Shareable URL for what igv-bot is showing now: a link that opens the same genome, loci and tracks in igv-webapp, the IGV web application at igv.org, for anyone the user sends it to. Use this when the user asks for a link to share, send or keep. The link carries the whole Session in itself, so it is long, needs no igv-bot and no Room, and does not expire; it shows the view as it is now, so get a new one after the view changes. Give the user the link exactly as it is in the reply, whole and unshortened. It is not the Join link, which opens igv-bot itself: never give one for the other. The user can also copy the same link from igv-bot's Control panel. Nothing in igv-bot changes. The reply is the Shareable URL on a line of its own, then the Session summary of the view it opens.",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {
+        "room": {
+          "type": "string",
+          "description": "The Room id igv-bot was opened with, as given in the reply of open_viewer. Pass it on every call."
+        }
+      }
+    }
+  },
+  {
     "name": "search_catalogues",
     "title": "Search the ENCODE and 4DN Catalogues",
     "description": "Find tracks for a loose request, such as \"CTCF ChIP-seq in K562\", in the ENCODE and 4DN Catalogues: the tables of signal, peak and annotation files those projects publish for a genome. Use this whenever the user asks for data by what it is instead of by URL. Both Catalogues are searched at once, for the genome igv-bot is showing. Matching ignores case and punctuation, so \"H3K27ac\", \"h3k27ac\" and \"H3-K27ac\" find the same rows; there are no synonyms, so use the Catalogues' own terms (a cell line as \"K562\" or \"GM12878\", an assay as \"ChIP-seq\" or \"DNase-seq\"). The reply holds the count of all matching rows, in total and in each Catalogue, and at most 20 of them in full, each with the name and url to load it as a track. When more match than are shown, narrow the search with the filters or with more words. The 4DN rows are the compartments, boundaries and insulation scores of Hi-C experiments: ask for them by outputType. When a loose request matches many tracks, pick a sensible default (for ChIP-seq, a \"fold change over control\" signal of the replicates together, such as bioRep \"1,2\"), say in one line what you picked, and load it; ask the user only when the candidates differ in a way they would care about. Hi-C contact matrices and tables of gene or transcript quantifications are never offered: igv-bot cannot show them.",

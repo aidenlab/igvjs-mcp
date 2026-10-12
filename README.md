@@ -141,6 +141,7 @@ viewer/                  The Viewer web page
   .env                   VITE_SERVER_URL: the server the Viewer joins its Room on
   src/main.ts            Creates the igv.js browser and joins the Room
   src/roomConnection.ts  The reconnecting connection to the Room
+  src/controlPanel.ts    The Control panel: the Shareable URL and its copy button, and retracting
   src/protocol.ts        The Viewer–Room wire protocol, shared with the server
   src/styles/            Sass stylesheets; class names follow BEM
   test/                  Tests

@@ -3,21 +3,99 @@
 
 $status-colour: #5f6b7a;
 $status-joined-colour: #1a7f37;
+$border-colour: #d0d7de;
+$panel-colour: #f6f8fa;
+$text-colour: #24292f;
+$font: system-ui, sans-serif;
+$font-size: 12px;
+
+// The look of every button this project writes.
+@mixin button {
+  flex: none;
+  padding: 2px 8px;
+  font: #{$font-size} $font;
+  color: $text-colour;
+  background: #fff;
+  border: 1px solid $border-colour;
+  border-radius: 4px;
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    background: $panel-colour;
+  }
+
+  &:disabled {
+    color: $status-colour;
+    cursor: default;
+  }
+}
 
 body {
   margin: 0;
 }
 
 .viewer {
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 4px 12px;
+  }
+
   &__status {
     margin: 0;
-    font-family: system-ui, sans-serif;
-    padding: 4px 12px;
-    font-size: 12px;
+    font-family: $font;
+    font-size: $font-size;
     color: $status-colour;
 
     &--joined {
       color: $status-joined-colour;
     }
+  }
+
+  &__panel-toggle {
+    @include button;
+  }
+}
+
+// In the flow of the page above the genome browser, so that retracted it
+// leaves its height to the genome browser.
+.control-panel {
+  padding: 6px 12px;
+  background: $panel-colour;
+  border-top: 1px solid $border-colour;
+  border-bottom: 1px solid $border-colour;
+
+  &--retracted {
+    display: none;
+  }
+}
+
+.shareable-url {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  &__label {
+    flex: none;
+    font: #{$font-size} $font;
+    color: $text-colour;
+  }
+
+  &__field {
+    // The link is far longer than any panel: the field takes the width there is.
+    flex: 1;
+    min-width: 0;
+    padding: 2px 6px;
+    font: #{$font-size} ui-monospace, monospace;
+    color: $text-colour;
+    background: #fff;
+    border: 1px solid $border-colour;
+    border-radius: 4px;
+  }
+
+  &__copy {
+    @include button;
   }
 }
