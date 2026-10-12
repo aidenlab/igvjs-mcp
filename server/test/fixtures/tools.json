@@ -181,6 +181,57 @@
     }
   },
   {
+    "name": "set_track_height",
+    "title": "Set track height",
+    "description": "Set the height of one, several or all tracks of igv-bot: to a number of pixels, or \"taller\" (half as high again) or \"shorter\" (two thirds as high), so that one undoes the other. Address the tracks by their names, by their positions in the tracks of the Session summary, counted from 1 at the top, or pass all for every track. Change every track a request means in one call. The user also reorders, resizes and removes tracks by hand, so take positions and heights from the Session summary of the reply just before, or call read_session_summary first. A name or position that matches no track is reported as an error listing the tracks, and a name that several tracks share as an error giving their positions; either way no height is changed. The sequence track keeps its height: all leaves it as it is, and addressing it is an error. The Session summary gives heights in whole pixels. The reply is the resulting Session summary: genome, loci, and tracks in display order.",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {
+        "height": {
+          "description": "The height in pixels, from 1 to 1000, or \"taller\" for 1.5 times the height each track has now, or \"shorter\" for two thirds of it",
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "string",
+              "enum": [
+                "taller",
+                "shorter"
+              ]
+            }
+          ]
+        },
+        "names": {
+          "description": "The names of the tracks as the Session summary gives them. Case does not matter.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "positions": {
+          "description": "The positions of the tracks in the tracks of the Session summary: 1 is the top track",
+          "type": "array",
+          "items": {
+            "type": "number"
+          }
+        },
+        "all": {
+          "description": "True for every track, in place of names and positions",
+          "type": "boolean"
+        },
+        "room": {
+          "description": "The Room id igv-bot was opened with, as given in the reply of open_viewer. Pass it on every call.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "height"
+      ]
+    }
+  },
+  {
     "name": "read_session_summary",
     "title": "Read the Session summary",
     "description": "Read what igv-bot is showing now, without changing anything: genome, loci, tracks in display order with name, type, URL and height, and whether the crosshairs and centre line are showing. The user also changes igv-bot by hand (panning, zooming, reordering, resizing or removing tracks) and you are not told when they do. Call this before describing the view or acting on a reference to it, such as \"this region\" or \"the second track\", unless a reply from another igv-bot tool has just given you the Session summary.",

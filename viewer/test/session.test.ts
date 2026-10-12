@@ -71,6 +71,15 @@ describe('sessionSummary', () => {
     ])
   })
 
+  it('gives a height in whole pixels: "shorter" leaves a track a part of a pixel', () => {
+    const tracks = [
+      { name: 'two thirds of 50', type: 'wig', order: 1, height: 33.333333333333336 },
+      { name: 'half as much again as 25', type: 'wig', order: 2, height: 37.5 },
+    ]
+
+    expect(sessionSummary(session({ tracks })).tracks.map((track) => track.height)).toEqual([33, 38])
+  })
+
   it('lists every locus of a split view, left to right', () => {
     const locus = ['chr8:127,735,434-127,742,951', 'chr17:43,044,295-43,125,364']
 

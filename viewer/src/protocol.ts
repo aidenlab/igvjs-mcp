@@ -40,6 +40,7 @@ export type Command =
   | { type: 'change_genome'; genome: string }
   | { type: 'load_tracks'; tracks: TrackToLoad[] }
   | ({ type: 'remove_track' } & TrackAddress)
+  | ({ type: 'set_track_height'; height: TrackHeight } & TrackSelection)
   | { type: 'read_session_summary' }
 
 /** A track to load: any URL the browser can fetch. */
@@ -56,6 +57,17 @@ export interface TrackAddress {
   position?: number
 }
 
+/** Which tracks of the Session summary are meant: some by name or position, or all of them. */
+export interface TrackSelection {
+  names?: string[]
+  /** Each counted from 1 at the top of the Session summary's tracks. */
+  positions?: number[]
+  all?: boolean
+}
+
+/** The height to give a track: a number of pixels, or half as high again, or two thirds as high. */
+export type TrackHeight = number | 'taller' | 'shorter'
+
 export type CommandType = Command['type']
 
 /** One track of the Session summary. */
@@ -64,6 +76,7 @@ export interface TrackSummary {
   type: string
   /** Absent for tracks that have no file, such as the reference sequence. */
   url?: string
+  /** In whole pixels: "shorter" can leave a track a part of one. */
   height: number
 }
 

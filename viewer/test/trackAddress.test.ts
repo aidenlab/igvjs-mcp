@@ -4,7 +4,7 @@
  */
 import { describe, it, expect } from 'vitest'
 import type { TrackSummary } from '../src/protocol.ts'
-import { addressTrack } from '../src/trackAddress.ts'
+import { addressTrack, addressTracks } from '../src/trackAddress.ts'
 
 const TRACKS: TrackSummary[] = [
   { name: 'sequence', type: 'sequence', height: 25 },
@@ -77,5 +77,38 @@ describe('an address that is not one track', () => {
 
   it('when there are no tracks, says so', () => {
     expect(() => addressTrack([], { position: 1 })).toThrow('No track is at position 1. There are no tracks.')
+  })
+})
+
+describe('addressing several tracks', () => {
+  it('finds each track named or given by position, in display order', () => {
+    expect(addressTracks(TRACKS, { names: ['K562 CTCF'], positions: [1] })).toEqual([0, 2])
+    expect(addressTracks(TRACKS, { names: ['k562 ctcf', 'Refseq All'] })).toEqual([1, 2])
+    expect(addressTracks(TRACKS, { positions: [3, 2] })).toEqual([1, 2])
+  })
+
+  it('a track addressed twice is one track', () => {
+    expect(addressTracks(TRACKS, { names: ['Refseq All'], positions: [2, 2] })).toEqual([1])
+  })
+
+  it('all is every track', () => {
+    expect(addressTracks(TRACKS, { all: true })).toEqual([0, 1, 2])
+    expect(addressTracks(TRACKS, { all: true, names: [], positions: [] })).toEqual([0, 1, 2])
+  })
+
+  it('one name or position that matches nothing is an error listing the tracks, whatever the others match', () => {
+    expect(() => addressTracks(TRACKS, { names: ['Refseq All', 'H3K27ac'] })).toThrow(`No track is named "H3K27ac". ${LISTED}`)
+    expect(() => addressTracks(TRACKS, { names: ['Refseq All'], positions: [4] })).toThrow(`No track is at position 4. ${LISTED}`)
+  })
+
+  it('with no names, no positions and not all is an error listing the tracks', () => {
+    const error = `Give the tracks' names or positions, or all for every track. ${LISTED}`
+
+    expect(() => addressTracks(TRACKS, {})).toThrow(error)
+    expect(() => addressTracks(TRACKS, { names: [], positions: [], all: false })).toThrow(error)
+  })
+
+  it('all together with names or positions is an error', () => {
+    expect(() => addressTracks(TRACKS, { all: true, positions: [2] })).toThrow("Give the tracks' names or positions, or all, not both.")
   })
 })

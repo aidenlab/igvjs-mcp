@@ -1,4 +1,4 @@
-import type { TrackAddress, TrackSummary } from './protocol.ts'
+import type { TrackAddress, TrackSelection, TrackSummary } from './protocol.ts'
 
 function listed(tracks: TrackSummary[]): string {
   if (tracks.length === 0) return 'There are no tracks.'
@@ -41,4 +41,19 @@ export function addressTrack(tracks: TrackSummary[], { name, position }: TrackAd
     )
   }
   return found[0]
+}
+
+/**
+ * The tracks of the Session summary that `selection` means, as their indexes
+ * in `tracks`, top to bottom. Pure. Every name and position must be one track:
+ * the first that is not is the error, as `addressTrack` gives it.
+ */
+export function addressTracks(tracks: TrackSummary[], { names = [], positions = [], all = false }: TrackSelection): number[] {
+  const some = names.length > 0 || positions.length > 0
+  if (all && some) throw new Error("Give the tracks' names or positions, or all, not both.")
+  if (all) return tracks.map((_, index) => index)
+  if (!some) throw new Error(`Give the tracks' names or positions, or all for every track. ${listed(tracks)}`)
+
+  const found = [...names.map((name) => addressTrack(tracks, { name })), ...positions.map((position) => addressTrack(tracks, { position }))]
+  return [...new Set(found)].sort((a, b) => a - b)
 }

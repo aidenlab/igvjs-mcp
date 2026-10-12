@@ -62,6 +62,15 @@ Once in each Host, with the Viewer open on hg38. These are real fetches from ENC
 - [ ] "Load https://example.com/track.bigWig" loads nothing, and the model reports that the file could not be read.
 - [ ] "Remove the second track" and "remove the CTCF track" each remove that track and no other.
 
+## Track height
+
+Once in each Host, with the Viewer open on hg38 and two tracks loaded.
+
+- [ ] "Make the CTCF track 150 pixels high" changes that track and no other.
+- [ ] "Make all the tracks taller", then "shorter", leaves every track the height it began at.
+- [ ] "Make the second and third tracks shorter" changes those two.
+- [ ] After a track is dragged taller by hand, "make it shorter" starts from the dragged height.
+
 ## Room and Conversation
 
 Once in Claude desktop and once in ChatGPT desktop in Codex mode. Read the Room id in the Viewer's status line. The Worker's log (`npx wrangler tail --env dev` in `server`) names the Room each tool call acted on.

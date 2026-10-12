@@ -63,6 +63,11 @@ describe('a command tool with a Viewer in the Room', () => {
     ['remove_track', { position: 2 }, { type: 'remove_track', position: 2 }],
     // A number that is no position still reaches the Viewer, whose error lists the tracks.
     ['remove_track', { position: 0 }, { type: 'remove_track', position: 0 }],
+    ['set_track_height', { height: 120, names: ['K562 CTCF'] }, { type: 'set_track_height', height: 120, names: ['K562 CTCF'] }],
+    ['set_track_height', { height: 'taller', positions: [2, 3] }, { type: 'set_track_height', height: 'taller', positions: [2, 3] }],
+    ['set_track_height', { height: 'shorter', all: true }, { type: 'set_track_height', height: 'shorter', all: true }],
+    // A number that is no height still reaches the Viewer, whose error gives the limits.
+    ['set_track_height', { height: 0, all: true }, { type: 'set_track_height', height: 0, all: true }],
     ['read_session_summary', {}, { type: 'read_session_summary' }],
   ])('%s reaches the Viewer as its command and replies with the Session summary', async (tool, args, command) => {
     const viewer = await joinedViewer('C0MMAND002')
