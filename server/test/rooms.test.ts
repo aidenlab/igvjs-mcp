@@ -6,7 +6,7 @@ import { env, runDurableObjectAlarm, runInDurableObject } from 'cloudflare:test'
 import { describe, it, expect, afterEach, vi } from 'vitest'
 import { MessageType, type SessionSummary } from 'igvjs-mcp-viewer/protocol'
 import { callTool } from './mcp.ts'
-import { ORIGIN, upgrade, openViewer, join, closeViewers } from './viewers.ts'
+import { ORIGIN, upgrade, openViewer, join, closeViewers, type FakeViewer } from './viewers.ts'
 
 afterEach(() => {
   closeViewers()
@@ -39,6 +39,12 @@ const SESSION = {
   showCenterGuide: false,
 }
 
+/** `viewer` saves `session` in its Room; resolves once the Room has stored it. */
+async function save(viewer: FakeViewer, session: object = SESSION) {
+  viewer.send({ type: MessageType.SESSION, session, summary: SUMMARY })
+  await join(viewer) // answered after the Session was stored
+}
+
 describe('the saved Session', () => {
   it('a Room with nothing saved answers a join with its id alone', async () => {
     const viewer = await openViewer('SESS10N001')
@@ -49,8 +55,7 @@ describe('the saved Session', () => {
   it('a Viewer that joins after another saved its Session and left is handed that Session', async () => {
     const first = await openViewer('SESS10N002')
     await join(first)
-    first.send({ type: MessageType.SESSION, session: SESSION, summary: SUMMARY })
-    await join(first) // barrier: the Session was stored
+    await save(first)
     closeViewers()
 
     const later = await openViewer('SESS10N002')
@@ -61,8 +66,8 @@ describe('the saved Session', () => {
   it('the latest Session saved is the one handed over', async () => {
     const first = await openViewer('SESS10N003')
     await join(first)
-    first.send({ type: MessageType.SESSION, session: SESSION, summary: SUMMARY })
-    first.send({ type: MessageType.SESSION, session: { ...SESSION, locus: 'chr1:1-1,000' }, summary: { ...SUMMARY, loci: ['chr1:1-1,000'] } })
+    await save(first)
+    await save(first, { ...SESSION, locus: 'chr1:1-1,000' })
 
     const second = await openViewer('SESS10N003')
 
@@ -79,12 +84,11 @@ describe('expiry', () => {
   async function savedAndLeft(room: string) {
     const viewer = await openViewer(room)
     await join(viewer)
-    viewer.send({ type: MessageType.SESSION, session: SESSION, summary: SUMMARY })
-    await join(viewer) // barrier: the Session was stored
+    await save(viewer)
     closeViewers()
   }
 
-  it("a Room's stored data is due for deletion 24 hours after the last message from a Viewer; a message at 23 hours puts it off", async () => {
+  it("a Room is due to expire 24 hours after the last message from a Viewer; a message at 23 hours puts it off", async () => {
     vi.useFakeTimers({ toFake: ['Date'] })
     const t0 = Date.now()
     const viewer = await openViewer('EXP1RY0001')
@@ -93,8 +97,7 @@ describe('expiry', () => {
     expect(await alarmOf('EXP1RY0001')).toBe(t0 + 24 * HOUR)
 
     vi.setSystemTime(t0 + 23 * HOUR)
-    viewer.send({ type: MessageType.SESSION, session: SESSION, summary: SUMMARY })
-    await join(viewer) // barrier: the Session was stored; the join is a message at 23 hours too
+    await save(viewer)
 
     expect(await alarmOf('EXP1RY0001')).toBe(t0 + 47 * HOUR)
   })
@@ -109,7 +112,7 @@ describe('expiry', () => {
     expect(await later.closed).toBe(true)
   })
 
-  it('a command to an expired Room finds no Viewer, and no summary from before', async () => {
+  it('a command to an expired Room finds no Viewer', async () => {
     await savedAndLeft('EXP1RY0003')
     await runDurableObjectAlarm(stub('EXP1RY0003'))
 
@@ -118,16 +121,19 @@ describe('expiry', () => {
     expect(result.content[0].text).toMatch(/^Error: no Viewer is in this MCP session's Room/)
   })
 
-  it('a Viewer still connected when the time comes keeps its Room: a join afterwards is answered as in a new Room', async () => {
+  it('a Viewer still connected when the time comes keeps its Room and its saved Session, for another 24 hours', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    const t0 = Date.now()
     const viewer = await openViewer('EXP1RY0004')
     await join(viewer)
-    viewer.send({ type: MessageType.SESSION, session: SESSION, summary: SUMMARY })
-    await join(viewer) // barrier: the Session was stored
+    await save(viewer)
 
+    vi.setSystemTime(t0 + 24 * HOUR)
     expect(await runDurableObjectAlarm(stub('EXP1RY0004'))).toBe(true)
 
+    expect(await alarmOf('EXP1RY0004')).toBe(t0 + 48 * HOUR)
     const second = await openViewer('EXP1RY0004')
-    expect(await join(second)).toEqual({ type: MessageType.JOINED, room: 'EXP1RY0004' })
+    expect(await join(second)).toEqual({ type: MessageType.JOINED, room: 'EXP1RY0004', session: SESSION })
   })
 
   it('open_viewer for an expired Room makes it a new Room again: a join is answered, with no Session from before', async () => {

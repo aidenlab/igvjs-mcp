@@ -60,8 +60,9 @@ export function roomSocketUrl(serverUrl: string, room: string): string {
 /**
  * Connects the Viewer to its Room and joins it. When the socket drops it
  * reconnects by itself, waiting 1 s, 2 s, … up to 5 s between attempts, and
- * joins again, unless the Room has expired. Commands from the Room are applied one at a time, in the order
- * they arrive, and each is acked on the socket it came in on.
+ * joins again, unless the Room has expired. Commands from the Room are applied
+ * one at a time, in the order they arrive, and each is acked on the socket it
+ * came in on.
  */
 export function connectToRoom({
   url,

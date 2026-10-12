@@ -37,7 +37,7 @@ The compact account of the Session that the model is given with every tool reply
 _Avoid_: State, context
 
 **Room**:
-The live channel on the server that joins the Connector to its Viewer, identified by a Room id. It carries commands to the Viewer and keeps the latest Session summary and Session.
+The live channel on the server that joins the Connector to its Viewer, identified by a Room id. It carries commands to the Viewer and keeps the latest Session summary and Session, until it expires after a day with no Viewer and no message.
 _Avoid_: Session, channel
 
 **Command**:
