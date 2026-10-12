@@ -61,6 +61,8 @@ describe('a command tool with a Viewer in the Room', () => {
     ],
     ['remove_track', { name: 'K562 CTCF' }, { type: 'remove_track', name: 'K562 CTCF' }],
     ['remove_track', { position: 2 }, { type: 'remove_track', position: 2 }],
+    // A number that is no position still reaches the Viewer, whose error lists the tracks.
+    ['remove_track', { position: 0 }, { type: 'remove_track', position: 0 }],
     ['read_session_summary', {}, { type: 'read_session_summary' }],
   ])('%s reaches the Viewer as its command and replies with the Session summary', async (tool, args, command) => {
     const viewer = await joinedViewer('C0MMAND002')

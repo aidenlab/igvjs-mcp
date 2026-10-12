@@ -13,7 +13,7 @@ export interface GenomeBrowser {
   /** Replaces the genome, and the tracks with the new genome's default ones. */
   loadGenome(id: string): Promise<unknown>
   /** Rejects with igv.js's own error when the track's file cannot be read. */
-  loadTrack(config: { url: string; name?: string }): Promise<unknown>
+  loadTrack(config: TrackToLoad): Promise<unknown>
   removeTrack(track: BrowserTrack): void
   toJSON(): Session
   findTracks(filter: (track: BrowserTrack) => boolean): BrowserTrack[]
@@ -66,6 +66,7 @@ async function loadTracks(browser: GenomeBrowser, tracks: TrackToLoad[]): Promis
 function removeTrack(browser: GenomeBrowser, address: TrackAddress): void {
   const session = captureSession(browser)
   const position = addressTrack(sessionSummary(session).tracks, address)
+  // The Session's tracks are the saved tracks, one for one: see `captureSession`.
   const track = savedTracks(browser)[displayOrder(session.tracks)[position]]
   // igv.js's own menu offers no removal of the sequence track, though its API would carry one out.
   if (track.removable === false) throw new Error('The sequence track cannot be removed.')
@@ -82,7 +83,7 @@ const APPLIERS: { [T in CommandType]: Applier<T> } = {
     await browser.loadGenome(genome)
   },
   load_tracks: (browser, { tracks }) => loadTracks(browser, tracks),
-  remove_track: (browser, { name, position }) => removeTrack(browser, { name, position }),
+  remove_track: removeTrack,
   // Changes nothing: the ack carries the Session summary, as every ack does.
   read_session_summary: () => {},
 }

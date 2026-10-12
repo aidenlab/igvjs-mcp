@@ -67,7 +67,7 @@ export const COMMAND_TOOLS: CommandTool[] = [
   {
     name: 'load_tracks',
     title: 'Load tracks',
-    description: `Load one or several tracks into igv-bot, each from the URL of its file. The URLs come from a reply of search_catalogues (pass the row's url, and its name as the track's name) or from the user, who may give any URL their browser can fetch. Load every track a request asks for in one call: they are shown in the order given, where igv.js puts new tracks, above the genome's own annotation track. A track given no name gets igv.js's default, the name of its file. When a loose request matches many tracks in the Catalogues, pick a sensible default, say in one line what you picked, and load it; ask the user only when the candidates differ in a way they would care about. A track that does not load is reported as an error carrying igv.js's own message, as for a file that does not exist or a host that does not permit cross-origin requests; the other tracks of the call are still loaded, and the Session summary shows which. ${REPLY}`,
+    description: `Load one or several tracks into igv-bot, each from the URL of its file. The URLs come from a reply of search_catalogues (pass the row's url, and its name as the track's name) or from the user, who may give any URL their browser can fetch. Load every track a request asks for in one call: they are shown in the order given, and the Session summary of the reply says where igv.js put them, as a rule above the genome's own annotation track. A track given no name gets igv.js's default, the name of its file. When a loose request matches many tracks in the Catalogues, pick a sensible default, say in one line what you picked, and load it; ask the user only when the candidates differ in a way they would care about. A track that does not load is reported as an error carrying igv.js's own message, as for a file that does not exist or a host that does not permit cross-origin requests; the other tracks of the call are still loaded, and the Session summary shows which. ${REPLY}`,
     inputSchema: {
       tracks: z
         .array(
@@ -84,10 +84,11 @@ export const COMMAND_TOOLS: CommandTool[] = [
   {
     name: 'remove_track',
     title: 'Remove a track',
-    description: `Remove one track from igv-bot, addressed by its name or by its position in the tracks of the Session summary, counted from 1 at the top: "the second track" is position 2 and "the bottom one" is the last. Give name or position, not both. The user also reorders and removes tracks by hand, so take a position from the Session summary of the reply just before, or call read_session_summary first. A name or position that matches no track, and a name that several tracks share, is reported as an error listing the tracks, and nothing is removed. The sequence track cannot be removed. ${REPLY}`,
+    description: `Remove one track from igv-bot, addressed by its name or by its position in the tracks of the Session summary, counted from 1 at the top: "the second track" is position 2 and "the bottom one" is the last. Give name or position, not both. The user also reorders and removes tracks by hand, so take a position from the Session summary of the reply just before, or call read_session_summary first. A name or position that matches no track is reported as an error listing the tracks, and a name that several tracks share as an error giving their positions; either way nothing is removed. The sequence track cannot be removed. ${REPLY}`,
     inputSchema: {
       name: z.string().optional().describe('The name of the track as the Session summary gives it. Case does not matter.'),
-      position: z.number().int().min(1).optional().describe('The position of the track in the tracks of the Session summary: 1 is the top track'),
+      // Any number: one that is no position is answered by the Viewer, which can list the tracks.
+      position: z.number().optional().describe('The position of the track in the tracks of the Session summary: 1 is the top track'),
     },
     commandType: 'remove_track',
   },
