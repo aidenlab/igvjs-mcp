@@ -50,7 +50,7 @@ export function addressTrack(tracks: TrackSummary[], { name, position }: TrackAd
  */
 export function addressTracks(tracks: TrackSummary[], { names = [], positions = [], all = false }: TrackSelection): number[] {
   const some = names.length > 0 || positions.length > 0
-  if (all && some) throw new Error("Give the tracks' names or positions, or all, not both.")
+  if (all && some) throw new Error("Give all, or the tracks' names or positions, not both.")
   if (all) return tracks.map((_, index) => index)
   if (!some) throw new Error(`Give the tracks' names or positions, or all for every track. ${listed(tracks)}`)
 

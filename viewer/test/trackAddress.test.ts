@@ -109,6 +109,6 @@ describe('addressing several tracks', () => {
   })
 
   it('all together with names or positions is an error', () => {
-    expect(() => addressTracks(TRACKS, { all: true, positions: [2] })).toThrow("Give the tracks' names or positions, or all, not both.")
+    expect(() => addressTracks(TRACKS, { all: true, positions: [2] })).toThrow("Give all, or the tracks' names or positions, not both.")
   })
 })

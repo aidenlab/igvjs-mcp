@@ -3,7 +3,7 @@
  * shorter than it is.
  */
 import { describe, it, expect } from 'vitest'
-import { changedHeight } from '../src/trackHeight.ts'
+import { changedHeight, checkHeight } from '../src/trackHeight.ts'
 
 describe('an absolute height', () => {
   it.each([
@@ -17,7 +17,15 @@ describe('an absolute height', () => {
   })
 
   it.each([0, -10, 1001, 0.5, Number.NaN, Number.POSITIVE_INFINITY])('%d is no height: the error gives the limits', (height) => {
-    expect(() => changedHeight(50, height)).toThrow(`A track cannot be ${height} pixels high. Give a height from 1 to 1000 pixels, or "taller" or "shorter".`)
+    const error = `A track cannot be ${height} pixels high. Give a height from 1 to 1000 pixels, or "taller" or "shorter".`
+
+    expect(() => changedHeight(50, height)).toThrow(error)
+    // The same error with no track to give the height to.
+    expect(() => checkHeight(height)).toThrow(error)
+  })
+
+  it.each([1, 120, 1000, 'taller', 'shorter'] as const)('%s is a height a track can be given', (height) => {
+    expect(() => checkHeight(height)).not.toThrow()
   })
 })
 
