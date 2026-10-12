@@ -69,7 +69,8 @@ interface JsonRpcMessage {
  * The MCP session id is a Room id: minted on `initialize`, echoed back by the
  * Host on later requests, and read from the header here. ChatGPT does not echo
  * it but sends `x-openai-session` on every request; its Room id is derived from
- * that by HMAC under the SESSION_HMAC_SECRET secret (ADR 0002).
+ * that by HMAC under the SESSION_HMAC_SECRET secret (ADR 0002). A tool call
+ * that carries a `room` argument acts on that Room instead (ADR 0003).
  */
 async function handleMcpRequest(request: Request, env: Env): Promise<Response> {
   let body: JsonRpcMessage | JsonRpcMessage[]

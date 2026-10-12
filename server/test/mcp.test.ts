@@ -53,7 +53,35 @@ describe('open_viewer', () => {
       expect(wording).toMatch(/Do not repeat the link or the Room id/)
     }
     expect(reply).toMatch(/reply in one short sentence/)
-    expect(reply.match(/7ZQH4M2K9X/g)).toHaveLength(1) // in the Join link only
+  })
+
+  it('tells the model to pass the Room id as room on every later tool call, and names the id', async () => {
+    const res = await rpc('tools/list', {})
+    const { result } = await res.json<{ result: { tools: Array<{ description: string }> } }>()
+    const reply = (await callTool('open_viewer', { 'mcp-session-id': '7ZQH4M2K9X' })).content[0].text!
+
+    for (const wording of [result.tools[0].description, reply]) {
+      expect(wording).toMatch(/as room on every later igv-bot tool call/)
+    }
+    expect(reply).toContain('Room id: 7ZQH4M2K9X.')
+    expect(reply.match(/7ZQH4M2K9X/g)).toHaveLength(2) // there and in the Join link
+  })
+
+  it("given a room, returns the Join link for that Room, not the session's", async () => {
+    const result = await callTool('open_viewer', { 'mcp-session-id': '7ZQH4M2K9X' }, { room: ' 265eddexa6 ' })
+
+    const joinLink = 'http://localhost:5173/?room=265EDDEXA6'
+    expect(result.content[0].text).toContain(`\n${joinLink}\n`)
+    expect(result.content[1].uri).toBe(joinLink)
+    expect(result.structuredContent).toEqual({ room: '265EDDEXA6', joinUrl: joinLink })
+  })
+
+  it('given a room that is not a Room id, replies with an error and no link', async () => {
+    const result = await callTool('open_viewer', { 'mcp-session-id': '7ZQH4M2K9X' }, { room: 'nope' })
+
+    expect(result.isError).toBe(true)
+    expect(result.content).toHaveLength(1)
+    expect(result.content[0].text).toMatch(/^Error: "nope" is not a Room id\./)
   })
 
   it.each([
