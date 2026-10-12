@@ -6,6 +6,8 @@ The Viewer also sends the Session summary and the Session to its Room after ever
 
 This follows `juicebox-mcp`, including how a Room is tied to an MCP session: the session id is minted as a Room id on `initialize`, and for ChatGPT, which does not echo that id back, it is derived by HMAC from the `x-openai-session` header.
 
+A session is not a Conversation: Claude desktop moves one Conversation across two sessions. ADR 0003 has the model carry the Room id so that a call reaches the right Room whichever session it arrives through.
+
 ## Considered Options
 
 - **Queue commands for the Viewer to collect through Viewer-only MCP tools.** The first version of this ADR, needed only because an inline MCP App cannot be pushed to. Rejected along with inline embedding.

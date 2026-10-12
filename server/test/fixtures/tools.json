@@ -2,11 +2,16 @@
   {
     "name": "open_viewer",
     "title": "Open igv-bot",
-    "description": "Get the Join link that opens igv-bot, an igv.js genome browser, connected to the Room bound to this MCP session. Use this when the user asks to open a genome browser or says things like \"open igv-bot\", \"open IGV\", \"launch igv-bot\" or \"show me the genome browser\". A greeting addressed to igv-bot (\"hello igv-bot\", \"hello IGV bot\", \"hi igv\") is also a request to open it: call this tool straight away instead of only greeting back. It opens on hg38 in whole-genome view with the default gene annotation track. A card is shown to the user with an Open igv-bot button. If, and only if, you have the built-in browser of the Claude desktop app (the browser panel beside the conversation), open the Join link in it right away: the page connects to this session's Room and later tool calls redraw it there. Never use Claude in Chrome or any other browser tool for this; if the built-in browser is not available, do not try anything else. Do not repeat the link or the Room id in your reply.",
+    "description": "Get the Join link that opens igv-bot, an igv.js genome browser, connected to a Room. Use this when the user asks to open a genome browser or says things like \"open igv-bot\", \"open IGV\", \"launch igv-bot\" or \"show me the genome browser\". A greeting addressed to igv-bot (\"hello igv-bot\", \"hello IGV bot\", \"hi igv\") is also a request to open it: call this tool straight away instead of only greeting back. It opens on hg38 in whole-genome view with the default gene annotation track. A card is shown to the user with an Open igv-bot button. If, and only if, you have the built-in browser of the Claude desktop app (the browser panel beside the conversation), open the Join link in it right away: the page connects to its Room and later tool calls redraw it there. Never use Claude in Chrome or any other browser tool for this; if the built-in browser is not available, do not try anything else. Do not repeat the link or the Room id in your reply. The reply names the Room id: pass it as room on every later igv-bot tool call in this conversation, so the calls reach this igv-bot whichever session they arrive through. If igv-bot was already opened in this conversation, pass that Room id as room here to get the same igv-bot back.",
     "inputSchema": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "type": "object",
-      "properties": {}
+      "properties": {
+        "room": {
+          "type": "string",
+          "description": "The Room id igv-bot was opened with, as given in the reply of open_viewer. Pass it on every call."
+        }
+      }
     }
   },
   {
@@ -20,6 +25,10 @@
         "locus": {
           "type": "string",
           "description": "Coordinates as chr:start-end (1-based, commas allowed), a chromosome name, or \"all\""
+        },
+        "room": {
+          "type": "string",
+          "description": "The Room id igv-bot was opened with, as given in the reply of open_viewer. Pass it on every call."
         }
       },
       "required": [
@@ -38,6 +47,10 @@
         "gene": {
           "type": "string",
           "description": "Gene name or symbol, such as \"MYC\""
+        },
+        "room": {
+          "type": "string",
+          "description": "The Room id igv-bot was opened with, as given in the reply of open_viewer. Pass it on every call."
         }
       },
       "required": [
@@ -52,7 +65,12 @@
     "inputSchema": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "type": "object",
-      "properties": {}
+      "properties": {
+        "room": {
+          "type": "string",
+          "description": "The Room id igv-bot was opened with, as given in the reply of open_viewer. Pass it on every call."
+        }
+      }
     }
   },
   {
@@ -62,7 +80,12 @@
     "inputSchema": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "type": "object",
-      "properties": {}
+      "properties": {
+        "room": {
+          "type": "string",
+          "description": "The Room id igv-bot was opened with, as given in the reply of open_viewer. Pass it on every call."
+        }
+      }
     }
   }
 ]

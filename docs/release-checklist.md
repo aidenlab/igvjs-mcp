@@ -36,11 +36,12 @@ Once in each Host, with the Viewer open.
 
 Once in Claude desktop and once in ChatGPT desktop. Read the Room id in the Viewer's status line.
 
+- [ ] The first command after opening igv-bot works, and the Viewer does not reload. The Room id in the status line is the same before and after.
 - [ ] Asking for igv-bot again later in the same Conversation gives the same Room.
 - [ ] After quitting and reopening the app, the same Conversation still gives the same Room.
 - [ ] A second Conversation open at the same time: note whether it gets its own Room. Sharing one is accepted for v1.
 
-If one Conversation changes Room partway through, stop the release: that needs an ADR and a ticket.
+If one Conversation changes Room partway through, stop the release: the model is not passing `room` as ADR 0003 expects.
 
 ## Afterwards
 

@@ -96,6 +96,17 @@ describe('navigation, round trip', () => {
     expect(width(zoomedOut.summary.loci[0])).toBe(2000)
   })
 
+  it('a command from another MCP session reaches the Viewer when it carries the Room id', async () => {
+    const other = await rpc('initialize', { protocolVersion: '2025-03-26', capabilities: {}, clientInfo: { name: 'roundtrip', version: '0' } })
+    const otherRoom = other.headers.get('mcp-session-id')!
+    expect(otherRoom).not.toBe(room)
+
+    const reply = await callTool(otherRoom, 'go_to_locus', { locus: 'chr2:5,000,001-5,002,000', room })
+
+    expect(reply.isError).toBe(false)
+    expect(reply.summary.loci).toEqual(['chr2:5,000,001-5,002,000'])
+  })
+
   it.each([
     ['go_to_gene', { gene: 'NOTAGENE123' }, 'NOTAGENE123'],
     ['go_to_locus', { locus: 'chrZZ:1-100' }, 'chrZZ:1-100'],
