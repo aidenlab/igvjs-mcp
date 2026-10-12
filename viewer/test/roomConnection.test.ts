@@ -41,7 +41,7 @@ const SUMMARY: SessionSummary = { genome: 'hg38', loci: ['all'], tracks: [], cro
 function connect(onCommand: (command: Command) => Promise<CommandOutcome> = async () => ({ ok: true, summary: SUMMARY })) {
   const sockets: FakeSocket[] = []
   const statuses: RoomStatus[] = []
-  connectToRoom({
+  const { reportSummary } = connectToRoom({
     url: 'ws://server.test/ws?room=7ZQH4M2K9X',
     onStatus: (status) => statuses.push(status),
     onCommand,
@@ -51,7 +51,7 @@ function connect(onCommand: (command: Command) => Promise<CommandOutcome> = asyn
       return socket
     },
   })
-  return { sockets, statuses }
+  return { sockets, statuses, reportSummary }
 }
 
 afterEach(() => {
@@ -178,6 +178,76 @@ describe('a command from the Room', () => {
 
     expect(events).toEqual(['start go_to_gene', 'end go_to_gene', 'start zoom_in', 'end zoom_in'])
     expect(socket.sent.map((ack) => (ack as { id: string }).id)).toEqual(['req-1', 'req-2'])
+  })
+})
+
+describe('a Session summary reported after a change made by hand', () => {
+  const PANNED: SessionSummary = { ...SUMMARY, loci: ['chr8:127,740,001-127,747,518'] }
+
+  function joined() {
+    const connection = connect()
+    connection.sockets[0].open()
+    connection.sockets[0].receive({ type: 'joined', room: '7ZQH4M2K9X' })
+    connection.sockets[0].sent.length = 0
+    return connection
+  }
+
+  it('is sent to the Room', () => {
+    const { sockets, reportSummary } = joined()
+
+    reportSummary(PANNED)
+
+    expect(sockets[0].sent).toEqual([{ type: 'summary', summary: PANNED }])
+  })
+
+  it('is not sent again while it stays the same', () => {
+    const { sockets, reportSummary } = joined()
+
+    reportSummary(PANNED)
+    reportSummary({ ...PANNED })
+    reportSummary(SUMMARY)
+
+    expect(sockets[0].sent).toEqual([
+      { type: 'summary', summary: PANNED },
+      { type: 'summary', summary: SUMMARY },
+    ])
+  })
+
+  it('is not sent when an ack has just carried the same summary', async () => {
+    const { sockets, reportSummary } = joined()
+    sockets[0].receive({ type: 'command', id: 'req-1', command: { type: 'zoom_in' } })
+    await vi.waitFor(() => expect(sockets[0].sent).toHaveLength(1))
+
+    reportSummary(SUMMARY) // what the ack carried: the change was the command's
+
+    expect(sockets[0].sent).toEqual([{ type: 'ack', id: 'req-1', ok: true, summary: SUMMARY }])
+  })
+
+  it('reported before the Room is joined is sent once it is', () => {
+    const { sockets, reportSummary } = connect()
+
+    reportSummary(SUMMARY)
+    reportSummary(PANNED)
+    sockets[0].open()
+    expect(sockets[0].sent).toEqual([{ type: 'join' }])
+
+    sockets[0].receive({ type: 'joined', room: '7ZQH4M2K9X' })
+    expect(sockets[0].sent).toEqual([{ type: 'join' }, { type: 'summary', summary: PANNED }])
+  })
+
+  it('is sent again after a reconnect, with whatever changed while the socket was down', () => {
+    vi.useFakeTimers()
+    const { sockets, reportSummary } = joined()
+    reportSummary(SUMMARY)
+
+    sockets[0].drop()
+    reportSummary(PANNED)
+    vi.advanceTimersByTime(1000)
+    sockets[1].open()
+    sockets[1].receive({ type: 'joined', room: '7ZQH4M2K9X' })
+
+    expect(sockets[0].sent).toEqual([{ type: 'summary', summary: SUMMARY }])
+    expect(sockets[1].sent).toEqual([{ type: 'join' }, { type: 'summary', summary: PANNED }])
   })
 })
 

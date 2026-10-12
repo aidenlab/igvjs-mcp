@@ -35,6 +35,8 @@ const APPLIERS: { [T in CommandType]: Applier<T> } = {
   go_to_gene: (browser, { gene }) => goTo(browser, gene),
   zoom_in: (browser) => browser.zoomIn(),
   zoom_out: (browser) => browser.zoomOut(),
+  // Changes nothing: the ack carries the Session summary, as every ack does.
+  read_session_summary: () => {},
 }
 
 /**

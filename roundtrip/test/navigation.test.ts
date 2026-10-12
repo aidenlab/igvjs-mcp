@@ -4,38 +4,8 @@
  * model would and asserts on the replies.
  */
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
-import { chromium, type Browser } from 'playwright'
-import type { SessionSummary } from 'igvjs-mcp-viewer/protocol'
-import { SERVER_URL, VIEWER_URL } from '../addresses.ts'
-
-interface ToolResult {
-  content: Array<{ type: string; text: string }>
-  isError?: boolean
-}
-
-let rpcId = 0
-async function rpc(method: string, params: object, room?: string) {
-  const res = await fetch(`${SERVER_URL}/mcp`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Accept: 'application/json, text/event-stream',
-      ...(room ? { 'mcp-session-id': room } : {}),
-    },
-    body: JSON.stringify({ jsonrpc: '2.0', id: ++rpcId, method, params }),
-  })
-  return { headers: res.headers, body: (await res.json()) as { result: ToolResult } }
-}
-
-/** A tool reply, with the Session summary it carries read out of its text. */
-async function callTool(room: string, name: string, args: object = {}) {
-  const { result } = (await rpc('tools/call', { name, arguments: args }, room)).body
-  const text = result.content[0].text
-  const marker = 'Session summary:\n'
-  expect(text).toContain(marker)
-  const summary = JSON.parse(text.slice(text.indexOf(marker) + marker.length)) as SessionSummary
-  return { text, isError: result.isError === true, summary }
-}
+import type { Browser } from 'playwright'
+import { callTool, newRoom, openViewer } from '../model.ts'
 
 /** The width in base pairs of a locus such as "chr8:127,735,434-127,742,951". */
 function width(locus: string): number {
@@ -47,14 +17,8 @@ let browser: Browser
 let room: string
 
 beforeAll(async () => {
-  // The model's session: its id is the Room, and the Join link carries it.
-  const initialized = await rpc('initialize', { protocolVersion: '2025-03-26', capabilities: {}, clientInfo: { name: 'roundtrip', version: '0' } })
-  room = initialized.headers.get('mcp-session-id')!
-
-  browser = await chromium.launch()
-  const page = await browser.newPage({ viewport: { width: 1280, height: 800 } })
-  await page.goto(`${VIEWER_URL}/?room=${room}`)
-  await page.locator('.viewer__status--joined').waitFor()
+  room = await newRoom()
+  ;({ browser } = await openViewer(room))
 })
 
 afterAll(() => browser?.close())
@@ -97,8 +61,7 @@ describe('navigation, round trip', () => {
   })
 
   it('a command from another MCP session reaches the Viewer when it carries the Room id', async () => {
-    const other = await rpc('initialize', { protocolVersion: '2025-03-26', capabilities: {}, clientInfo: { name: 'roundtrip', version: '0' } })
-    const otherRoom = other.headers.get('mcp-session-id')!
+    const otherRoom = await newRoom()
     expect(otherRoom).not.toBe(room)
 
     const reply = await callTool(otherRoom, 'go_to_locus', { locus: 'chr2:5,000,001-5,002,000', room })
