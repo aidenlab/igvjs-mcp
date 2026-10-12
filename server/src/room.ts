@@ -32,15 +32,25 @@ export class Room extends DurableObject<Env> {
     if (viewers.length === 0) return { status: 'no-viewer' }
 
     const id = crypto.randomUUID()
-    let timer: ReturnType<typeof setTimeout>
-    const outcome = await new Promise<CommandOutcome | null>((resolve) => {
-      this.pending.set(id, resolve)
-      timer = setTimeout(resolve, (this.env as { ACK_TIMEOUT_MS?: number }).ACK_TIMEOUT_MS ?? ACK_TIMEOUT_MS, null)
-      for (const viewer of viewers) send(viewer, { type: MessageType.COMMAND, id, command })
-    })
-    clearTimeout(timer!)
-    this.pending.delete(id)
-    return outcome ? { status: 'acked', outcome } : { status: 'unconfirmed' }
+    const wait = (this.env as { ACK_TIMEOUT_MS?: number }).ACK_TIMEOUT_MS ?? ACK_TIMEOUT_MS
+    let timer: ReturnType<typeof setTimeout> | undefined
+    try {
+      const outcome = await new Promise<CommandOutcome | null>((resolve) => {
+        this.pending.set(id, resolve)
+        timer = setTimeout(resolve, wait, null)
+        for (const viewer of viewers) {
+          try {
+            send(viewer, { type: MessageType.COMMAND, id, command })
+          } catch {
+            /* this Viewer is leaving; the others still get the command */
+          }
+        }
+      })
+      return outcome ? { status: 'acked', outcome } : { status: 'unconfirmed' }
+    } finally {
+      clearTimeout(timer)
+      this.pending.delete(id)
+    }
   }
 
   async fetch(request: Request): Promise<Response> {

@@ -1,6 +1,6 @@
 # The server pushes commands to the Viewer through a Room
 
-The Viewer is a web page, not part of the MCP exchange (ADR 0001), so the server needs its own channel to it. Each MCP session is bound to a Room: one Durable Object, identified by a short server-minted Room id. A Viewer opened from the Join link connects to its Room by WebSocket. A tool call becomes a command pushed to the Viewers in the Room; the Viewer applies it and answers with an ack carrying the resulting Session summary or igv.js's own error. The tool waits about 15 seconds for the ack. With no Viewer in the Room, the tool replies that one must be opened first.
+The Viewer is a web page, not part of the MCP exchange (ADR 0001), so the server needs its own channel to it. Each MCP session is bound to a Room: one Durable Object, identified by a short server-minted Room id. A Viewer opened from the Join link connects to its Room by WebSocket. A tool call becomes a command pushed to the Viewers in the Room; the Viewer applies it and answers with an ack: ok, or igv.js's own error, either way with the resulting Session summary. The tool waits about 15 seconds for the ack. With no Viewer in the Room, the tool replies that one must be opened first.
 
 The Viewer also sends the Session summary and the Session to its Room after every change made by hand, so the Room always holds the latest of both.
 
