@@ -24,6 +24,12 @@ export async function deriveRoomId(value: string, secret: string): Promise<strin
   return roomIdFromBytes(new Uint8Array(await crypto.subtle.sign('HMAC', key, encoder.encode(value))))
 }
 
+/** The Room id in `value` as a model or person may give it, lower case or with spaces around it; null if it is not one. */
+export function parseRoomId(value: string): string | null {
+  const roomId = value.trim().toUpperCase()
+  return isRoomId(roomId) ? roomId : null
+}
+
 export function isRoomId(value: string | null): value is string {
   return value !== null && ROOM_ID.test(value)
 }
