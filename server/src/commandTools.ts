@@ -93,6 +93,22 @@ export const COMMAND_TOOLS: CommandTool[] = [
     commandType: 'remove_track',
   },
   {
+    name: 'set_track_height',
+    title: 'Set track height',
+    description: `Set the height of one, several or all tracks of igv-bot: to a number of pixels, or "taller" (half as high again) or "shorter" (two thirds as high), so that one undoes the other. A height runs from 1 to 1000 pixels: a number outside that is an error, and taller and shorter stop there. Address the tracks by their names, by their positions in the tracks of the Session summary, counted from 1 at the top, or pass all for every track. Change every track a request means in one call. The user also reorders, resizes and removes tracks by hand, so take positions and heights from the Session summary of the reply just before, or call read_session_summary first. A name or position that matches no track is reported as an error listing the tracks, and a name that several tracks share as an error giving their positions; either way no height is changed. The sequence track keeps its height: all leaves it as it is, and addressing it is an error. The Session summary gives heights in whole pixels. ${REPLY}`,
+    inputSchema: {
+      // Any number: one that is no height is answered by the Viewer, which gives the limits.
+      height: z
+        .union([z.number(), z.enum(['taller', 'shorter'])])
+        .describe('The height in pixels, from 1 to 1000, or "taller" for 1.5 times the height each track has now, or "shorter" for two thirds of it'),
+      names: z.array(z.string()).optional().describe('The names of the tracks as the Session summary gives them. Case does not matter.'),
+      // Any numbers: one that is no position is answered by the Viewer, which can list the tracks.
+      positions: z.array(z.number()).optional().describe('The positions of the tracks in the tracks of the Session summary: 1 is the top track'),
+      all: z.boolean().optional().describe('True for every track, in place of names and positions'),
+    },
+    commandType: 'set_track_height',
+  },
+  {
     name: 'read_session_summary',
     title: 'Read the Session summary',
     description:

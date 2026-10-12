@@ -1,6 +1,7 @@
-import type { Command, CommandOutcome, CommandType, TrackAddress, TrackToLoad } from './protocol.ts'
+import type { Command, CommandOutcome, CommandType, TrackAddress, TrackHeight, TrackSelection, TrackToLoad } from './protocol.ts'
 import { displayOrder, sessionSummary, type Session } from './session.ts'
-import { addressTrack } from './trackAddress.ts'
+import { addressTrack, addressTracks } from './trackAddress.ts'
+import { changedHeight, checkHeight } from './trackHeight.ts'
 
 /**
  * The part of an igv.js browser the commands use. igv.js's own typings are
@@ -26,10 +27,22 @@ interface BrowserTrack {
   /** The name the track is shown under. */
   name?: string
   height?: number
+  /** True while igv.js fits the track's height to what it holds. */
+  autoHeight?: boolean
+  /** The limits igv.js keeps a track within when it is dragged taller or shorter. */
+  minHeight?: number
+  maxHeight?: number
   /** False for the sequence track. */
   removable?: boolean
   config?: object
   getState?: () => object
+  /** The track as it is drawn. */
+  trackView: {
+    /** `force` sets the height whatever the track's limits. */
+    setTrackHeight(height: number, force?: boolean): void
+    checkContentHeight(): void
+    repaintViews(): void
+  }
 }
 
 type Applier<T extends CommandType> = (browser: GenomeBrowser, command: Extract<Command, { type: T }>) => Promise<void> | void
@@ -63,14 +76,55 @@ async function loadTracks(browser: GenomeBrowser, tracks: TrackToLoad[]): Promis
   throw new Error(`${errors.length} of the ${tracks.length} tracks did not load:\n${errors.join('\n')}`)
 }
 
+/**
+ * igv.js's tracks as the Session summary of `session` lists them, top to
+ * bottom. The Session's tracks are the saved tracks, one for one: see
+ * `captureSession`.
+ */
+function summarizedTracks(browser: GenomeBrowser, session: Session): BrowserTrack[] {
+  const saved = savedTracks(browser)
+  return displayOrder(session.tracks).map((index) => saved[index])
+}
+
 function removeTrack(browser: GenomeBrowser, address: TrackAddress): void {
   const session = captureSession(browser)
-  const position = addressTrack(sessionSummary(session).tracks, address)
-  // The Session's tracks are the saved tracks, one for one: see `captureSession`.
-  const track = savedTracks(browser)[displayOrder(session.tracks)[position]]
+  const track = summarizedTracks(browser, session)[addressTrack(sessionSummary(session).tracks, address)]
   // igv.js's own menu offers no removal of the sequence track, though its API would carry one out.
   if (track.removable === false) throw new Error('The sequence track cannot be removed.')
   browser.removeTrack(track)
+}
+
+/**
+ * Gives `track` the height, as igv.js's own "Set track height" does, but for
+ * `autoHeight`: igv.js 3.8 clears it on the track's view, where nothing reads it.
+ */
+function resize(track: BrowserTrack, height: number): void {
+  // A height that was asked for is kept: igv.js stops fitting the track to what it holds,
+  // and a later drag by hand starts from limits that take the height in.
+  track.autoHeight = false
+  if (track.minHeight !== undefined && track.minHeight > height) track.minHeight = height
+  if (track.maxHeight !== undefined && track.maxHeight < height) track.maxHeight = height
+  track.trackView.setTrackHeight(height, true)
+  track.trackView.checkContentHeight()
+  track.trackView.repaintViews()
+}
+
+function setTrackHeight(browser: GenomeBrowser, { height, ...selection }: { height: TrackHeight } & TrackSelection): void {
+  // Before any track is looked at: a height that is an error is one whatever tracks it is for.
+  checkHeight(height)
+  const session = captureSession(browser)
+  const summarized = sessionSummary(session).tracks
+  // The sequence track's height is igv.js's to set: its own menu offers none. All tracks is all the others.
+  const sizable = (index: number) => summarized[index].type !== 'sequence'
+  const addressed = addressTracks(summarized, selection)
+  if (!selection.all && !addressed.every(sizable)) throw new Error("The sequence track's height cannot be set.")
+
+  const tracks = summarizedTracks(browser, session)
+  for (const index of addressed.filter(sizable)) {
+    const track = tracks[index]
+    // The height igv.js has, which the Session summary gives in whole pixels.
+    resize(track, changedHeight(track.height ?? summarized[index].height, height))
+  }
 }
 
 /** One applier per command type: what the command does to igv.js. */
@@ -84,6 +138,7 @@ const APPLIERS: { [T in CommandType]: Applier<T> } = {
   },
   load_tracks: (browser, { tracks }) => loadTracks(browser, tracks),
   remove_track: removeTrack,
+  set_track_height: setTrackHeight,
   // Changes nothing: the ack carries the Session summary, as every ack does.
   read_session_summary: () => {},
 }

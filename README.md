@@ -4,7 +4,7 @@ A Connector for Claude and ChatGPT that lets the model open and drive an [igv.js
 
 **It works in Claude desktop, claude.ai on the web, and ChatGPT desktop in Codex mode.** A plain ChatGPT chat and ChatGPT on the web are not supported; see the findings in [`docs/v1-design.md`](docs/v1-design.md).
 
-The vocabulary used here (Host, Connector, Viewer, Room, Join link, …) is defined in [`GLOSSARY.md`](GLOSSARY.md). The design is in [`docs/v1-design.md`](docs/v1-design.md) and [`docs/adr/`](docs/adr/).
+The vocabulary used here (Host, Connector, Viewer, Room, Join link, …) is defined in [`GLOSSARY.md`](GLOSSARY.md). The design is in [`docs/v1-design.md`](docs/v1-design.md) and [`docs/adr/`](docs/adr/). The tools the model is given, and how each is used, are listed in [`docs/tools.md`](docs/tools.md).
 
 ## How it works
 
@@ -19,6 +19,7 @@ The vocabulary used here (Host, Connector, Viewer, Room, Join link, …) is defi
 - A person also changes the Viewer by hand: panning and zooming in igv.js, a track's gear menu, dragging tracks into a new order, removing a track. The model is not notified; it learns of a hand change from the Session summary on its next tool reply, or by asking with `read_session_summary`, a Command that changes nothing. The Viewer also sends its Room the Session summary after every change, whoever made it, once igv.js has been quiet for a quarter of a second, so a drag is one message.
 - The model turns a loose request ("CTCF ChIP-seq in K562") into tracks with `search_catalogues`, which searches the ENCODE and 4DN **Catalogues** on the server and sends the Viewer nothing. It searches for the genome in the Room's Session summary unless it is given one, and replies with the count of all matching rows and at most 20 of them in full, each with the name and URL to load it. The search is in `server/src/catalogues.ts`.
 - The model loads tracks with `load_tracks`, one or several in a call, each from a URL: a Catalogue row's, or any the person gives that their browser can fetch. A track that does not load is reported with igv.js's own error and the others are still loaded. `remove_track` removes one track, addressed by its name or by its position in the Session summary, counted from 1 at the top; a name or position that matches nothing is an error listing the tracks. Addressing is in `viewer/src/trackAddress.ts`.
+- The model sets track height with `set_track_height`, for one track, several, or all: a number of pixels from 1 to 1000, or "taller" (×1.5) or "shorter" (×2/3), so that one undoes the other. Tracks are addressed as for `remove_track`, by `names` and `positions`, or with `all`. The sequence track keeps the height igv.js gives it. The Session summary gives heights in whole pixels. The arithmetic is in `viewer/src/trackHeight.ts`.
 
 A Command's tool is one row of `server/src/commandTools.ts`, its command in `viewer/src/protocol.ts` and its applier in `viewer/src/commands.ts`.
 

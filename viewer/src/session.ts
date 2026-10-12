@@ -38,7 +38,7 @@ export function sessionSummary(session: Session): SessionSummary {
   const tracks = displayOrder(session.tracks).map((index): TrackSummary => {
     const track = session.tracks[index]
     const type = track.type ?? 'unknown'
-    return { name: track.name || type, type, ...(track.url ? { url: track.url } : {}), height: track.height ?? 0 }
+    return { name: track.name || type, type, ...(track.url ? { url: track.url } : {}), height: Math.round(track.height ?? 0) }
   })
 
   return {
