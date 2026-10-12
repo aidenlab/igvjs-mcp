@@ -21,6 +21,17 @@ export interface GenomeBrowser {
   /** Crosshairs. */
   doShowCursorGuide?: boolean
   doShowCenterLine?: boolean
+  setCursorGuideVisibility(show: boolean): void
+  setCenterLineVisibility(show: boolean): void
+  /** igv.js's own buttons, each lit while what it toggles is showing. */
+  navbar: {
+    cursorGuideButton: NavbarButton
+    centerLineButton: NavbarButton
+  }
+}
+
+interface NavbarButton {
+  setState(lit: boolean): void
 }
 
 interface BrowserTrack {
@@ -127,6 +138,24 @@ function setTrackHeight(browser: GenomeBrowser, { height, ...selection }: { heig
   }
 }
 
+/** Shows or hides the crosshairs, as igv.js's own button does. */
+function setCrosshairs(browser: GenomeBrowser, show: boolean): void {
+  browser.doShowCursorGuide = show
+  browser.setCursorGuideVisibility(show)
+  browser.navbar.cursorGuideButton.setState(show)
+}
+
+/** Shows or hides the centre line, as igv.js's own button does. */
+function setCentreLine(browser: GenomeBrowser, show: boolean): void {
+  // igv.js hides its button in the whole-genome view, and the line with it.
+  if (show && sessionSummary(captureSession(browser)).loci[0] === 'all') {
+    throw new Error('The whole-genome view has no centre line. Go to a locus or gene first.')
+  }
+  browser.doShowCenterLine = show
+  browser.setCenterLineVisibility(show)
+  browser.navbar.centerLineButton.setState(show)
+}
+
 /** One applier per command type: what the command does to igv.js. */
 const APPLIERS: { [T in CommandType]: Applier<T> } = {
   go_to_locus: (browser, { locus }) => goTo(browser, locus),
@@ -139,6 +168,8 @@ const APPLIERS: { [T in CommandType]: Applier<T> } = {
   load_tracks: (browser, { tracks }) => loadTracks(browser, tracks),
   remove_track: removeTrack,
   set_track_height: setTrackHeight,
+  set_crosshairs: (browser, { show }) => setCrosshairs(browser, show),
+  set_centre_line: (browser, { show }) => setCentreLine(browser, show),
   // Changes nothing: the ack carries the Session summary, as every ack does.
   read_session_summary: () => {},
 }

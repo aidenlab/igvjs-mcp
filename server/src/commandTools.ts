@@ -109,6 +109,24 @@ export const COMMAND_TOOLS: CommandTool[] = [
     commandType: 'set_track_height',
   },
   {
+    name: 'set_crosshairs',
+    title: 'Show or hide the crosshairs',
+    description: `Show or hide igv-bot's crosshairs: a vertical and a horizontal line that follow the pointer across the tracks. The Session summary says whether they are showing, as crosshairs; the user also turns them on and off by hand. Going to the whole-genome view hides them. ${REPLY}`,
+    inputSchema: {
+      show: z.boolean().describe('True to show the crosshairs, false to hide them'),
+    },
+    commandType: 'set_crosshairs',
+  },
+  {
+    name: 'set_centre_line',
+    title: 'Show or hide the centre line',
+    description: `Show or hide igv-bot's centre line: a vertical line marking the middle of the view, the point that zoom_in and zoom_out keep in place. The Session summary says whether it is showing, as centreLine; the user also turns it on and off by hand. The whole-genome view has no centre line: showing it there is an error, so go to a locus or gene first, and going to the whole-genome view hides it. ${REPLY}`,
+    inputSchema: {
+      show: z.boolean().describe('True to show the centre line, false to hide it'),
+    },
+    commandType: 'set_centre_line',
+  },
+  {
     name: 'read_session_summary',
     title: 'Read the Session summary',
     description:

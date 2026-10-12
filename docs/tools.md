@@ -13,6 +13,7 @@ The tools the Connector gives the model, and how each is used. The wording the m
 | [`load_tracks`](#load_tracks) | Loads one or several tracks by URL |
 | [`remove_track`](#remove_track) | Removes one track |
 | [`set_track_height`](#set_track_height) | Sets the height of one, several or all tracks |
+| [`set_crosshairs`](#set_crosshairs-and-set_centre_line), [`set_centre_line`](#set_crosshairs-and-set_centre_line) | Shows or hides the crosshairs, or the centre line |
 | [`read_session_summary`](#read_session_summary) | Reads what igv-bot is showing, changing nothing |
 
 ## What every tool shares
@@ -165,6 +166,27 @@ One of the two, not both. The sequence track cannot be removed.
 - One name or position that matches nothing is an error, and no height is changed.
 - The sequence track keeps its height: `all` leaves it as it is, and addressing it is an error.
 - The Session summary gives heights in whole pixels, so 50 made shorter reads 33.
+
+## Crosshairs and centre line
+
+### `set_crosshairs` and `set_centre_line`
+
+The crosshairs are a vertical and a horizontal line that follow the pointer. The centre line marks the middle of the view.
+
+| Argument | |
+| --- | --- |
+| `show` (required) | `true` to show, `false` to hide |
+
+```text
+"turn on the crosshairs"               set_crosshairs { show: true }
+"show me where the centre is"          set_centre_line { show: true }
+"hide the centre line"                 set_centre_line { show: false }
+```
+
+- The Session summary says whether each is showing, as `crosshairs` and `centreLine`.
+- Showing what is already showing, or hiding what is hidden, changes nothing and is not an error.
+- The whole-genome view has no centre line: showing it there is an error.
+- Going to the whole-genome view hides both, and they stay hidden at the next locus.
 
 ## Reading
 

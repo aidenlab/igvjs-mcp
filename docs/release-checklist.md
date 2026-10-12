@@ -71,6 +71,14 @@ Once in each Host, with the Viewer open on hg38 and two tracks loaded.
 - [ ] "Make the second and third tracks shorter" changes those two.
 - [ ] After a track is dragged taller by hand, "make it shorter" starts from the dragged height.
 
+## Crosshairs and centre line
+
+Once in each Host, with the Viewer open at a locus.
+
+- [ ] "Turn on the crosshairs" shows them, and igv.js's Crosshairs button is lit. "Turn them off" hides them.
+- [ ] "Show the centre line", then "hide it", does each.
+- [ ] After the crosshairs are turned on by hand, "are the crosshairs on?" is answered yes.
+
 ## Room and Conversation
 
 Once in Claude desktop and once in ChatGPT desktop in Codex mode. Read the Room id in the Viewer's status line. The Worker's log (`npx wrangler tail --env dev` in `server`) names the Room each tool call acted on.
