@@ -1,4 +1,4 @@
-import { MessageType, type Command, type CommandOutcome, type RoomMessage, type ViewerMessage } from './protocol.ts'
+import { MessageType, type Command, type CommandOutcome, type RoomMessage, type SessionSummary, type ViewerMessage } from './protocol.ts'
 
 /** The part of a WebSocket the connection uses; tests supply a fake. */
 export interface RoomSocket {
@@ -32,6 +32,15 @@ export interface RoomConnectionOptions {
   createSocket?: (url: string) => RoomSocket
 }
 
+export interface RoomConnection {
+  /**
+   * Tells the Room the Session summary as it now stands. Call it after any
+   * change, whoever made it: a summary the Room already has is not sent again,
+   * and one reported while the socket is down is sent on the next join.
+   */
+  reportSummary: (summary: SessionSummary) => void
+}
+
 /** The address of a Room's socket on the server at `serverUrl`. */
 export function roomSocketUrl(serverUrl: string, room: string): string {
   const url = new URL('/ws', serverUrl)
@@ -51,16 +60,29 @@ export function connectToRoom({
   onStatus,
   onCommand,
   createSocket = (socketUrl) => new WebSocket(socketUrl),
-}: RoomConnectionOptions): void {
+}: RoomConnectionOptions): RoomConnection {
   let current: RoomSocket | null = null
+  let joined = false
   let failedAttempts = 0
   let lastCommand: Promise<unknown> = Promise.resolve()
+  /** The Session summary as the Viewer last knew it, from an ack or a report. */
+  let latest: SessionSummary | null = null
+  /** The summary the Room was last sent on the current socket, as JSON. */
+  let roomHas: string | null = null
 
   const send = (socket: RoomSocket, message: ViewerMessage) => socket.send(JSON.stringify(message))
+
+  function sendLatestSummary(socket: RoomSocket) {
+    if (!latest || JSON.stringify(latest) === roomHas) return
+    send(socket, { type: MessageType.SUMMARY, summary: latest })
+    roomHas = JSON.stringify(latest)
+  }
 
   function connect() {
     const socket = createSocket(url)
     current = socket
+    joined = false
+    roomHas = null
 
     // A socket that is no longer `current` has dropped; its late events are ignored.
     socket.onopen = () => {
@@ -78,14 +100,19 @@ export function connectToRoom({
         return // not ours; ignored
       }
       if (message?.type === MessageType.JOINED) {
+        joined = true
         onStatus({ state: 'joined', room: message.room })
+        sendLatestSummary(socket)
       } else if (message?.type === MessageType.COMMAND) {
         const { id, command } = message
         lastCommand = lastCommand
           .then(async () => {
             const outcome = await onCommand(command)
+            latest = outcome.summary
             // A socket that dropped meanwhile has no one to tell.
-            if (socket === current) send(socket, { type: MessageType.ACK, id, ...outcome })
+            if (socket !== current) return
+            send(socket, { type: MessageType.ACK, id, ...outcome })
+            roomHas = JSON.stringify(latest)
           })
           // Unacked, so the tool replies "sent, unconfirmed"; later commands still run.
           .catch((error) => console.error('[room] command failed', error))
@@ -95,6 +122,7 @@ export function connectToRoom({
     socket.onclose = () => {
       if (socket !== current) return
       current = null
+      joined = false
       onStatus({ state: 'reconnecting' })
       failedAttempts++
       setTimeout(connect, 1000 * Math.min(failedAttempts, 5))
@@ -103,4 +131,11 @@ export function connectToRoom({
 
   onStatus({ state: 'connecting' })
   connect()
+
+  return {
+    reportSummary(summary) {
+      latest = summary
+      if (current && joined) sendLatestSummary(current)
+    },
+  }
 }

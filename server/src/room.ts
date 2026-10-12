@@ -4,20 +4,28 @@ import {
   type Command,
   type CommandOutcome,
   type RoomMessage,
+  type SessionSummary,
   type ViewerMessage,
 } from 'igvjs-mcp-viewer/protocol'
 
 /** How long a command waits for the first ack. The tests shorten it with an ACK_TIMEOUT_MS binding. */
 const ACK_TIMEOUT_MS = 15_000
 
-/** What became of a command sent to a Room. */
-export type CommandDelivery = { status: 'acked'; outcome: CommandOutcome } | { status: 'unconfirmed' } | { status: 'no-viewer' }
+/** What became of a command sent to a Room. An unconfirmed one carries the Session summary the Room last heard, if any. */
+export type CommandDelivery =
+  | { status: 'acked'; outcome: CommandOutcome }
+  | { status: 'unconfirmed'; lastSummary?: SessionSummary }
+  | { status: 'no-viewer' }
+
+/** Storage key of the latest Session summary a Viewer sent, in an ack or after a change made by hand. */
+const SUMMARY_KEY = 'summary'
 
 /**
  * One Room: the live channel that joins a Connector to its Viewers (ADR 0002).
  * One instance per Room id. Viewers arrive on `fetch` (the WebSocket upgrade
  * from /ws?room=) and are held with the Hibernation API, so an idle Room costs
- * nothing.
+ * nothing. The Room keeps the latest Session summary its Viewers send; it is a
+ * mirror, and the Viewer's own answer is preferred whenever there is one.
  */
 export class Room extends DurableObject<Env> {
   /** Commands waiting for their first ack, by request id. */
@@ -46,7 +54,8 @@ export class Room extends DurableObject<Env> {
           }
         }
       })
-      return outcome ? { status: 'acked', outcome } : { status: 'unconfirmed' }
+      if (outcome) return { status: 'acked', outcome }
+      return { status: 'unconfirmed', lastSummary: await this.ctx.storage.get<SessionSummary>(SUMMARY_KEY) }
     } finally {
       clearTimeout(timer)
       this.pending.delete(id)
@@ -78,7 +87,10 @@ export class Room extends DurableObject<Env> {
     } else if (data?.type === MessageType.ACK) {
       // Later acks of the same command, from other Viewers, find nothing pending.
       const { type: _, id, ...outcome } = data
+      await this.ctx.storage.put(SUMMARY_KEY, outcome.summary)
       this.pending.get(id)?.(outcome)
+    } else if (data?.type === MessageType.SUMMARY) {
+      await this.ctx.storage.put(SUMMARY_KEY, data.summary)
     }
   }
 

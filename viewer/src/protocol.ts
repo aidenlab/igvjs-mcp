@@ -9,6 +9,7 @@ export const MessageType = {
   JOINED: 'joined', // Room → Viewer: {room}
   COMMAND: 'command', // Room → Viewer: {id, command}
   ACK: 'ack', // Viewer → Room: {id, ok: true, summary} or {id, ok: false, error, summary}
+  SUMMARY: 'summary', // Viewer → Room: {summary}, after a change no command made
 } as const
 
 export interface JoinMessage {
@@ -26,6 +27,7 @@ export type Command =
   | { type: 'go_to_gene'; gene: string }
   | { type: 'zoom_in' }
   | { type: 'zoom_out' }
+  | { type: 'read_session_summary' }
 
 export type CommandType = Command['type']
 
@@ -60,5 +62,11 @@ export interface CommandMessage {
 
 export type AckMessage = { type: typeof MessageType.ACK; id: string } & CommandOutcome
 
-export type ViewerMessage = JoinMessage | AckMessage
+/** The Session summary after a change made by hand. A change a command made is reported by its ack. */
+export interface SummaryMessage {
+  type: typeof MessageType.SUMMARY
+  summary: SessionSummary
+}
+
+export type ViewerMessage = JoinMessage | AckMessage | SummaryMessage
 export type RoomMessage = JoinedMessage | CommandMessage

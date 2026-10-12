@@ -52,6 +52,7 @@ describe('a command tool with a Viewer in the Room', () => {
     ['go_to_gene', { gene: 'MYC' }, { type: 'go_to_gene', gene: 'MYC' }],
     ['zoom_in', {}, { type: 'zoom_in' }],
     ['zoom_out', {}, { type: 'zoom_out' }],
+    ['read_session_summary', {}, { type: 'read_session_summary' }],
   ])('%s reaches the Viewer as its command and replies with the Session summary', async (tool, args, command) => {
     const viewer = await joinedViewer('C0MMAND002')
 
@@ -106,6 +107,54 @@ describe('a command tool with a Viewer in the Room', () => {
         text: 'Sent, unconfirmed: the Viewer did not answer in time, so it is not known whether zoom_out was applied.',
       },
     ])
+  })
+})
+
+describe('the Session summary a Viewer sends after a change made by hand', () => {
+  const PANNED: SessionSummary = { ...SUMMARY, loci: ['chr8:127,740,001-127,747,518'] }
+  const UNCONFIRMED = 'Sent, unconfirmed: the Viewer did not answer in time, so it is not known whether zoom_in was applied.'
+
+  it('is carried by a reply the Viewer does not answer, as the summary from before the call', async () => {
+    const viewer = await joinedViewer('SVMMARY001')
+    viewer.send({ type: MessageType.SUMMARY, summary: SUMMARY })
+    viewer.send({ type: MessageType.SUMMARY, summary: PANNED })
+
+    const reply = callTool('zoom_in', { 'mcp-session-id': 'SVMMARY001' })
+    await nextCommand(viewer)
+    const result = await reply
+
+    expect(result.isError).toBeFalsy()
+    expect(result.content[0].text).toMatch(
+      new RegExp(`^${UNCONFIRMED} The Session summary below is the last the Viewer sent, from before this call\\.\n`),
+    )
+    expect(summaryIn(result.content[0].text!)).toEqual(PANNED)
+  })
+
+  it('is kept by the Room after the Viewer that sent it has gone, and a later Viewer need not send it again', async () => {
+    const first = await openViewer('SVMMARY002')
+    await join(first)
+    first.send({ type: MessageType.SUMMARY, summary: PANNED })
+    await join(first) // answered after the summary was taken in
+    closeViewers()
+
+    const second = await joinedViewer('SVMMARY002')
+    const reply = callTool('zoom_in', { 'mcp-session-id': 'SVMMARY002' })
+    await nextCommand(second)
+
+    expect(summaryIn((await reply).content[0].text!)).toEqual(PANNED)
+  })
+
+  it("gives way to the summary of a later ack", async () => {
+    const viewer = await joinedViewer('SVMMARY003')
+    viewer.send({ type: MessageType.SUMMARY, summary: PANNED })
+    const acked = callTool('go_to_locus', { 'mcp-session-id': 'SVMMARY003' }, { locus: 'chr8:127,735,434-127,742,951' })
+    viewer.send({ type: MessageType.ACK, id: (await nextCommand(viewer)).id, ok: true, summary: SUMMARY })
+    await acked
+
+    const reply = callTool('zoom_in', { 'mcp-session-id': 'SVMMARY003' })
+    await nextCommand(viewer)
+
+    expect(summaryIn((await reply).content[0].text!)).toEqual(SUMMARY)
   })
 })
 

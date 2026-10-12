@@ -52,4 +52,12 @@ export const COMMAND_TOOLS: CommandTool[] = [
     inputSchema: {},
     commandType: 'zoom_out',
   },
+  {
+    name: 'read_session_summary',
+    title: 'Read the Session summary',
+    description:
+      'Read what igv-bot is showing now, without changing anything: genome, loci, tracks in display order with name, type, URL and height, and whether the crosshairs and centre line are showing. The user also changes igv-bot by hand (panning, zooming, reordering, resizing or removing tracks) and you are not told when they do. Call this before describing the view or acting on a reference to it, such as "this region" or "the second track", unless a reply from another igv-bot tool has just given you the Session summary.',
+    inputSchema: {},
+    commandType: 'read_session_summary',
+  },
 ]

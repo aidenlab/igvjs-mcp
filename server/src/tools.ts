@@ -128,15 +128,19 @@ export function registerTools(mcpServer: McpServer, { roomId: sessionRoomId, vie
                 ? `no Viewer is in Room ${target.roomId}. Call open_viewer with this room and open its Join link, then try again.`
                 : "no Viewer is in this MCP session's Room. If igv-bot is already open, call again with room set to the Room id from the reply of open_viewer. Otherwise open igv-bot with open_viewer, then try again.",
             )
-          case 'unconfirmed':
+          case 'unconfirmed': {
+            const text = `Sent, unconfirmed: the Viewer did not answer in time, so it is not known whether ${tool.name} was applied.`
+            const { lastSummary } = delivery
+            if (!lastSummary) return { content: [{ type: 'text', text }] }
             return {
               content: [
                 {
                   type: 'text',
-                  text: `Sent, unconfirmed: the Viewer did not answer in time, so it is not known whether ${tool.name} was applied.`,
+                  text: withSummary(`${text} The Session summary below is the last the Viewer sent, from before this call.`, lastSummary),
                 },
               ],
             }
+          }
           case 'acked': {
             const { outcome } = delivery
             if (outcome.ok) return { content: [{ type: 'text', text: withSummary('Done.', outcome.summary) }] }
