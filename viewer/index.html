@@ -7,7 +7,17 @@
   </head>
   <body>
     <main class="viewer">
-      <p class="viewer__status" role="status"></p>
+      <header class="viewer__header">
+        <p class="viewer__status" role="status"></p>
+        <button class="viewer__panel-toggle" type="button" aria-controls="control-panel" aria-expanded="true">Hide controls</button>
+      </header>
+      <section class="control-panel" id="control-panel" aria-label="Control panel">
+        <div class="shareable-url">
+          <label class="shareable-url__label" for="shareable-url">Shareable URL</label>
+          <input class="shareable-url__field" id="shareable-url" type="text" readonly spellcheck="false" />
+          <button class="shareable-url__copy" type="button" disabled>Copy</button>
+        </div>
+      </section>
       <div class="viewer__browser"></div>
     </main>
     <script type="module" src="/src/main.ts"></script>

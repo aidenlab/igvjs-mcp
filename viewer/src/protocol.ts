@@ -9,7 +9,7 @@ export const MessageType = {
   JOINED: 'joined', // Room → Viewer: {room}, and {session} when the Room has one saved
   EXPIRED: 'expired', // Room → Viewer: {}, in answer to a join of a Room whose stored data was deleted; the Room then closes the socket
   COMMAND: 'command', // Room → Viewer: {id, command}
-  ACK: 'ack', // Viewer → Room: {id, ok: true, summary} or {id, ok: false, error, summary}
+  ACK: 'ack', // Viewer → Room: {id, ok: true, summary}, with {shareableUrl} when the command asked for it, or {id, ok: false, error, summary}
   SESSION: 'session', // Viewer → Room: {session, summary}, whenever the Room's copies may be out of date
 } as const
 
@@ -44,6 +44,7 @@ export type Command =
   | { type: 'set_crosshairs'; show: boolean }
   | { type: 'set_centre_line'; show: boolean }
   | { type: 'read_session_summary' }
+  | { type: 'get_shareable_url' }
 
 /** A track to load: any URL the browser can fetch. */
 export interface TrackToLoad {
@@ -92,8 +93,14 @@ export interface SessionSummary {
   centreLine: boolean
 }
 
+/** What a command that asks the Viewer for an answer is answered with. */
+export interface CommandAnswer {
+  /** The Shareable URL of the Session as it stands: the answer to `get_shareable_url`. */
+  shareableUrl?: string
+}
+
 /** How a command went in the Viewer: applied, or igv.js's own error. Either way with the Session summary afterwards. */
-export type CommandOutcome = { ok: true; summary: SessionSummary } | { ok: false; error: string; summary: SessionSummary }
+export type CommandOutcome = ({ ok: true; summary: SessionSummary } & CommandAnswer) | { ok: false; error: string; summary: SessionSummary }
 
 export interface CommandMessage {
   type: typeof MessageType.COMMAND

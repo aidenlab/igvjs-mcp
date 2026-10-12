@@ -79,6 +79,16 @@ Once in each Host, with the Viewer open at a locus.
 - [ ] "Show the centre line", then "hide it", does each.
 - [ ] After the crosshairs are turned on by hand, "are the crosshairs on?" is answered yes.
 
+## Shareable URL and Control panel
+
+Once in each Host, with the Viewer open at a locus and a track or two loaded.
+
+- [ ] "Give me a link to share this view" is answered with one igv-webapp link, whole, and it is not the Join link.
+- [ ] Opened in an ordinary browser, the link shows the same genome, locus and tracks in igv-webapp.
+- [ ] The Control panel shows the same link, and its Copy button copies it: pasted into a browser, it opens the same view.
+- [ ] After a pan by hand, the link in the Control panel has changed.
+- [ ] "Hide controls" retracts the Control panel and the genome browser moves up; "Show controls" brings it back.
+
 ## Room and Conversation
 
 Once in Claude desktop and once in ChatGPT desktop in Codex mode. Read the Room id in the Viewer's status line. The Worker's log (`npx wrangler tail --env dev` in `server`) names the Room each tool call acted on.

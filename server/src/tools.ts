@@ -233,8 +233,10 @@ export function registerTools(
           }
           case 'acked': {
             const { outcome } = delivery
-            if (outcome.ok) return { content: [{ type: 'text', text: withSummary('Done.', outcome.summary) }] }
-            return errorReply(withSummary(outcome.error, outcome.summary))
+            if (!outcome.ok) return errorReply(withSummary(outcome.error, outcome.summary))
+            // A bare URL on its own line, as the Join link is given.
+            const answer = outcome.shareableUrl ? `Shareable URL:\n${outcome.shareableUrl}` : 'Done.'
+            return { content: [{ type: 'text', text: withSummary(answer, outcome.summary) }] }
           }
         }
       },

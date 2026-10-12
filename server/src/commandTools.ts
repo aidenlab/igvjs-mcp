@@ -134,4 +134,11 @@ export const COMMAND_TOOLS: CommandTool[] = [
     inputSchema: {},
     commandType: 'read_session_summary',
   },
+  {
+    name: 'get_shareable_url',
+    title: 'Get the Shareable URL',
+    description: `Get a Shareable URL for what igv-bot is showing now: a link that opens the same genome, loci and tracks in igv-webapp, the IGV web application at igv.org, for anyone the user sends it to. Use this when the user asks for a link to share, send or keep. The link carries the whole Session in itself, so it is long, needs no igv-bot and no Room, and does not expire; it shows the view as it is now, so get a new one after the view changes. Give the user the link exactly as it is in the reply, whole and unshortened. It is not the Join link, which opens igv-bot itself: never give one for the other. The user can also copy the same link from igv-bot's Control panel. Nothing in igv-bot changes. ${REPLY}`,
+    inputSchema: {},
+    commandType: 'get_shareable_url',
+  },
 ]

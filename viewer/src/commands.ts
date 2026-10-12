@@ -1,5 +1,6 @@
-import type { Command, CommandOutcome, CommandType, TrackAddress, TrackHeight, TrackSelection, TrackToLoad } from './protocol.ts'
+import type { Command, CommandAnswer, CommandOutcome, CommandType, TrackAddress, TrackHeight, TrackSelection, TrackToLoad } from './protocol.ts'
 import { displayOrder, sessionSummary, type Session } from './session.ts'
+import { shareableUrl, type SessionCompressor } from './shareableUrl.ts'
 import { addressTrack, addressTracks } from './trackAddress.ts'
 import { changedHeight, checkHeight } from './trackHeight.ts'
 
@@ -7,7 +8,7 @@ import { changedHeight, checkHeight } from './trackHeight.ts'
  * The part of an igv.js browser the commands use. igv.js's own typings are
  * looser than its behaviour: `search` resolves with whether the locus was found.
  */
-export interface GenomeBrowser {
+export interface GenomeBrowser extends SessionCompressor {
   search(locus: string): Promise<boolean>
   zoomIn(): void
   zoomOut(): void
@@ -57,7 +58,8 @@ interface BrowserTrack {
   }
 }
 
-type Applier<T extends CommandType> = (browser: GenomeBrowser, command: Extract<Command, { type: T }>) => Promise<void> | void
+/** What a command does to igv.js. One that asks for an answer returns it. */
+type Applier<T extends CommandType> = (browser: GenomeBrowser, command: Extract<Command, { type: T }>) => Promise<CommandAnswer | void> | CommandAnswer | void
 
 /** `browser.search` reports an unknown locus by resolving false; the wording is the alert igv.js's own locus box shows. */
 async function goTo(browser: GenomeBrowser, locus: string): Promise<void> {
@@ -166,7 +168,7 @@ function setCentreLine(browser: GenomeBrowser, show: boolean): void {
   browser.navbar.centerLineButton.setState(show)
 }
 
-/** One applier per command type: what the command does to igv.js. */
+/** One applier per command type. */
 const APPLIERS: { [T in CommandType]: Applier<T> } = {
   go_to_locus: (browser, { locus }) => goTo(browser, locus),
   go_to_gene: (browser, { gene }) => goTo(browser, gene),
@@ -182,6 +184,8 @@ const APPLIERS: { [T in CommandType]: Applier<T> } = {
   set_centre_line: (browser, { show }) => setCentreLine(browser, show),
   // Changes nothing: the ack carries the Session summary, as every ack does.
   read_session_summary: () => {},
+  // Changes nothing either.
+  get_shareable_url: (browser) => ({ shareableUrl: shareableUrl(browser) }),
 }
 
 /**
@@ -208,11 +212,12 @@ export function captureSession(browser: GenomeBrowser): Session {
 /** Applies `command` to igv.js. An error igv.js raises applying it becomes the outcome. */
 export async function applyCommand(browser: GenomeBrowser, command: Command): Promise<CommandOutcome> {
   let error: string | undefined
+  let answer: CommandAnswer | void = undefined
   try {
-    await (APPLIERS[command.type] as Applier<CommandType>)(browser, command)
+    answer = await (APPLIERS[command.type] as Applier<CommandType>)(browser, command)
   } catch (raised) {
     error = raised instanceof Error ? raised.message : String(raised)
   }
   const summary = sessionSummary(captureSession(browser))
-  return error === undefined ? { ok: true, summary } : { ok: false, error, summary }
+  return error === undefined ? { ok: true, summary, ...answer } : { ok: false, error, summary }
 }

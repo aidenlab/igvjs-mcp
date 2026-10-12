@@ -15,6 +15,7 @@ The tools the Connector gives the model, and how each is used. The wording the m
 | [`set_track_height`](#set_track_height) | Sets the height of one, several or all tracks |
 | [`set_crosshairs`](#set_crosshairs-and-set_centre_line), [`set_centre_line`](#set_crosshairs-and-set_centre_line) | Shows or hides the crosshairs, or the centre line |
 | [`read_session_summary`](#read_session_summary) | Reads what igv-bot is showing, changing nothing |
+| [`get_shareable_url`](#get_shareable_url) | Gets a link that opens the current view in igv-webapp |
 
 ## What every tool shares
 
@@ -199,3 +200,21 @@ No arguments. Changes nothing: the reply is the Session summary as it stands. Th
 ```text
 "what am I looking at?"                read_session_summary {}
 ```
+
+## Sharing
+
+### `get_shareable_url`
+
+No arguments. Changes nothing: the reply gives the Shareable URL on a line of its own, after `Shareable URL:`, and then the Session summary.
+
+```text
+"give me a link to this view"          get_shareable_url {}
+"I want to send this to a colleague"   get_shareable_url {}
+```
+
+- The link opens igv-webapp at `https://igv.org/app/` with the Session carried in the link itself, as igv-webapp's own share feature carries it: the same genome, loci and tracks, with no igv-bot and no Room.
+- It is not the Join link, which opens igv-bot itself and expires with its Room. The Shareable URL does not expire.
+- It is long, since it holds the whole Session, and the model gives it whole.
+- It shows the view as it was when asked for: after a change, the model gets a new one.
+- The Viewer answers it, so with no Viewer in the Room there is no link.
+- A person copies the same link by hand from the Viewer's Control panel, which keeps it up to date as the Session changes.
