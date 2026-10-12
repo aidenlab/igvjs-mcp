@@ -45,20 +45,21 @@ async function openBrowser(saved: SavedSession | undefined): Promise<Browser> {
 
 /**
  * Watches igv.js for changes, whoever makes them: by hand in igv.js, or by a
- * command. After each the Control panel shows the Shareable URL of the Session
- * as it stands, and `report` is given the Session. Returns the function to
- * call after a change igv.js does not announce.
+ * command. After each, `reportSession` is given the Session as it stands and
+ * the Control panel shows its Shareable URL. Returns the function to call
+ * after a change igv.js does not announce.
  */
-function watch(loaded: Browser, report: (report: SessionReport) => void = () => {}): () => void {
+function watchSession(loaded: Browser, reportSession: (report: SessionReport) => void = () => {}): () => void {
   const changed = watchChanges(
     loaded,
     () => {
       const session = captureSession(loaded)
-      return { session, summary: sessionSummary(session), link: shareableUrl(loaded) }
+      return { session, summary: sessionSummary(session) }
     },
-    ({ link, ...current }) => {
-      panel.showShareableUrl(link)
-      report(current)
+    (report) => {
+      // The Room first: it is told whatever becomes of the link.
+      reportSession(report)
+      panel.showShareableUrl(shareableUrl(loaded))
     },
   )
   // igv.js announces nothing when its crosshairs or centre line button is pressed.
@@ -88,10 +89,10 @@ if (room) {
   })
   // The Room hears of every change.
   void browser.then((loaded) => {
-    changed = watch(loaded, reportSession)
+    changed = watchSession(loaded, reportSession)
   })
 } else {
   statusElement.textContent = 'Not connected. Ask Claude or ChatGPT to open igv-bot.'
   // With no Room the Shareable URL still works: it needs none.
-  void createBrowser(DEFAULT_VIEWER).then((loaded) => watch(loaded))
+  void createBrowser(DEFAULT_VIEWER).then((loaded) => watchSession(loaded))
 }
