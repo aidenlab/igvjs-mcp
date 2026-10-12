@@ -5,11 +5,11 @@
  */
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import type { Browser } from 'playwright'
-import { callTool, newRoom, openViewer } from '../model.ts'
+import { callTool, newSession, openViewer, span } from '../model.ts'
 
 /** The width in base pairs of a locus such as "chr8:127,735,434-127,742,951". */
 function width(locus: string): number {
-  const [start, end] = locus.split(':')[1].split('-').map((n) => Number(n.replaceAll(',', '')))
+  const [start, end] = span(locus)
   return end - start + 1
 }
 
@@ -17,7 +17,7 @@ let browser: Browser
 let room: string
 
 beforeAll(async () => {
-  room = await newRoom()
+  room = await newSession()
   ;({ browser } = await openViewer(room))
 })
 
@@ -61,7 +61,7 @@ describe('navigation, round trip', () => {
   })
 
   it('a command from another MCP session reaches the Viewer when it carries the Room id', async () => {
-    const otherRoom = await newRoom()
+    const otherRoom = await newSession()
     expect(otherRoom).not.toBe(room)
 
     const reply = await callTool(otherRoom, 'go_to_locus', { locus: 'chr2:5,000,001-5,002,000', room })

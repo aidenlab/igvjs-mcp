@@ -16,18 +16,13 @@ export const QUIET_MS = 250
 
 /**
  * Reports the Session summary now, and again each time igv.js changes and then
- * stays quiet for `quietMs`: a burst of changes is reported once, at its end.
+ * stays quiet for `QUIET_MS`: a burst of changes is reported once, at its end.
  */
-export function watchChanges(
-  source: ChangeSource,
-  read: () => SessionSummary,
-  report: (summary: SessionSummary) => void,
-  quietMs = QUIET_MS,
-): void {
+export function watchChanges(source: ChangeSource, read: () => SessionSummary, report: (summary: SessionSummary) => void): void {
   let timer: ReturnType<typeof setTimeout> | undefined
   const changed = () => {
     clearTimeout(timer)
-    timer = setTimeout(() => report(read()), quietMs)
+    timer = setTimeout(() => report(read()), QUIET_MS)
   }
   for (const event of CHANGE_EVENTS) source.on(event, changed)
   report(read())
