@@ -4,7 +4,7 @@ The Viewer is a web page, not part of the MCP exchange (ADR 0001), so the server
 
 The Viewer also sends the Session summary and the Session to its Room after every change made by hand, so the Room always holds the latest of both.
 
-This follows `juicebox-mcp`, including how a Room is tied to an MCP session: the session id is minted as a Room id on `initialize`, and for ChatGPT, which does not echo that id back, it is derived by HMAC from the `x-openai-session` header.
+This follows `juicebox-mcp`, including how a Room is tied to an MCP session: the session id is minted as a Room id on `initialize`, and for ChatGPT, which does not echo that id back, it is derived by HMAC from the `x-openai-session` header. That describes a ChatGPT chat. ChatGPT desktop in Codex mode, the one ChatGPT Host supported in v1 (#17), echoes `mcp-session-id` and sends `x-openai-session` only some of the time; both paths stay.
 
 An MCP session is not a Conversation: Claude desktop moves one Conversation across two MCP sessions. ADR 0003 has the model carry the Room id so that a call reaches the right Room whichever MCP session it arrives through.
 

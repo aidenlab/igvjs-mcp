@@ -53,6 +53,11 @@ function roomFor(room: string | undefined, sessionRoomId: string | null): { room
   return { refusal: errorReply(`"${room}" is not a Room id. Pass the Room id from the reply of open_viewer.`) }
 }
 
+/** One log line per tool call: which Room it acted on and how that Room was chosen, so a run can be read back from the Worker's log. */
+function logRoom(tool: string, target: { roomId: string; named: boolean }, outcome?: string): void {
+  console.log(`[mcp] ${tool} | Room ${target.roomId} from ${target.named ? 'the room argument' : 'the MCP session'}${outcome ? ` | ${outcome}` : ''}`)
+}
+
 function withSummary(text: string, summary: SessionSummary): string {
   return `${text}\n\nSession summary:\n${JSON.stringify(summary, null, 2)}`
 }
@@ -86,6 +91,7 @@ export function registerTools(mcpServer: McpServer, { roomId: sessionRoomId, vie
     async ({ room }) => {
       const target = roomFor(room, sessionRoomId)
       if ('refusal' in target) return target.refusal
+      logRoom('open_viewer', target)
       const { roomId } = target
       const joinLink = joinLinkFor(viewerUrl, roomId)
       const structuredContent: JoinCardContent = { room: roomId, joinUrl: joinLink }
@@ -114,6 +120,7 @@ export function registerTools(mcpServer: McpServer, { roomId: sessionRoomId, vie
         const target = roomFor(room, sessionRoomId)
         if ('refusal' in target) return target.refusal
         const delivery = await sendCommand(target.roomId, { type: tool.commandType, ...args } as Command)
+        logRoom(tool.name, target, delivery.status)
         switch (delivery.status) {
           case 'no-viewer':
             return errorReply(

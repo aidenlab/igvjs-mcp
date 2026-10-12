@@ -2,7 +2,7 @@
 
 A Connector for Claude and ChatGPT that lets the model open and drive an [igv.js](https://github.com/igvteam/igv.js) genome browser shown beside the conversation. A person knows it as **igv-bot**.
 
-**Only Claude is supported for now.** ChatGPT is intended, and the server handles its requests, but igv-bot has not yet been made to work as a ChatGPT connector; see the findings in [`docs/v1-design.md`](docs/v1-design.md).
+**It works in Claude desktop, claude.ai on the web, and ChatGPT desktop in Codex mode.** A plain ChatGPT chat and ChatGPT on the web are not supported; see the findings in [`docs/v1-design.md`](docs/v1-design.md).
 
 The vocabulary used here (Host, Connector, Viewer, Room, Join link, …) is defined in [`GLOSSARY.md`](GLOSSARY.md). The design is in [`docs/v1-design.md`](docs/v1-design.md) and [`docs/adr/`](docs/adr/).
 
@@ -10,7 +10,7 @@ The vocabulary used here (Host, Connector, Viewer, Room, Join link, …) is defi
 
 - The **Viewer** is an ordinary web page that houses igv.js. It opens on hg38 in whole-genome view with the genome's default gene annotation track.
 - The **server** is a Cloudflare Worker with two public faces: an MCP endpoint (`/mcp`, stateless Streamable HTTP) for the Host, and a WebSocket endpoint (`/ws`) for Viewers, backed by one Durable Object per **Room**.
-- Each MCP session is bound to a Room whose short id is minted on `initialize`. ChatGPT does not echo that id back, so its Room id is derived by HMAC from the `x-openai-session` header it sends, under the `SESSION_HMAC_SECRET` secret.
+- Each MCP session is bound to a Room whose short id is minted on `initialize`. A request that carries no such id but does carry ChatGPT's `x-openai-session` header gets a Room id derived from it by HMAC, under the `SESSION_HMAC_SECRET` secret.
 - An MCP session is not a Conversation: Claude desktop moves one Conversation across two MCP sessions. So `open_viewer` names the Room id in its reply, and every tool takes an optional `room` that the model passes back; a call carrying it acts on that Room whichever MCP session it arrives through (ADR 0003).
 - The `open_viewer` tool returns a **Join link**: the Viewer's URL carrying `?room=`. Opening it shows the Viewer, which joins that Room over WebSocket, shows the Room id in its status line, and reconnects by itself if the socket drops.
 - Hosts that render MCP Apps also show a **Join card** in the Conversation: one line of status and an "Open igv-bot" button that opens the Join link through the Host.
