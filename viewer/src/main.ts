@@ -20,23 +20,23 @@ type Browser = GenomeBrowser & ChangeSource
 
 // The default Viewer: hg38 in whole-genome view, with the genome's own default
 // gene annotation track and nothing else.
-const DEFAULT_SESSION: SavedSession = { genome: 'hg38', locus: 'all' }
+const DEFAULT_VIEWER: CreateOpt = { genome: 'hg38', locus: 'all' }
 
-function createBrowser(session: SavedSession): Promise<Browser> {
-  // igv.js takes a Session it wrote as its configuration; its typings know only the configuration.
-  return igv.createBrowser(browserElement, session as CreateOpt) as unknown as Promise<Browser>
+function createBrowser(config: CreateOpt): Promise<Browser> {
+  return igv.createBrowser(browserElement, config) as unknown as Promise<Browser>
 }
 
 /** igv.js showing the Session saved in the Room, or the default Viewer when there is none or it will not load. */
 async function openBrowser(saved: SavedSession | undefined): Promise<Browser> {
-  if (!saved) return createBrowser(DEFAULT_SESSION)
+  if (!saved) return createBrowser(DEFAULT_VIEWER)
   try {
-    return await createBrowser(saved)
+    // igv.js takes a Session it wrote as its configuration.
+    return await createBrowser(saved as CreateOpt)
   } catch (error) {
     // Left as it is, every reload would restore the same Session and fail the same way.
     console.error('[viewer] the saved Session did not load; showing the default Viewer', error)
-    browserElement.replaceChildren()
-    return createBrowser(DEFAULT_SESSION)
+    igv.removeAllBrowsers()
+    return createBrowser(DEFAULT_VIEWER)
   }
 }
 
@@ -68,5 +68,5 @@ if (room) {
   })
 } else {
   statusElement.textContent = 'Not connected. Ask Claude or ChatGPT to open igv-bot.'
-  void createBrowser(DEFAULT_SESSION)
+  void createBrowser(DEFAULT_VIEWER)
 }

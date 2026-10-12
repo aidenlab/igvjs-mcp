@@ -25,7 +25,7 @@ const SUMMARY_KEY = 'summary'
 /** Storage key of the last Session a Viewer saved. */
 const SESSION_KEY = 'session'
 
-/** How long after the last message from a Viewer a Room's stored data is deleted. It is also how long a Join link lives. */
+/** How long after the last message from a Viewer a Room with no Viewer in it has its stored data deleted. It is also how long a Join link lives. */
 const INACTIVITY_MS = 24 * 60 * 60 * 1000
 
 /** Storage key that marks a Room whose stored data was deleted with no Viewer in it. */
@@ -79,15 +79,22 @@ export class Room extends DurableObject<Env> {
    * by open_viewer over RPC: a Host may ask for igv-bot in the same Room after
    * the Room has expired, and ChatGPT's Room id never changes.
    */
-  async reopen(): Promise<void> {
+  async renew(): Promise<void> {
     await this.ctx.storage.delete(EXPIRED_KEY)
   }
 
-  /** The inactivity period is over: the Room's stored data is deleted. */
+  /**
+   * The inactivity period is over. With no Viewer in the Room its stored data
+   * is deleted, and a later join is told the Room has expired. A Viewer still
+   * here keeps its Room as it is: it would not save its Session a second time.
+   */
   async alarm(): Promise<void> {
+    if (this.ctx.getWebSockets().length > 0) {
+      await this.ctx.storage.setAlarm(Date.now() + INACTIVITY_MS)
+      return
+    }
     await this.ctx.storage.deleteAll()
-    // A Viewer still here keeps its Room. With none, the Room is gone, and a later join is told so.
-    if (this.ctx.getWebSockets().length === 0) await this.ctx.storage.put(EXPIRED_KEY, true)
+    await this.ctx.storage.put(EXPIRED_KEY, true)
   }
 
   async fetch(request: Request): Promise<Response> {
