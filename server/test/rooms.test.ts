@@ -149,41 +149,30 @@ describe('expiry', () => {
     expect(await join(viewer)).toEqual({ type: MessageType.JOINED, room: 'EXP1RY0005' })
   })
 
-  it('open_viewer given a genome, for a Room with a saved Session, puts that genome in its place', async () => {
+  it.each([
+    ['a genome', { genome: 'mm10' }],
+    ['a locus', { locus: 'chr11' }],
+  ])('open_viewer given a room and %s is refused, and the Session saved in that Room stays', async (_, start) => {
     await savedAndLeft('EXP1RY0007')
 
-    await callTool('open_viewer', undefined, { room: 'EXP1RY0007', genome: 'mm10', locus: 'chr11' })
+    const result = await callTool('open_viewer', undefined, { room: 'EXP1RY0007', ...start })
 
+    expect(result.isError).toBe(true)
+    expect(result.structuredContent).toBeUndefined()
+    expect(result.content[0].text).toBe(
+      'Error: genome and locus are for opening a new igv-bot, and Room EXP1RY0007 was already opened. To get that igv-bot back, call open_viewer with room alone, then use change_genome, go_to_locus or go_to_gene. To open a new igv-bot on that genome and locus, call open_viewer without room.',
+    )
     const viewer = await openViewer('EXP1RY0007')
-    expect(await join(viewer)).toEqual({ type: MessageType.JOINED, room: 'EXP1RY0007', session: { genome: 'mm10', locus: 'chr11' } })
-  })
-
-  it('open_viewer given a genome that is not on the igv.org list leaves the saved Session there', async () => {
-    await savedAndLeft('EXP1RY0008')
-
-    await callTool('open_viewer', undefined, { room: 'EXP1RY0008', genome: 'hg99' })
-
-    const viewer = await openViewer('EXP1RY0008')
-    expect(await join(viewer)).toEqual({ type: MessageType.JOINED, room: 'EXP1RY0008', session: SESSION })
-  })
-
-  it('open_viewer given a genome, for an expired Room, makes it a new Room that starts on that genome', async () => {
-    await savedAndLeft('EXP1RY0009')
-    await runDurableObjectAlarm(stub('EXP1RY0009'))
-
-    await callTool('open_viewer', undefined, { room: 'EXP1RY0009', genome: 'mm10' })
-
-    const viewer = await openViewer('EXP1RY0009')
-    expect(await join(viewer)).toEqual({ type: MessageType.JOINED, room: 'EXP1RY0009', session: { genome: 'mm10' } })
+    expect(await join(viewer)).toEqual({ type: MessageType.JOINED, room: 'EXP1RY0007', session: SESSION })
   })
 
   it('a Room opened on a genome that no Viewer ever joins is due to expire 24 hours later', async () => {
     vi.useFakeTimers({ toFake: ['Date'] })
     const t0 = Date.now()
 
-    await callTool('open_viewer', undefined, { room: 'EXP1RY0010', genome: 'mm10' })
+    const result = await callTool('open_viewer', undefined, { genome: 'mm10' })
 
-    expect(await alarmOf('EXP1RY0010')).toBe(t0 + 24 * HOUR)
+    expect(await alarmOf((result.structuredContent as { room: string }).room)).toBe(t0 + 24 * HOUR)
   })
 
   it('open_viewer for a Room with a saved Session leaves the Session there', async () => {

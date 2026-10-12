@@ -23,7 +23,7 @@ export interface ToolDeps {
   sendCommand: (roomId: string, command: Command) => Promise<CommandDelivery>
   /** Makes an expired Room a new one, so that its Join link works again. */
   renewRoom: (roomId: string) => Promise<void>
-  /** Saves a Session in a Room for the Viewer that joins it to restore, in place of whatever was saved there. */
+  /** Saves a Session in a new Room, for the first Viewer that joins it to restore. */
   startRoomOn: (roomId: string, session: SavedSession) => Promise<void>
   /** The igv.org genome list: the genomes igv-bot can show. */
   listGenomes: () => Promise<Genome[]>
@@ -50,14 +50,14 @@ const DEFAULT_GENOME = 'hg38'
 const OPEN_GENOME_ARGUMENT = z
   .string()
   .optional()
-  .describe('Genome id as on the igv.org genome list, such as "hg19", "mm39" or "hs1", to open igv-bot on that genome with its default tracks. Leave it out for hg38. For an igv-bot that is already open, use change_genome instead.')
+  .describe('Only when opening a new igv-bot, without room: genome id as on the igv.org genome list, such as "hg19", "mm39" or "hs1", to open on that genome with its default tracks. Leave it out for hg38. For an igv-bot that was already opened, use change_genome instead.')
 
 const OPEN_LOCUS_ARGUMENT = z
   .string()
   .optional()
-  .describe('Where igv-bot opens: coordinates as chr:start-end, a chromosome name, or a gene name such as "MYC". Leave it out for the genome\'s default view. For an igv-bot that is already open, use go_to_locus or go_to_gene instead.')
+  .describe('Only when opening a new igv-bot, without room: where it opens, as coordinates chr:start-end, a chromosome name, or a gene name such as "MYC". Leave it out for the genome\'s default view. For an igv-bot that was already opened, use go_to_locus or go_to_gene instead.')
 
-/** An argument the model left out, or passed empty. */
+/** An optional argument as the model gave it, trimmed; undefined when it was left out or passed empty. */
 function given(argument: string | undefined): string | undefined {
   return argument === undefined || argument.trim() === '' ? undefined : argument.trim()
 }
@@ -114,32 +114,41 @@ export function registerTools(mcpServer: McpServer, { roomId: sessionRoomId, vie
       _meta: JOIN_CARD_TOOL_META,
     },
     async ({ room, genome, locus }) => {
-      // Asked for before a Room is touched: an unavailable genome opens nothing.
-      let start: { genome: string; locus?: string } | undefined
-      if (given(genome) || given(locus)) {
-        const found = given(genome) ? await lookUpGenome(given(genome)!, listGenomes) : { id: DEFAULT_GENOME }
-        if ('unavailable' in found) return errorReply(`${found.unavailable} igv-bot was not opened.`)
-        start = { genome: found.id, ...(given(locus) ? { locus: given(locus) } : {}) }
-      }
-      // Without `room` this is the first open_viewer of a Conversation, and a
-      // Conversation gets a Room of its own: an MCP session may be shared by
-      // several, and its Room would hand one the Session another saved.
+      const askedGenome = given(genome)
+      const askedLocus = given(locus)
+      const starting = askedGenome !== undefined || askedLocus !== undefined
       let roomId: string
-      if (room === undefined || room.trim() === '') {
+      let opensOn = ''
+      if (given(room) === undefined) {
+        // An unavailable genome opens nothing: it is looked up before a Room is minted.
+        const found = askedGenome ? await lookUpGenome(askedGenome, listGenomes) : { id: DEFAULT_GENOME }
+        if ('unavailable' in found) return errorReply(`${found.unavailable} igv-bot was not opened.`)
+        // This is the first open_viewer of a Conversation, and a Conversation
+        // gets a Room of its own: an MCP session may be shared by several, and
+        // its Room would hand one the Session another saved.
         roomId = mintRoomId()
         console.log(`[mcp] open_viewer | new Room ${roomId}`)
+        if (starting) {
+          // igv.js takes a genome and locus as its configuration, as it takes a
+          // Session it wrote, so the Viewer restores them like any saved Session.
+          await startRoomOn(roomId, { genome: found.id, ...(askedLocus ? { locus: askedLocus } : {}) })
+          opensOn = `\n\nigv-bot is set to open on ${found.id}${askedLocus ? ` at ${askedLocus}. A locus igv.js does not recognise leaves it on the genome's default view` : ''}.`
+        }
       } else {
         const target = roomFor(room, sessionRoomId)
         if ('refusal' in target) return target.refusal
+        // A Room that was opened before has a Session of its own, and maybe a
+        // Viewer showing it: a genome or locus here would take its place.
+        if (starting) {
+          return errorReply(
+            `genome and locus are for opening a new igv-bot, and Room ${target.roomId} was already opened. To get that igv-bot back, call open_viewer with room alone, then use change_genome, go_to_locus or go_to_gene. To open a new igv-bot on that genome and locus, call open_viewer without room.`,
+          )
+        }
         logRoom('open_viewer', target)
         roomId = target.roomId
         // The Room may have expired since the model was given its id.
         await renewRoom(roomId)
       }
-      // igv.js takes a genome and locus as its configuration, as it takes a
-      // Session it wrote, so the Viewer restores them like any saved Session.
-      if (start) await startRoomOn(roomId, start)
-      const opensOn = start ? `\n\nigv-bot opens on ${start.genome}${start.locus ? ` at ${start.locus}` : ''}.` : ''
       const joinLink = joinLinkFor(viewerUrl, roomId)
       const structuredContent: JoinCardContent = { room: roomId, joinUrl: joinLink }
       // A bare URL on its own line: Hosts render it clickable, which a code block

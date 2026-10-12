@@ -14,7 +14,7 @@ An MCP session is not a Conversation: Claude desktop moves one Conversation acro
 
 ## Consequences
 
-- The server is stateful: per Room it holds the sockets, the latest Session summary and the last saved Session, all expired after inactivity. The Session itself still lives in the Viewer; the Room's copy is a mirror, never the source of truth.
+- The server is stateful: per Room it holds the sockets, the latest Session summary and the last saved Session, all expired after inactivity. The Session itself still lives in the Viewer; the Room's copy is a mirror, never the source of truth. The one thing the server writes there itself is where a Viewer starts: `open_viewer` given a genome or locus saves them as the Session of the new Room it mints (#7). It is read once, by the first Viewer to join, and from then on overwritten by that Viewer's own Session.
 - A Viewer that joins a Room which already has a saved Session restores it, when it has just been opened; one that reconnects keeps its own. Reopening the Join link therefore brings back the last view, with no "one live Viewer" rule to enforce.
 - A Room's stored data is deleted 24 hours after the last message from a Viewer, unless a Viewer is still connected, and the Room then answers a join with "expired". `open_viewer` given the id of such a Room makes it a new one: the model of a Conversation left for more than a day still passes the old Room id.
 - The model is not notified when a person changes something by hand. It sees the current Session summary in the reply to its next tool call, or by asking for it.

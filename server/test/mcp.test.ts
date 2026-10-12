@@ -131,14 +131,14 @@ describe('open_viewer given a genome and locus', () => {
 
     expect(result.isError).toBeFalsy()
     expect(result.content[1].uri).toBe(`http://localhost:5173/?room=${roomOf(result)}`)
-    expect(result.content[0].text).toContain('igv-bot opens on mm10 at chr11:101,442,000-101,553,000.')
+    expect(result.content[0].text).toContain('igv-bot is set to open on mm10 at chr11:101,442,000-101,553,000.')
     expect(await restoredBy(result)).toEqual({ genome: 'mm10', locus: 'chr11:101,442,000-101,553,000' })
   })
 
   it("given a genome alone, the Viewer starts on that genome's default view, in the list's spelling of its id", async () => {
     const result = await callTool('open_viewer', undefined, { genome: 'HS1', locus: '' })
 
-    expect(result.content[0].text).toContain('igv-bot opens on hs1.')
+    expect(result.content[0].text).toContain('igv-bot is set to open on hs1.')
     expect(await restoredBy(result)).toEqual({ genome: 'hs1' })
   })
 
@@ -151,7 +151,7 @@ describe('open_viewer given a genome and locus', () => {
   it('given neither, nothing is saved in the new Room: the Viewer shows its default', async () => {
     const result = await callTool('open_viewer')
 
-    expect(result.content[0].text).not.toContain('igv-bot opens on')
+    expect(result.content[0].text).not.toContain('set to open on')
     expect(await restoredBy(result)).toBeUndefined()
   })
 

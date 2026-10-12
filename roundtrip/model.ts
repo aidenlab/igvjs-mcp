@@ -33,7 +33,7 @@ export async function newSession(): Promise<string> {
   return initialized.headers.get('mcp-session-id')!
 }
 
-/** A tool reply as it comes: its text, and whether it is an error. */
+/** A tool reply as it comes: its text, whether it is an error, and its structured content. */
 export async function toolReply(room: string, name: string, args: object = {}) {
   const { result } = (await rpc('tools/call', { name, arguments: args }, room)).body
   return { text: result.content[0].text, isError: result.isError === true, structuredContent: result.structuredContent }

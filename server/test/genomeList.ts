@@ -13,11 +13,16 @@ export const GENOME_LIST = [
   { id: 'rn7', name: 'Rat (rn7) ' }, // the stray space is the list's own
 ]
 
-/** Answers the Worker's fetch of the genome list with `GENOME_LIST`; any other fetch fails. For beforeAll. */
-export function serveGenomeList() {
-  vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+/** Answers fetches from `answers`, by address; any other fetch fails. Returns the mock, which counts them. */
+export function serve(answers: Record<string, () => Response>) {
+  return vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
     const url = input instanceof Request ? input.url : String(input)
-    if (url !== GENOME_LIST_URL) throw new Error(`unexpected fetch of ${url}`)
-    return Response.json(GENOME_LIST)
+    if (!(url in answers)) throw new Error(`unexpected fetch of ${url}`)
+    return answers[url]()
   })
+}
+
+/** Answers the Worker's fetch of the genome list with `GENOME_LIST`. For beforeAll. */
+export function serveGenomeList() {
+  serve({ [GENOME_LIST_URL]: () => Response.json(GENOME_LIST) })
 }
