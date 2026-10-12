@@ -1,6 +1,7 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import type { Command, SavedSession, SessionSummary } from 'igvjs-mcp-viewer/protocol'
+import { searchCatalogues, type CatalogueTable } from './catalogues.ts'
 import { COMMAND_TOOLS } from './commandTools.ts'
 import { lookUpGenome, type Genome } from './genomes.ts'
 import {
@@ -25,8 +26,12 @@ export interface ToolDeps {
   renewRoom: (roomId: string) => Promise<void>
   /** Saves a Session in a new Room, for the first Viewer that joins it to restore. */
   startRoomOn: (roomId: string, session: SavedSession) => Promise<void>
+  /** The latest Session summary a Room has from its Viewers, if any. */
+  readSummary: (roomId: string) => Promise<SessionSummary | undefined>
   /** The igv.org genome list: the genomes igv-bot can show. */
   listGenomes: () => Promise<Genome[]>
+  /** The ENCODE and 4DN Catalogue tables of a genome. */
+  listCatalogueTables: (genome: string) => Promise<CatalogueTable[]>
 }
 
 /**
@@ -56,6 +61,29 @@ const OPEN_LOCUS_ARGUMENT = z
   .string()
   .optional()
   .describe('Only when opening a new igv-bot, without room: where it opens, as coordinates chr:start-end, a chromosome name, or a gene name such as "MYC". Leave it out for the genome\'s default view. For an igv-bot that was already opened, use go_to_locus or go_to_gene instead.')
+
+const SEARCH_ROOM_ARGUMENT = z
+  .string()
+  .optional()
+  .describe('The Room id igv-bot was opened with, as given in the reply of open_viewer. Pass it on every call: the search is for the genome that igv-bot is showing.')
+
+const SEARCH_ARGUMENTS = {
+  text: z
+    .string()
+    .optional()
+    .describe('Free text, such as "CTCF K562". Every word must be somewhere in a row, in any column, so use the few words that name the data and leave out words like "tracks" or "data".'),
+  biosample: z.string().optional().describe('Only rows whose biosample (cell line, tissue or cell type) carries these words, such as "K562" or "liver"'),
+  assay: z.string().optional().describe('Only rows whose assay carries these words, such as "ChIP-seq", "DNase-seq", "RNA-seq" or "Hi-C"'),
+  target: z.string().optional().describe('Only rows whose target (the protein or histone mark of a ChIP-seq experiment) carries these words, such as "CTCF" or "H3K27ac". 4DN rows have no target.'),
+  outputType: z
+    .string()
+    .optional()
+    .describe('Only rows whose output type carries these words, such as "fold change over control", "signal p-value" or "peaks" in ENCODE, and "compartments", "boundaries" or "insulation score" in 4DN'),
+  genome: z
+    .string()
+    .optional()
+    .describe('Genome id as on the igv.org genome list, such as "hg38" or "mm10". Leave it out to search for the genome igv-bot is showing, which is nearly always what is wanted.'),
+}
 
 /** An optional argument as the model gave it, trimmed; undefined when it was left out or passed empty. */
 function given(argument: string | undefined): string | undefined {
@@ -93,7 +121,10 @@ function joinLinkFor(viewerUrl: string, roomId: string): string {
   return joinLink.toString()
 }
 
-export function registerTools(mcpServer: McpServer, { roomId: sessionRoomId, viewerUrl, sendCommand, renewRoom, startRoomOn, listGenomes }: ToolDeps): void {
+export function registerTools(
+  mcpServer: McpServer,
+  { roomId: sessionRoomId, viewerUrl, sendCommand, renewRoom, startRoomOn, readSummary, listGenomes, listCatalogueTables }: ToolDeps,
+): void {
   mcpServer.registerResource(
     'igv-bot Join card',
     JOIN_CARD_URI,
@@ -209,4 +240,67 @@ export function registerTools(mcpServer: McpServer, { roomId: sessionRoomId, vie
       },
     )
   }
+
+  // The one tool that answers from the server alone: the Viewer is sent
+  // nothing, and the Room is read only for what igv-bot is showing.
+  mcpServer.registerTool(
+    'search_catalogues',
+    {
+      title: 'Search the ENCODE and 4DN Catalogues',
+      description:
+        'Find tracks for a loose request, such as "CTCF ChIP-seq in K562", in the ENCODE and 4DN Catalogues: the tables of signal, peak and annotation files those projects publish for a genome. Use this whenever the user asks for data by what it is instead of by URL. Both Catalogues are searched at once, for the genome igv-bot is showing. Matching ignores case and punctuation, so "H3K27ac", "h3k27ac" and "H3-K27ac" find the same rows; there are no synonyms, so use the Catalogues\' own terms (a cell line as "K562" or "GM12878", an assay as "ChIP-seq" or "DNase-seq"). The reply holds the count of all matching rows, in total and in each Catalogue, and at most 20 of them in full, each with the name and url to load it as a track. When more match than are shown, narrow the search with the filters or with more words; add "4DN" to text to see only 4DN rows. When a loose request matches many tracks, pick a sensible default (for ChIP-seq, a "fold change over control" signal of the replicates together, such as bioRep "1,2"), say in one line what you picked, and load it; ask the user only when the candidates differ in a way they would care about. Hi-C contact matrices are never offered: igv-bot cannot show them.',
+      inputSchema: { ...SEARCH_ARGUMENTS, room: SEARCH_ROOM_ARGUMENT },
+    },
+    async ({ room, genome, ...query }) => {
+      // A search that names its genome needs no Room, but is given the Session summary of one that is there.
+      let from: { roomId: string; named: boolean } | undefined
+      let summary: SessionSummary | undefined
+      if (given(room) !== undefined || sessionRoomId) {
+        const target = roomFor(room, sessionRoomId)
+        if ('refusal' in target) return target.refusal
+        from = target
+        summary = await readSummary(target.roomId)
+      }
+      const askedGenome = given(genome)
+      let searched: string
+      if (askedGenome) {
+        const found = await lookUpGenome(askedGenome, listGenomes)
+        if ('unavailable' in found) return errorReply(`${found.unavailable} Nothing was searched.`)
+        searched = found.id
+      } else if (summary) {
+        searched = summary.genome
+      } else if (from) {
+        return errorReply(
+          `it is not known which genome igv-bot is showing in Room ${from.roomId}: no Viewer has reported from it. Pass genome, or open igv-bot with open_viewer and search again.`,
+        )
+      } else {
+        return errorReply('no genome was given and there is no Room to read one from. Pass genome, or pass room.')
+      }
+
+      let tables: CatalogueTable[]
+      try {
+        tables = await listCatalogueTables(searched)
+      } catch (error) {
+        console.error(`[catalogues] the tables for ${searched} could not be read:`, error)
+        return errorReply(`the Catalogues for ${searched} could not be read. Try again.`)
+      }
+      const reply = (text: string) => ({ content: [{ type: 'text' as const, text: summary ? withSummary(text, summary) : text }] })
+      if (tables.every((table) => table.lines.length === 0)) {
+        return reply(`Neither ENCODE nor 4DN has a Catalogue for ${searched}, so there is nothing to search.`)
+      }
+
+      const { total, totals, rows } = searchCatalogues(tables, query)
+      console.log(`[mcp] search_catalogues | ${searched} | ${total} match`)
+      if (total === 0) {
+        return reply(`No track matches in the Catalogues for ${searched}. Every word of text and of each filter must be in a row: search again with fewer words.`)
+      }
+      const counted = `${total} ${total === 1 ? 'track matches' : 'tracks match'} in the Catalogues for ${searched} (ENCODE ${totals.ENCODE}, 4DN ${totals['4DN']}).`
+      const shown = rows.length < total ? ` The first ${rows.length} are below: narrow the search to see others.` : ''
+      const elsewhere =
+        summary && summary.genome !== searched
+          ? `\n\nigv-bot is showing ${summary.genome}, not ${searched}: these tracks will not line up with it until the genome is changed.`
+          : ''
+      return reply(`${counted}${shown}${elsewhere}\n\nTracks:\n${JSON.stringify(rows, null, 2)}`)
+    },
+  )
 }

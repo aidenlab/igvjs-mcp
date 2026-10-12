@@ -75,6 +75,15 @@ export class Room extends DurableObject<Env> {
   }
 
   /**
+   * The latest Session summary a Viewer sent, if any. Called by
+   * search_catalogues over RPC, which reads the genome from it and sends the
+   * Viewer nothing.
+   */
+  async lastSummary(): Promise<SessionSummary | undefined> {
+    return this.ctx.storage.get<SessionSummary>(SUMMARY_KEY)
+  }
+
+  /**
    * Makes an expired Room a new one, so that its Join link works again. Called
    * by open_viewer over RPC: a Host may ask for igv-bot in the same Room after
    * the Room has expired, and ChatGPT's Room id never changes.
