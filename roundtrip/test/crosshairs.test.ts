@@ -9,7 +9,7 @@ import { callTool, newSession, openViewer } from '../model.ts'
 
 const browsers: Browser[] = []
 
-/** A new Room with a Viewer in it. At a locus, unless `locus` is "all": the whole-genome view has no centre line. */
+/** A new Room with a Viewer in it, at `locus`: one locus unless another is given. */
 async function roomWithViewer(locus = 'chr8:127,735,434-127,742,951') {
   const room = await newSession()
   const { browser, page } = await openViewer(room)
@@ -23,11 +23,12 @@ afterAll(() => Promise.all(browsers.map((browser) => browser.close())))
 /** Long enough for the Viewer to see that igv.js has gone quiet and save its Session in the Room. */
 const SAVED_MS = 1500
 
-/** Whether igv.js draws the elements at `selector`: it hides each by its `display`. */
+/** Whether igv.js draws the elements at `selector`, all of them or none: it hides each by its `display`. */
 async function drawn(page: Page, selector: string): Promise<boolean> {
-  const displays = await page.locator(selector).evaluateAll((elements) => elements.map((element) => (element as HTMLElement).style.display))
-  expect(displays.length).toBeGreaterThan(0)
-  return displays.every((display) => display !== 'none')
+  const hidden = await page.locator(selector).evaluateAll((elements) => elements.map((element) => (element as HTMLElement).style.display === 'none'))
+  expect(hidden.length).toBeGreaterThan(0)
+  expect(new Set(hidden).size, `${selector}: some drawn and some hidden`).toBe(1)
+  return !hidden[0]
 }
 
 const crosshairsDrawn = (page: Page) => drawn(page, '.igv-cursor-guide-vertical, .igv-cursor-guide-horizontal')
@@ -123,14 +124,34 @@ describe('crosshairs and centre line, round trip', () => {
     expect(locus.summary).toMatchObject({ crosshairs: false, centreLine: false })
   })
 
-  it('the whole-genome view has no centre line: showing it there is an error, and it stays hidden', async () => {
+  it('where two loci are shown side by side, each has its centre line', async () => {
+    const { room, page } = await roomWithViewer('chr8:127,735,434-127,742,951 chr17:43,044,295-43,125,364')
+    expect(await page.locator('.igv-center-line').count()).toBe(2)
+
+    const shown = await callTool(room, 'set_centre_line', { show: true })
+    expect(shown.summary).toMatchObject({ centreLine: true })
+    expect(await centreLineDrawn(page)).toBe(true)
+
+    await callTool(room, 'set_centre_line', { show: false })
+    expect(await centreLineDrawn(page)).toBe(false)
+  })
+
+  it('the whole-genome view has neither: showing one there is an error, and it stays hidden', async () => {
     const { room, page } = await roomWithViewer('all')
 
-    const reply = await callTool(room, 'set_centre_line', { show: true })
+    const crosshairs = await callTool(room, 'set_crosshairs', { show: true })
+    expect(crosshairs.isError).toBe(true)
+    expect(crosshairs.text).toMatch(/^Error: The whole-genome view has no crosshairs\. Go to a locus or gene first\.\n/)
+    expect(crosshairs.summary).toMatchObject({ crosshairs: false })
+    expect(await crosshairsDrawn(page)).toBe(false)
 
-    expect(reply.isError).toBe(true)
-    expect(reply.text).toMatch(/^Error: The whole-genome view has no centre line\. Go to a locus or gene first\.\n/)
-    expect(reply.summary).toMatchObject({ centreLine: false })
+    const centreLine = await callTool(room, 'set_centre_line', { show: true })
+    expect(centreLine.isError).toBe(true)
+    expect(centreLine.text).toMatch(/^Error: The whole-genome view has no centre line\. Go to a locus or gene first\.\n/)
+    expect(centreLine.summary).toMatchObject({ centreLine: false })
     expect(await centreLineDrawn(page)).toBe(false)
+
+    // Hiding what is hidden is no error there.
+    expect((await callTool(room, 'set_crosshairs', { show: false })).isError).toBe(false)
   })
 })

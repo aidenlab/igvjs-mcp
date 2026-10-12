@@ -171,7 +171,7 @@ One of the two, not both. The sequence track cannot be removed.
 
 ### `set_crosshairs` and `set_centre_line`
 
-The crosshairs are a vertical and a horizontal line that follow the pointer. The centre line marks the middle of the view.
+The crosshairs are a vertical and a horizontal line that follow the pointer. The centre line marks the middle of the view, or of each locus where several are shown side by side.
 
 | Argument | |
 | --- | --- |
@@ -185,7 +185,7 @@ The crosshairs are a vertical and a horizontal line that follow the pointer. The
 
 - The Session summary says whether each is showing, as `crosshairs` and `centreLine`.
 - Showing what is already showing, or hiding what is hidden, changes nothing and is not an error.
-- The whole-genome view has no centre line: showing it there is an error.
+- The whole-genome view has neither: showing one there is an error.
 - Going to the whole-genome view hides both, and they stay hidden at the next locus.
 
 ## Reading

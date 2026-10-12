@@ -20,6 +20,7 @@ export interface GenomeBrowser {
   findTracks(filter: (track: BrowserTrack) => boolean): BrowserTrack[]
   /** Crosshairs. */
   doShowCursorGuide?: boolean
+  /** Centre line. */
   doShowCenterLine?: boolean
   setCursorGuideVisibility(show: boolean): void
   setCenterLineVisibility(show: boolean): void
@@ -138,8 +139,17 @@ function setTrackHeight(browser: GenomeBrowser, { height, ...selection }: { heig
   }
 }
 
+/** Whether igv.js is in its whole-genome view, which the Session summary gives as the locus "all". */
+function inWholeGenomeView(browser: GenomeBrowser): boolean {
+  return sessionSummary(captureSession(browser)).loci[0] === 'all'
+}
+
 /** Shows or hides the crosshairs, as igv.js's own button does. */
 function setCrosshairs(browser: GenomeBrowser, show: boolean): void {
+  // igv.js's button would show them there, and igv.js turn them off again the next time it lays the view out.
+  if (show && inWholeGenomeView(browser)) {
+    throw new Error('The whole-genome view has no crosshairs. Go to a locus or gene first.')
+  }
   browser.doShowCursorGuide = show
   browser.setCursorGuideVisibility(show)
   browser.navbar.cursorGuideButton.setState(show)
@@ -148,7 +158,7 @@ function setCrosshairs(browser: GenomeBrowser, show: boolean): void {
 /** Shows or hides the centre line, as igv.js's own button does. */
 function setCentreLine(browser: GenomeBrowser, show: boolean): void {
   // igv.js hides its button in the whole-genome view, and the line with it.
-  if (show && sessionSummary(captureSession(browser)).loci[0] === 'all') {
+  if (show && inWholeGenomeView(browser)) {
     throw new Error('The whole-genome view has no centre line. Go to a locus or gene first.')
   }
   browser.doShowCenterLine = show
