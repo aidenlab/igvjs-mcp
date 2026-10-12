@@ -4,7 +4,7 @@ A Connector for Claude and ChatGPT that lets the model open and drive an [igv.js
 
 **It works in Claude desktop, claude.ai on the web, and ChatGPT desktop in Codex mode.** A plain ChatGPT chat and ChatGPT on the web are not supported; see the findings in [`docs/v1-design.md`](docs/v1-design.md).
 
-The vocabulary used here (Host, Connector, Viewer, Room, Join link, …) is defined in [`GLOSSARY.md`](GLOSSARY.md). The design is in [`docs/v1-design.md`](docs/v1-design.md) and [`docs/adr/`](docs/adr/).
+The vocabulary used here (Host, Connector, Viewer, Room, Join link, …) is defined in [`GLOSSARY.md`](GLOSSARY.md). The design is in [`docs/v1-design.md`](docs/v1-design.md) and [`docs/adr/`](docs/adr/). The tools the model is given, and how each is used, are listed in [`docs/tools.md`](docs/tools.md).
 
 ## How it works
 
