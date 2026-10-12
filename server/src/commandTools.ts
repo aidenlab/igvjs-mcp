@@ -11,6 +11,8 @@ export interface CommandTool {
   description: string
   inputSchema: ZodRawShape
   commandType: CommandType
+  /** The argument that names a genome, if there is one. The command is sent only for a genome on the igv.org list, and carries the list's spelling of its id. */
+  genomeArgument?: string
 }
 
 const REPLY = 'The reply is the resulting Session summary: genome, loci, and tracks in display order.'
@@ -51,6 +53,16 @@ export const COMMAND_TOOLS: CommandTool[] = [
     description: `Zoom igv-bot out by a factor of two, keeping the centre of the view where possible. Call it again to zoom further. The whole-genome view does not zoom. ${REPLY}`,
     inputSchema: {},
     commandType: 'zoom_out',
+  },
+  {
+    name: 'change_genome',
+    title: 'Change genome',
+    description: `Change igv-bot to another genome assembly, such as "hg19", "mm39" or "hs1" (human T2T). The tracks now loaded are removed and the new genome opens with its own default tracks, at its default view. Only the genomes on the igv.org genome list are available; for one that is not, the reply says so, lists those that are, and igv-bot is left as it was. ${REPLY}`,
+    inputSchema: {
+      genome: z.string().describe('Genome id as on the igv.org genome list, such as "hg38", "hg19", "mm39" or "hs1"'),
+    },
+    commandType: 'change_genome',
+    genomeArgument: 'genome',
   },
   {
     name: 'read_session_summary',

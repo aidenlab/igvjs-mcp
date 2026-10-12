@@ -9,6 +9,8 @@ export interface GenomeBrowser {
   search(locus: string): Promise<boolean>
   zoomIn(): void
   zoomOut(): void
+  /** Replaces the genome, and the tracks with the new genome's default ones. */
+  loadGenome(id: string): Promise<unknown>
   toJSON(): Session
   findTracks(filter: (track: BrowserTrack) => boolean): BrowserTrack[]
   /** Crosshairs. */
@@ -35,6 +37,9 @@ const APPLIERS: { [T in CommandType]: Applier<T> } = {
   go_to_gene: (browser, { gene }) => goTo(browser, gene),
   zoom_in: (browser) => browser.zoomIn(),
   zoom_out: (browser) => browser.zoomOut(),
+  change_genome: async (browser, { genome }) => {
+    await browser.loadGenome(genome)
+  },
   // Changes nothing: the ack carries the Session summary, as every ack does.
   read_session_summary: () => {},
 }

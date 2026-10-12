@@ -1,7 +1,8 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
-import type { Command, SessionSummary } from 'igvjs-mcp-viewer/protocol'
+import type { Command, SavedSession, SessionSummary } from 'igvjs-mcp-viewer/protocol'
 import { COMMAND_TOOLS } from './commandTools.ts'
+import { lookUpGenome, type Genome } from './genomes.ts'
 import {
   JOIN_CARD_HTML,
   JOIN_CARD_META,
@@ -22,6 +23,10 @@ export interface ToolDeps {
   sendCommand: (roomId: string, command: Command) => Promise<CommandDelivery>
   /** Makes an expired Room a new one, so that its Join link works again. */
   renewRoom: (roomId: string) => Promise<void>
+  /** Saves a Session in a Room for the Viewer that joins it to restore, in place of whatever was saved there. */
+  startRoomOn: (roomId: string, session: SavedSession) => Promise<void>
+  /** The igv.org genome list: the genomes igv-bot can show. */
+  listGenomes: () => Promise<Genome[]>
 }
 
 /**
@@ -38,6 +43,24 @@ const REOPEN_ROOM_ARGUMENT = z
   .string()
   .optional()
   .describe('Only when igv-bot was already opened in this conversation: the Room id from that reply of open_viewer, to get the same igv-bot back, showing what it last showed. Leave it out the first time: igv-bot then opens in a new Room, on the default view.')
+
+/** The genome igv-bot opens on when open_viewer names a locus and no genome. */
+const DEFAULT_GENOME = 'hg38'
+
+const OPEN_GENOME_ARGUMENT = z
+  .string()
+  .optional()
+  .describe('Genome id as on the igv.org genome list, such as "hg19", "mm39" or "hs1", to open igv-bot on that genome with its default tracks. Leave it out for hg38. For an igv-bot that is already open, use change_genome instead.')
+
+const OPEN_LOCUS_ARGUMENT = z
+  .string()
+  .optional()
+  .describe('Where igv-bot opens: coordinates as chr:start-end, a chromosome name, or a gene name such as "MYC". Leave it out for the genome\'s default view. For an igv-bot that is already open, use go_to_locus or go_to_gene instead.')
+
+/** An argument the model left out, or passed empty. */
+function given(argument: string | undefined): string | undefined {
+  return argument === undefined || argument.trim() === '' ? undefined : argument.trim()
+}
 
 function errorReply(text: string) {
   return { content: [{ type: 'text' as const, text: `Error: ${text}` }], isError: true }
@@ -70,7 +93,7 @@ function joinLinkFor(viewerUrl: string, roomId: string): string {
   return joinLink.toString()
 }
 
-export function registerTools(mcpServer: McpServer, { roomId: sessionRoomId, viewerUrl, sendCommand, renewRoom }: ToolDeps): void {
+export function registerTools(mcpServer: McpServer, { roomId: sessionRoomId, viewerUrl, sendCommand, renewRoom, startRoomOn, listGenomes }: ToolDeps): void {
   mcpServer.registerResource(
     'igv-bot Join card',
     JOIN_CARD_URI,
@@ -86,11 +109,18 @@ export function registerTools(mcpServer: McpServer, { roomId: sessionRoomId, vie
     {
       title: 'Open igv-bot',
       description:
-        'Get the Join link that opens igv-bot, an igv.js genome browser, connected to a Room. Use this when the user asks to open a genome browser or says things like "open igv-bot", "open IGV", "launch igv-bot" or "show me the genome browser". A greeting addressed to igv-bot ("hello igv-bot", "hello IGV bot", "hi igv") is also a request to open it: call this tool straight away instead of only greeting back. It opens on hg38 in whole-genome view with the default gene annotation track. A card is shown to the user with an Open igv-bot button. If, and only if, you have the built-in browser of the Claude desktop app (the browser panel beside the conversation), open the Join link in it right away: the page connects to its Room and later tool calls redraw it there. Never use Claude in Chrome or any other browser tool for this; if the built-in browser is not available, do not try anything else. Do not repeat the link or the Room id in your reply. The result of this tool names the Room id: pass it as room on every later igv-bot tool call in this conversation, so the calls reach this igv-bot whichever MCP session they arrive through.',
-      inputSchema: { room: REOPEN_ROOM_ARGUMENT },
+        'Get the Join link that opens igv-bot, an igv.js genome browser, connected to a Room. Use this when the user asks to open a genome browser or says things like "open igv-bot", "open IGV", "launch igv-bot" or "show me the genome browser". A greeting addressed to igv-bot ("hello igv-bot", "hello IGV bot", "hi igv") is also a request to open it: call this tool straight away instead of only greeting back. It opens on hg38 in whole-genome view with the default gene annotation track, or on the genome and locus you pass. A card is shown to the user with an Open igv-bot button. If, and only if, you have the built-in browser of the Claude desktop app (the browser panel beside the conversation), open the Join link in it right away: the page connects to its Room and later tool calls redraw it there. Never use Claude in Chrome or any other browser tool for this; if the built-in browser is not available, do not try anything else. Do not repeat the link or the Room id in your reply. The result of this tool names the Room id: pass it as room on every later igv-bot tool call in this conversation, so the calls reach this igv-bot whichever MCP session they arrive through.',
+      inputSchema: { room: REOPEN_ROOM_ARGUMENT, genome: OPEN_GENOME_ARGUMENT, locus: OPEN_LOCUS_ARGUMENT },
       _meta: JOIN_CARD_TOOL_META,
     },
-    async ({ room }) => {
+    async ({ room, genome, locus }) => {
+      // Asked for before a Room is touched: an unavailable genome opens nothing.
+      let start: { genome: string; locus?: string } | undefined
+      if (given(genome) || given(locus)) {
+        const found = given(genome) ? await lookUpGenome(given(genome)!, listGenomes) : { id: DEFAULT_GENOME }
+        if ('unavailable' in found) return errorReply(`${found.unavailable} igv-bot was not opened.`)
+        start = { genome: found.id, ...(given(locus) ? { locus: given(locus) } : {}) }
+      }
       // Without `room` this is the first open_viewer of a Conversation, and a
       // Conversation gets a Room of its own: an MCP session may be shared by
       // several, and its Room would hand one the Session another saved.
@@ -106,6 +136,10 @@ export function registerTools(mcpServer: McpServer, { roomId: sessionRoomId, vie
         // The Room may have expired since the model was given its id.
         await renewRoom(roomId)
       }
+      // igv.js takes a genome and locus as its configuration, as it takes a
+      // Session it wrote, so the Viewer restores them like any saved Session.
+      if (start) await startRoomOn(roomId, start)
+      const opensOn = start ? `\n\nigv-bot opens on ${start.genome}${start.locus ? ` at ${start.locus}` : ''}.` : ''
       const joinLink = joinLinkFor(viewerUrl, roomId)
       const structuredContent: JoinCardContent = { room: roomId, joinUrl: joinLink }
       // A bare URL on its own line: Hosts render it clickable, which a code block
@@ -115,7 +149,7 @@ export function registerTools(mcpServer: McpServer, { roomId: sessionRoomId, vie
         content: [
           {
             type: 'text',
-            text: `igv-bot Join link:\n${joinLink}\n\nRoom id: ${roomId}. Pass it as room on every later igv-bot tool call in this conversation.\n\nThe user already sees a card for this. Next step: if you have the Claude desktop app's built-in browser, open this link in it now so igv-bot shows in the panel beside the conversation. Never use Claude in Chrome or another browser tool, and if the built-in browser is unavailable do not attempt to open the link at all. Then reply in one short sentence (igv-bot is opening in the panel, or: press Open igv-bot) and ask what to look at. Do not repeat the link or the Room id in your reply.`,
+            text: `igv-bot Join link:\n${joinLink}\n\nRoom id: ${roomId}. Pass it as room on every later igv-bot tool call in this conversation.${opensOn}\n\nThe user already sees a card for this. Next step: if you have the Claude desktop app's built-in browser, open this link in it now so igv-bot shows in the panel beside the conversation. Never use Claude in Chrome or another browser tool, and if the built-in browser is unavailable do not attempt to open the link at all. Then reply in one short sentence (igv-bot is opening in the panel, or: press Open igv-bot) and ask what to look at. Do not repeat the link or the Room id in your reply.`,
           },
           { type: 'resource_link', uri: joinLink, name: 'Open igv-bot', description: 'Join link for igv-bot', mimeType: 'text/html' },
         ],
@@ -132,6 +166,14 @@ export function registerTools(mcpServer: McpServer, { roomId: sessionRoomId, vie
       async ({ room, ...args }: { room?: string } & Record<string, unknown>) => {
         const target = roomFor(room, sessionRoomId)
         if ('refusal' in target) return target.refusal
+        if (tool.genomeArgument) {
+          const genome = await lookUpGenome(String(args[tool.genomeArgument]), listGenomes)
+          if ('unavailable' in genome) {
+            logRoom(tool.name, target, 'genome unavailable')
+            return errorReply(`${genome.unavailable} igv-bot was left as it was.`)
+          }
+          args[tool.genomeArgument] = genome.id
+        }
         const delivery = await sendCommand(target.roomId, { type: tool.commandType, ...args } as Command)
         logRoom(tool.name, target, delivery.status)
         switch (delivery.status) {

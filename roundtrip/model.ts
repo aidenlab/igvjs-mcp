@@ -9,6 +9,7 @@ import { SERVER_URL, VIEWER_URL } from './addresses.ts'
 
 interface ToolResult {
   content: Array<{ type: string; text: string }>
+  structuredContent?: { room?: string }
   isError?: boolean
 }
 
@@ -32,14 +33,19 @@ export async function newSession(): Promise<string> {
   return initialized.headers.get('mcp-session-id')!
 }
 
+/** A tool reply as it comes: its text, and whether it is an error. */
+export async function toolReply(room: string, name: string, args: object = {}) {
+  const { result } = (await rpc('tools/call', { name, arguments: args }, room)).body
+  return { text: result.content[0].text, isError: result.isError === true, structuredContent: result.structuredContent }
+}
+
 /** A tool reply, with the Session summary it carries read out of its text. */
 export async function callTool(room: string, name: string, args: object = {}) {
-  const { result } = (await rpc('tools/call', { name, arguments: args }, room)).body
-  const text = result.content[0].text
+  const { text, isError } = await toolReply(room, name, args)
   const marker = 'Session summary:\n'
   expect(text).toContain(marker)
   const summary = JSON.parse(text.slice(text.indexOf(marker) + marker.length)) as SessionSummary
-  return { text, isError: result.isError === true, summary }
+  return { text, isError, summary }
 }
 
 /** The start and end, in base pairs, of a locus such as "chr8:127,735,434-127,742,951". */

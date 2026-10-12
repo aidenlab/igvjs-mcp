@@ -84,6 +84,19 @@ export class Room extends DurableObject<Env> {
   }
 
   /**
+   * Saves `session` as the one a Viewer that joins restores, in place of
+   * whatever was saved, and makes an expired Room a new one. Called by
+   * open_viewer over RPC when it is asked for a genome or locus. The Session
+   * summary from before goes: it no longer describes what is saved. A Room no
+   * Viewer ever joins expires like any other.
+   */
+  async startOn(session: SavedSession): Promise<void> {
+    await this.ctx.storage.delete([EXPIRED_KEY, SUMMARY_KEY])
+    await this.ctx.storage.put(SESSION_KEY, session)
+    await this.ctx.storage.setAlarm(Date.now() + INACTIVITY_MS)
+  }
+
+  /**
    * The inactivity period is over. With no Viewer in the Room its stored data
    * is deleted, and a later join is told the Room has expired. A Viewer still
    * here keeps its Room as it is: it would not save its Session a second time.
