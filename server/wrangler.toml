@@ -22,9 +22,11 @@ new_sqlite_classes = ["Room"]
 # hosted on its own origin, not by this Worker (ADR 0001).
 VIEWER_URL = "http://localhost:5173/"
 # Pages that may open /ws (exact Origin match). WebSockets are not covered by CORS.
+# The last is the round trip's Viewer (roundtrip/addresses.ts).
 VIEWER_ORIGINS = [
   "http://localhost:5173",
   "http://127.0.0.1:5173",
+  "http://localhost:4173",
 ]
 
 # Secrets (`wrangler secret put <NAME> --env <env>`, see scripts/deploy-wizard.sh;

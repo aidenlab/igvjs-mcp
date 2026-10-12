@@ -14,7 +14,9 @@ The vocabulary used here (Host, Connector, Viewer, Room, Join link, …) is defi
 - The `open_viewer` tool returns a **Join link**: the Viewer's URL carrying `?room=`. Opening it shows the Viewer, which joins that Room over WebSocket, shows the Room id in its status line, and reconnects by itself if the socket drops.
 - Hosts that render MCP Apps also show a **Join card** in the Conversation: one line of status and an "Open igv-bot" button that opens the Join link through the Host.
 
-There are no commands yet: today the work ends with a Viewer that has joined its Room.
+- The model moves the Viewer with **command tools**: `go_to_locus`, `go_to_gene`, `zoom_in` and `zoom_out`. A tool call becomes one command pushed to every Viewer in the Room; the Viewer applies it to igv.js and acks, and the first ack becomes the reply. Every reply carries the **Session summary**: genome, loci, tracks in display order, and whether the crosshairs and centre line are showing. With no Viewer in the Room the reply says to open one; with no ack within 15 seconds it is "sent, unconfirmed".
+
+A command tool is one row of `server/src/commandTools.ts`, its command in `viewer/src/protocol.ts` and its applier in `viewer/src/commands.ts`.
 
 ## Requirements
 
@@ -61,6 +63,25 @@ curl -s http://localhost:8787/mcp \
 ```
 
 Open the Join link in a browser: the Viewer shows hg38 and reports "Connected · Room <Room id>".
+
+With the Viewer open, a command tool moves it and replies with the Session summary:
+
+```sh
+curl -s http://localhost:8787/mcp \
+  -H 'Content-Type: application/json' -H 'Accept: application/json, text/event-stream' \
+  -H 'mcp-session-id: <Room id>' \
+  -d '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"go_to_gene","arguments":{"gene":"MYC"}}}'
+```
+
+## Tests
+
+```sh
+npm run typecheck
+npm run test:run         # server (in workerd, with fake Viewers on the socket) and Viewer unit tests
+npm run test:roundtrip   # the built Viewer in headless Chromium against the local Worker
+```
+
+The round trip is kept out of `test:run` because it is not hermetic: igv.js fetches hg38 and looks genes up over the network. It needs Playwright's Chromium (`npx playwright install chromium`, once) and ports 4173 and 8797 free; it does not use the development ports.
 
 ## Deploying
 

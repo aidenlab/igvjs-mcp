@@ -6,7 +6,8 @@ export default defineConfig({
   plugins: [
     cloudflareTest({
       wrangler: { configPath: './wrangler.toml' },
-      miniflare: { bindings: { SESSION_HMAC_SECRET: 'test-session-hmac-secret' } },
+      // ACK_TIMEOUT_MS: the wait for a Viewer's ack, 15 s when deployed, kept short here.
+      miniflare: { bindings: { SESSION_HMAC_SECRET: 'test-session-hmac-secret', ACK_TIMEOUT_MS: 300 } },
     }),
   ],
   test: {

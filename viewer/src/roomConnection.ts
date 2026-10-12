@@ -1,4 +1,4 @@
-import { MessageType, type RoomMessage, type ViewerMessage } from './protocol.ts'
+import { MessageType, type Command, type CommandOutcome, type RoomMessage, type ViewerMessage } from './protocol.ts'
 
 /** The part of a WebSocket the connection uses; tests supply a fake. */
 export interface RoomSocket {
@@ -27,6 +27,8 @@ export interface RoomConnectionOptions {
   /** The Room's socket address; see `roomSocketUrl`. */
   url: string
   onStatus: (status: RoomStatus) => void
+  /** Applies a command from the Room; what it resolves with is sent back as the ack. */
+  onCommand: (command: Command) => Promise<CommandOutcome>
   createSocket?: (url: string) => RoomSocket
 }
 
@@ -41,15 +43,18 @@ export function roomSocketUrl(serverUrl: string, room: string): string {
 /**
  * Connects the Viewer to its Room and joins it. When the socket drops it
  * reconnects by itself, waiting 1 s, 2 s, … up to 5 s between attempts, and
- * joins again.
+ * joins again. Commands from the Room are applied one at a time, in the order
+ * they arrive, and each is acked on the socket it came in on.
  */
 export function connectToRoom({
   url,
   onStatus,
+  onCommand,
   createSocket = (socketUrl) => new WebSocket(socketUrl),
 }: RoomConnectionOptions): void {
   let current: RoomSocket | null = null
   let failedAttempts = 0
+  let lastCommand: Promise<unknown> = Promise.resolve()
 
   const send = (socket: RoomSocket, message: ViewerMessage) => socket.send(JSON.stringify(message))
 
@@ -72,7 +77,19 @@ export function connectToRoom({
       } catch {
         return // not ours; ignored
       }
-      if (message?.type === MessageType.JOINED) onStatus({ state: 'joined', room: message.room })
+      if (message?.type === MessageType.JOINED) {
+        onStatus({ state: 'joined', room: message.room })
+      } else if (message?.type === MessageType.COMMAND) {
+        const { id, command } = message
+        lastCommand = lastCommand
+          .then(async () => {
+            const outcome = await onCommand(command)
+            // A socket that dropped meanwhile has no one to tell.
+            if (socket === current) send(socket, { type: MessageType.ACK, id, ...outcome })
+          })
+          // Unacked, so the tool replies "sent, unconfirmed"; later commands still run.
+          .catch((error) => console.error('[room] command failed', error))
+      }
     }
 
     socket.onclose = () => {
