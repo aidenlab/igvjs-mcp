@@ -108,6 +108,35 @@ Seen on 2026-10-11 and 2026-10-12 with the local Worker and Viewer, in Claude de
 
 **One Conversation did change Room partway through (#19), and ADR 0003 settles it.** Seen on 2026-10-11 and 2026-10-12 in Claude desktop: the chat calls `open_viewer` in one MCP session, and after the model has used the built-in browser an agent runtime makes the later calls in a second session, started 6 to 8 seconds after `open_viewer`. The commands went to the second session's empty Room and replied that no Viewer was there; the model recovered by calling `open_viewer` again and reloading the Viewer into the second Room. No header identifies the Conversation. Every tool now takes an optional `room`, and `open_viewer` tells the model to pass the Room id on every later call. There is still no `join_room` tool. Seen on 2026-10-12 in Claude desktop with that change: after opening igv-bot, zooming and going to a locus worked from the first command, the Viewer did not reload, and the Room id in its status line stayed the same throughout.
 
+## Reopening: what is restored, and when
+
+Restoring is about a page and a Room. A Conversation does not come into it.
+
+- **The Session is saved per Room.** A Room has one saved Session: the last one any Viewer in it sent.
+- **"Just opened" means the page has just loaded.** Each time the Viewer page loads with a Join link, it joins the Room named in `?room=` and asks what is saved there. That is the only moment a Viewer restores. A page loads when a person reloads it, when they close the Side panel or tab and open the Join link again, when they press "Open igv-bot" on a Join card, and when the model opens the Join link in the built-in browser.
+- **A Viewer that is already running never restores.** If its socket drops and it reconnects, it keeps what it is showing and sends that to the Room.
+
+So what a person sees on opening igv-bot depends only on which Room the Join link names:
+
+| The Room named in the Join link | What the Viewer shows |
+| --- | --- |
+| Never had a Viewer, or has nothing saved | The default Viewer |
+| Has a saved Session | That Session |
+| Expired | No genome browser, and the line "This igv-bot has expired. Ask Claude or ChatGPT to open a new one." |
+
+Which Room a Join link names is decided by `open_viewer`: the `room` the model passes, or else the Room of the MCP session the call arrives in (ADR 0003).
+
+- **Later in the same Conversation**, the model passes `room`, so igv-bot comes back in the same Room with the last view.
+- **In a new Conversation**, the model has no Room id to pass, so the Join link names the MCP session's Room. If the Host gives the new Conversation its own MCP session, that Room is new and the Viewer is the default. If the Host shares one MCP session between Conversations, the new Conversation gets the Room the earlier one used, and the Viewer opens on the earlier Conversation's last view. ChatGPT desktop in Codex mode gave three Conversations three Rooms (see Findings). Claude desktop's chat has been seen to share an MCP session between Conversations (ADR 0003); what a new Conversation there shows on opening igv-bot has not been observed since restoring was added.
+
+### Expiry
+
+A Room expires 24 hours after the last message from a Viewer, if no Viewer is connected then. Its saved Session and Session summary are deleted and the Room is marked expired.
+
+A person meets the expired line only by opening an old Join link directly: a tab or Side panel left over from the day before, or the "Open igv-bot" button on a Join card far up a Conversation. Neither goes through `open_viewer`.
+
+`open_viewer` never hands out an expired Room. Before it replies it clears the mark on the Room it is about to name, which makes that Room a new one with nothing saved. Without this, a Room id that outlives its Room's data would be dead for good: an MCP session keeps its Room id, and ChatGPT's is derived from a header that does not change, so "ask the model for a new one" would give back the same expired Room. With it, the Join link from `open_viewer` always opens a Viewer: the last view if the Room is under a day idle, the default otherwise.
+
 ## Testing
 
 - Unit tests for pure logic: catalogue search, building the Session summary.
