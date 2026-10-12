@@ -15,12 +15,12 @@ function fakeBrowser() {
     fire: (event) => listeners.get(event)?.forEach((listener) => listener()),
   }
   const reported: string[][] = []
-  watchChanges(
+  const changed = watchChanges(
     browser,
     (): SessionSummary => ({ genome: 'hg38', loci: [browser.locus], tracks: [], crosshairs: false, centreLine: false }),
     (summary) => reported.push(summary.loci),
   )
-  return { browser, reported }
+  return { browser, reported, changed }
 }
 
 beforeEach(() => void vi.useFakeTimers())
@@ -75,5 +75,19 @@ describe('watching igv.js for changes', () => {
     vi.advanceTimersByTime(QUIET_MS)
 
     expect(reported).toEqual([['chr8:1-100'], ['chr8:201-300']])
+  })
+
+  it('reports after a change igv.js does not announce, once told of it, as it does for igv.js events', () => {
+    const { browser, reported, changed } = fakeBrowser()
+    reported.length = 0
+
+    browser.locus = 'chr8:1-100'
+    changed()
+    browser.fire('locuschange')
+    vi.advanceTimersByTime(QUIET_MS - 1)
+    expect(reported).toEqual([])
+
+    vi.advanceTimersByTime(1)
+    expect(reported).toEqual([['chr8:1-100']])
   })
 })

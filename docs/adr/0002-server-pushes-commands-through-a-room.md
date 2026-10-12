@@ -16,5 +16,6 @@ An MCP session is not a Conversation: Claude desktop moves one Conversation acro
 
 - The server is stateful: per Room it holds the sockets, the latest Session summary and the last saved Session, all expired after inactivity. The Session itself still lives in the Viewer; the Room's copy is a mirror, never the source of truth.
 - A Viewer that joins a Room which already has a saved Session restores it. Reopening the Join link therefore brings back the last view, with no "one live Viewer" rule to enforce.
+- A Room whose stored data was deleted with no Viewer in it answers a join with "expired". `open_viewer` makes such a Room a new one: the Room id of an MCP session never changes, and ChatGPT's is derived, so asking the model for a new Viewer leads back to the same Room.
 - The model is not notified when a person changes something by hand. It sees the current Session summary in the reply to its next tool call, or by asking for it.
 - More than one Viewer may join a Room. All receive commands; tools that need an answer ask the first live one. Keeping several Viewers in step with each other's hand changes is not attempted in v1.

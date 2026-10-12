@@ -37,7 +37,11 @@ export async function openViewer(room: string) {
     else queued.push(msg)
   })
 
+  const closed = new Promise<boolean>((resolve) => ws.addEventListener('close', () => resolve(true)))
+
   return {
+    /** Resolves true once the Room has closed the socket. */
+    closed,
     send: (msg: ViewerMessage) => ws.send(JSON.stringify(msg)),
     next: () => (queued.length ? Promise.resolve(queued.shift()!) : new Promise<RoomMessage>((r) => waiting.push(r))),
   }

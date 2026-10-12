@@ -3,7 +3,7 @@
  * assert what the Viewer sends and the statuses it reports.
  */
 import { describe, it, expect, afterEach, vi } from 'vitest'
-import type { Command, CommandOutcome, SessionSummary } from '../src/protocol.ts'
+import type { Command, CommandOutcome, SavedSession, SessionReport, SessionSummary } from '../src/protocol.ts'
 import { connectToRoom, roomSocketUrl, statusText, type RoomSocket, type RoomStatus } from '../src/roomConnection.ts'
 
 class FakeSocket implements RoomSocket {
@@ -41,9 +41,11 @@ const SUMMARY: SessionSummary = { genome: 'hg38', loci: ['all'], tracks: [], cro
 function connect(onCommand: (command: Command) => Promise<CommandOutcome> = async () => ({ ok: true, summary: SUMMARY })) {
   const sockets: FakeSocket[] = []
   const statuses: RoomStatus[] = []
-  const { reportSummary } = connectToRoom({
+  const restores: Array<SavedSession | undefined> = []
+  const { reportSession } = connectToRoom({
     url: 'ws://server.test/ws?room=7ZQH4M2K9X',
     onStatus: (status) => statuses.push(status),
+    onFirstJoin: (saved) => restores.push(saved),
     onCommand,
     createSocket: (url) => {
       const socket = new FakeSocket(url)
@@ -51,7 +53,7 @@ function connect(onCommand: (command: Command) => Promise<CommandOutcome> = asyn
       return socket
     },
   })
-  return { sockets, statuses, reportSummary }
+  return { sockets, statuses, restores, reportSession }
 }
 
 afterEach(() => {
@@ -181,8 +183,12 @@ describe('a command from the Room', () => {
   })
 })
 
-describe('a Session summary reported after a change made by hand', () => {
-  const PANNED: SessionSummary = { ...SUMMARY, loci: ['chr8:127,740,001-127,747,518'] }
+describe('the Session reported after a change', () => {
+  const REPORT: SessionReport = { session: { reference: { id: 'hg38' }, locus: 'all', tracks: [] }, summary: SUMMARY }
+  const PANNED: SessionReport = {
+    session: { reference: { id: 'hg38' }, locus: 'chr8:127,740,001-127,747,518', tracks: [] },
+    summary: { ...SUMMARY, loci: ['chr8:127,740,001-127,747,518'] },
+  }
 
   function joined() {
     const connection = connect()
@@ -192,62 +198,139 @@ describe('a Session summary reported after a change made by hand', () => {
     return connection
   }
 
-  it('is sent to the Room', () => {
-    const { sockets, reportSummary } = joined()
+  it('is sent to the Room with its summary', () => {
+    const { sockets, reportSession } = joined()
 
-    reportSummary(PANNED)
+    reportSession(PANNED)
 
-    expect(sockets[0].sent).toEqual([{ type: 'summary', summary: PANNED }])
+    expect(sockets[0].sent).toEqual([{ type: 'session', ...PANNED }])
   })
 
   it('is not sent again while it stays the same', () => {
-    const { sockets, reportSummary } = joined()
+    const { sockets, reportSession } = joined()
 
-    reportSummary(PANNED)
-    reportSummary({ ...PANNED })
-    reportSummary(SUMMARY)
+    reportSession(PANNED)
+    reportSession(structuredClone(PANNED))
+    reportSession(REPORT)
 
     expect(sockets[0].sent).toEqual([
-      { type: 'summary', summary: PANNED },
-      { type: 'summary', summary: SUMMARY },
+      { type: 'session', ...PANNED },
+      { type: 'session', ...REPORT },
     ])
   })
 
-  it('is not sent when an ack has just carried the same summary', async () => {
-    const { sockets, reportSummary } = joined()
+  it('is sent when the Session changed in a way its summary does not show', () => {
+    const { sockets, reportSession } = joined()
+    const recoloured: SessionReport = { ...REPORT, session: { ...REPORT.session, tracks: [{ name: 'Genes', color: 'red' }] } }
+
+    reportSession(REPORT)
+    reportSession(recoloured)
+
+    expect(sockets[0].sent).toEqual([
+      { type: 'session', ...REPORT },
+      { type: 'session', ...recoloured },
+    ])
+  })
+
+  it('is sent after a command too: the ack carried the summary, not the Session', async () => {
+    const { sockets, reportSession } = joined()
     sockets[0].receive({ type: 'command', id: 'req-1', command: { type: 'zoom_in' } })
     await vi.waitFor(() => expect(sockets[0].sent).toHaveLength(1))
 
-    reportSummary(SUMMARY) // what the ack carried: the change was the command's
+    reportSession(REPORT)
 
-    expect(sockets[0].sent).toEqual([{ type: 'ack', id: 'req-1', ok: true, summary: SUMMARY }])
+    expect(sockets[0].sent).toEqual([
+      { type: 'ack', id: 'req-1', ok: true, summary: SUMMARY },
+      { type: 'session', ...REPORT },
+    ])
   })
 
   it('reported before the Room is joined is sent once it is', () => {
-    const { sockets, reportSummary } = connect()
+    const { sockets, reportSession } = connect()
 
-    reportSummary(SUMMARY)
-    reportSummary(PANNED)
+    reportSession(REPORT)
+    reportSession(PANNED)
     sockets[0].open()
     expect(sockets[0].sent).toEqual([{ type: 'join' }])
 
     sockets[0].receive({ type: 'joined', room: '7ZQH4M2K9X' })
-    expect(sockets[0].sent).toEqual([{ type: 'join' }, { type: 'summary', summary: PANNED }])
+    expect(sockets[0].sent).toEqual([{ type: 'join' }, { type: 'session', ...PANNED }])
   })
 
   it('is sent again after a reconnect, with whatever changed while the socket was down', () => {
     vi.useFakeTimers()
-    const { sockets, reportSummary } = joined()
-    reportSummary(SUMMARY)
+    const { sockets, reportSession } = joined()
+    reportSession(REPORT)
 
     sockets[0].drop()
-    reportSummary(PANNED)
+    reportSession(PANNED)
     vi.advanceTimersByTime(1000)
     sockets[1].open()
     sockets[1].receive({ type: 'joined', room: '7ZQH4M2K9X' })
 
-    expect(sockets[0].sent).toEqual([{ type: 'summary', summary: SUMMARY }])
-    expect(sockets[1].sent).toEqual([{ type: 'join' }, { type: 'summary', summary: PANNED }])
+    expect(sockets[0].sent).toEqual([{ type: 'session', ...REPORT }])
+    expect(sockets[1].sent).toEqual([{ type: 'join' }, { type: 'session', ...PANNED }])
+  })
+})
+
+describe('the Session saved in the Room', () => {
+  const SAVED = { reference: { id: 'hg19' }, locus: 'chr8:1-1,000', tracks: [], showCursorGuide: true }
+
+  it('is handed over when the Viewer first joins', () => {
+    const { sockets, restores } = connect()
+    sockets[0].open()
+    expect(restores).toEqual([])
+
+    sockets[0].receive({ type: 'joined', room: '7ZQH4M2K9X', session: SAVED })
+
+    expect(restores).toEqual([SAVED])
+  })
+
+  it('is absent in a Room with nothing saved: the Viewer is told there is nothing to restore', () => {
+    const { sockets, restores } = connect()
+    sockets[0].open()
+
+    sockets[0].receive({ type: 'joined', room: '7ZQH4M2K9X' })
+
+    expect(restores).toEqual([undefined])
+  })
+
+  it('is not handed over again on a reconnect: by then the Viewer has its own Session', () => {
+    vi.useFakeTimers()
+    const { sockets, restores } = connect()
+    sockets[0].open()
+    sockets[0].receive({ type: 'joined', room: '7ZQH4M2K9X' })
+
+    sockets[0].drop()
+    vi.advanceTimersByTime(1000)
+    sockets[1].open()
+    sockets[1].receive({ type: 'joined', room: '7ZQH4M2K9X', session: SAVED })
+
+    expect(restores).toEqual([undefined])
+  })
+})
+
+describe('an expired Room', () => {
+  it('is reported, and the Viewer does not try to join it again', () => {
+    vi.useFakeTimers()
+    const { sockets, statuses } = connect()
+    sockets[0].open()
+
+    sockets[0].receive({ type: 'expired' })
+    sockets[0].drop() // the Room closes the socket
+    vi.advanceTimersByTime(60_000)
+
+    expect(statuses.at(-1)).toEqual({ state: 'expired' })
+    expect(sockets).toHaveLength(1)
+  })
+
+  it('hands no Session over', () => {
+    const { sockets, restores } = connect()
+    sockets[0].open()
+
+    sockets[0].receive({ type: 'expired' })
+
+    expect(restores).toEqual([])
   })
 })
 
@@ -265,6 +348,7 @@ describe('statusText', () => {
     [{ state: 'connecting' }, 'Connecting…'],
     [{ state: 'joined', room: '7ZQH4M2K9X' }, 'Connected · Room 7ZQH4M2K9X'],
     [{ state: 'reconnecting' }, 'Connection lost. Reconnecting…'],
+    [{ state: 'expired' }, 'This igv-bot has expired. Ask Claude or ChatGPT to open a new one.'],
   ])('%o reads "%s"', (status, expected) => {
     expect(statusText(status)).toBe(expected)
   })

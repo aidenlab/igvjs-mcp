@@ -1,9 +1,11 @@
 import { DurableObject } from 'cloudflare:workers'
 import {
   MessageType,
+  type AckMessage,
   type Command,
   type CommandOutcome,
   type RoomMessage,
+  type SavedSession,
   type SessionSummary,
   type ViewerMessage,
 } from 'igvjs-mcp-viewer/protocol'
@@ -17,15 +19,25 @@ export type CommandDelivery =
   | { status: 'unconfirmed'; lastSummary?: SessionSummary }
   | { status: 'no-viewer' }
 
-/** Storage key of the latest Session summary a Viewer sent, in an ack or in a summary message. */
+/** Storage key of the latest Session summary a Viewer sent, in an ack or with its Session. */
 const SUMMARY_KEY = 'summary'
+
+/** Storage key of the last Session a Viewer saved. */
+const SESSION_KEY = 'session'
+
+/** How long after the last message from a Viewer a Room's stored data is deleted. It is also how long a Join link lives. */
+const INACTIVITY_MS = 24 * 60 * 60 * 1000
+
+/** Storage key that marks a Room whose stored data was deleted with no Viewer in it. */
+const EXPIRED_KEY = 'expired'
 
 /**
  * One Room: the live channel that joins a Connector to its Viewers (ADR 0002).
  * One instance per Room id. Viewers arrive on `fetch` (the WebSocket upgrade
  * from /ws?room=) and are held with the Hibernation API, so an idle Room costs
- * nothing. The Room keeps the latest Session summary its Viewers send; it is a
- * mirror, and the Viewer's own answer is preferred whenever there is one.
+ * nothing. The Room keeps the latest Session summary and Session its Viewers
+ * send. They are mirrors: the Viewer's own answer is preferred whenever there
+ * is one, and the saved Session is only for a Viewer that joins later to restore.
  */
 export class Room extends DurableObject<Env> {
   /** Commands waiting for their first ack, by request id. */
@@ -62,6 +74,22 @@ export class Room extends DurableObject<Env> {
     }
   }
 
+  /**
+   * Makes an expired Room a new one, so that its Join link works again. Called
+   * by open_viewer over RPC: a Host may ask for igv-bot in the same Room after
+   * the Room has expired, and ChatGPT's Room id never changes.
+   */
+  async reopen(): Promise<void> {
+    await this.ctx.storage.delete(EXPIRED_KEY)
+  }
+
+  /** The inactivity period is over: the Room's stored data is deleted. */
+  async alarm(): Promise<void> {
+    await this.ctx.storage.deleteAll()
+    // A Viewer still here keeps its Room. With none, the Room is gone, and a later join is told so.
+    if (this.ctx.getWebSockets().length === 0) await this.ctx.storage.put(EXPIRED_KEY, true)
+  }
+
   async fetch(request: Request): Promise<Response> {
     if (request.headers.get('Upgrade') !== 'websocket') return new Response('Not Found', { status: 404 })
 
@@ -80,17 +108,28 @@ export class Room extends DurableObject<Env> {
       return // not ours; ignored
     }
 
+    if (data?.type === MessageType.JOIN && (await this.ctx.storage.get(EXPIRED_KEY))) {
+      send(ws, { type: MessageType.EXPIRED })
+      ws.close(1000, 'Room expired')
+      return
+    }
+
+    // A command is answered before anything is stored. Later acks of the same
+    // command, from other Viewers, find nothing pending.
+    if (data?.type === MessageType.ACK) this.pending.get(data.id)?.(outcomeOf(data))
+
+    // Every message from a Viewer puts the deletion of the Room's stored data off.
+    await this.ctx.storage.setAlarm(Date.now() + INACTIVITY_MS)
+
     // The socket already reached this Room through /ws?room=; `join` confirms which one.
     if (data?.type === MessageType.JOIN) {
       const { room } = ws.deserializeAttachment() as { room: string }
-      send(ws, { type: MessageType.JOINED, room })
+      const session = await this.ctx.storage.get<SavedSession>(SESSION_KEY)
+      send(ws, { type: MessageType.JOINED, room, ...(session ? { session } : {}) })
     } else if (data?.type === MessageType.ACK) {
-      // Later acks of the same command, from other Viewers, find nothing pending.
-      const { type: _, id, ...outcome } = data
-      this.pending.get(id)?.(outcome)
-      await this.ctx.storage.put(SUMMARY_KEY, outcome.summary)
-    } else if (data?.type === MessageType.SUMMARY) {
       await this.ctx.storage.put(SUMMARY_KEY, data.summary)
+    } else if (data?.type === MessageType.SESSION) {
+      await this.ctx.storage.put({ [SUMMARY_KEY]: data.summary, [SESSION_KEY]: data.session })
     }
   }
 
@@ -102,6 +141,10 @@ export class Room extends DurableObject<Env> {
       /* already closed */
     }
   }
+}
+
+function outcomeOf({ type: _, id: __, ...outcome }: AckMessage): CommandOutcome {
+  return outcome
 }
 
 function send(ws: WebSocket, message: RoomMessage): void {

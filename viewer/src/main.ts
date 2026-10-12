@@ -1,7 +1,8 @@
-import igv from 'igv'
+import igv, { type CreateOpt } from 'igv'
 import './styles/viewer.scss'
 import { watchChanges, type ChangeSource } from './changes.ts'
 import { applyCommand, captureSession, type GenomeBrowser } from './commands.ts'
+import type { SavedSession } from './protocol.ts'
 import { connectToRoom, roomSocketUrl, statusText, type RoomStatus } from './roomConnection.ts'
 import { sessionSummary } from './session.ts'
 
@@ -15,21 +16,57 @@ function showStatus(status: RoomStatus) {
   else delete statusElement.dataset.room
 }
 
+type Browser = GenomeBrowser & ChangeSource
+
 // The default Viewer: hg38 in whole-genome view, with the genome's own default
 // gene annotation track and nothing else.
-const browser = igv.createBrowser(browserElement, { genome: 'hg38', locus: 'all' }) as unknown as Promise<GenomeBrowser & ChangeSource>
+const DEFAULT_SESSION: SavedSession = { genome: 'hg38', locus: 'all' }
 
-// A Join link carries ?room=; without it there is no Room to join. The Viewer
-// joins while igv.js is still loading; a command that arrives early waits for it.
+function createBrowser(session: SavedSession): Promise<Browser> {
+  // igv.js takes a Session it wrote as its configuration; its typings know only the configuration.
+  return igv.createBrowser(browserElement, session as CreateOpt) as unknown as Promise<Browser>
+}
+
+/** igv.js showing the Session saved in the Room, or the default Viewer when there is none or it will not load. */
+async function openBrowser(saved: SavedSession | undefined): Promise<Browser> {
+  if (!saved) return createBrowser(DEFAULT_SESSION)
+  try {
+    return await createBrowser(saved)
+  } catch (error) {
+    // Left as it is, every reload would restore the same Session and fail the same way.
+    console.error('[viewer] the saved Session did not load; showing the default Viewer', error)
+    browserElement.replaceChildren()
+    return createBrowser(DEFAULT_SESSION)
+  }
+}
+
+// A Join link carries ?room=; without it there is no Room to join.
 const room = new URLSearchParams(location.search).get('room')
 if (room) {
-  const { reportSummary } = connectToRoom({
+  // igv.js starts once the Room has said what to restore; a command that
+  // arrives while it is loading waits for it. In an expired Room it never starts.
+  let restore!: (saved: SavedSession | undefined) => void
+  const browser = new Promise<SavedSession | undefined>((resolve) => (restore = resolve)).then(openBrowser)
+  const { reportSession } = connectToRoom({
     url: roomSocketUrl(import.meta.env.VITE_SERVER_URL, room),
     onStatus: showStatus,
+    onFirstJoin: restore,
     onCommand: async (command) => applyCommand(await browser, command),
   })
   // The Room hears of every change, whoever made it: by hand in igv.js, or by a command.
-  void browser.then((loaded) => watchChanges(loaded, () => sessionSummary(captureSession(loaded)), reportSummary))
+  void browser.then((loaded) => {
+    const changed = watchChanges(
+      loaded,
+      () => {
+        const session = captureSession(loaded)
+        return { session, summary: sessionSummary(session) }
+      },
+      reportSession,
+    )
+    // igv.js announces nothing when its crosshairs or centre line button is pressed.
+    browserElement.addEventListener('click', changed)
+  })
 } else {
   statusElement.textContent = 'Not connected. Ask Claude or ChatGPT to open igv-bot.'
+  void createBrowser(DEFAULT_SESSION)
 }

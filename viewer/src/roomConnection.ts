@@ -1,4 +1,4 @@
-import { MessageType, type Command, type CommandOutcome, type RoomMessage, type SessionSummary, type ViewerMessage } from './protocol.ts'
+import { MessageType, type Command, type CommandOutcome, type RoomMessage, type SavedSession, type SessionReport, type ViewerMessage } from './protocol.ts'
 
 /** The part of a WebSocket the connection uses; tests supply a fake. */
 export interface RoomSocket {
@@ -9,7 +9,7 @@ export interface RoomSocket {
   close(): void
 }
 
-export type RoomStatus = { state: 'connecting' } | { state: 'joined'; room: string } | { state: 'reconnecting' }
+export type RoomStatus = { state: 'connecting' } | { state: 'joined'; room: string } | { state: 'reconnecting' } | { state: 'expired' }
 
 /** The Viewer's status line. A joined Viewer names its Room, so Rooms can be compared across Conversations. */
 export function statusText(status: RoomStatus): string {
@@ -20,6 +20,8 @@ export function statusText(status: RoomStatus): string {
       return `Connected · Room ${status.room}`
     case 'reconnecting':
       return 'Connection lost. Reconnecting…'
+    case 'expired':
+      return 'This igv-bot has expired. Ask Claude or ChatGPT to open a new one.'
   }
 }
 
@@ -27,6 +29,12 @@ export interface RoomConnectionOptions {
   /** The Room's socket address; see `roomSocketUrl`. */
   url: string
   onStatus: (status: RoomStatus) => void
+  /**
+   * Called once, the first time the Room is joined, with the Session saved
+   * there for the Viewer to restore, or with nothing when the Room has none.
+   * Not called for an expired Room.
+   */
+  onFirstJoin: (saved: SavedSession | undefined) => void
   /** Applies a command from the Room; what it resolves with is sent back as the ack. */
   onCommand: (command: Command) => Promise<CommandOutcome>
   createSocket?: (url: string) => RoomSocket
@@ -34,11 +42,11 @@ export interface RoomConnectionOptions {
 
 export interface RoomConnection {
   /**
-   * Tells the Room the Session summary as it now stands. Call it after any
-   * change, whoever made it: a summary the Room already has is not sent again,
-   * and one reported while the socket is down is sent on the next join.
+   * Saves the Session as it now stands in the Room, with its summary. Call it
+   * after any change, whoever made it: a Session the Room already has is not
+   * sent again, and one reported while the socket is down is sent on the next join.
    */
-  reportSummary: (summary: SessionSummary) => void
+  reportSession: (report: SessionReport) => void
 }
 
 /** The address of a Room's socket on the server at `serverUrl`. */
@@ -52,37 +60,41 @@ export function roomSocketUrl(serverUrl: string, room: string): string {
 /**
  * Connects the Viewer to its Room and joins it. When the socket drops it
  * reconnects by itself, waiting 1 s, 2 s, … up to 5 s between attempts, and
- * joins again. Commands from the Room are applied one at a time, in the order
+ * joins again, unless the Room has expired. Commands from the Room are applied one at a time, in the order
  * they arrive, and each is acked on the socket it came in on.
  */
 export function connectToRoom({
   url,
   onStatus,
+  onFirstJoin,
   onCommand,
   createSocket = (socketUrl) => new WebSocket(socketUrl),
 }: RoomConnectionOptions): RoomConnection {
   let current: RoomSocket | null = null
   let joined = false
+  let everJoined = false
   let failedAttempts = 0
   let lastCommand: Promise<unknown> = Promise.resolve()
-  /** The Session summary as the Viewer last knew it, from an ack or a report. */
-  let latestSummary: SessionSummary | null = null
-  /** The summary the Room was last sent on the current socket, as JSON. */
-  let sentSummaryJson: string | null = null
+  /** The Session as last reported. */
+  let latestReport: SessionReport | null = null
+  /** The report the Room was last sent on the current socket, as JSON. */
+  let sentReportJson: string | null = null
 
   const send = (socket: RoomSocket, message: ViewerMessage) => socket.send(JSON.stringify(message))
 
-  function sendLatestSummary(socket: RoomSocket) {
-    if (!latestSummary || JSON.stringify(latestSummary) === sentSummaryJson) return
-    send(socket, { type: MessageType.SUMMARY, summary: latestSummary })
-    sentSummaryJson = JSON.stringify(latestSummary)
+  function sendLatestReport(socket: RoomSocket) {
+    if (!latestReport) return
+    const reportJson = JSON.stringify(latestReport)
+    if (reportJson === sentReportJson) return
+    send(socket, { type: MessageType.SESSION, ...latestReport })
+    sentReportJson = reportJson
   }
 
   function connect() {
     const socket = createSocket(url)
     current = socket
     joined = false
-    sentSummaryJson = null
+    sentReportJson = null
 
     // A socket that is no longer `current` has dropped; its late events are ignored.
     socket.onopen = () => {
@@ -102,17 +114,23 @@ export function connectToRoom({
       if (message?.type === MessageType.JOINED) {
         joined = true
         onStatus({ state: 'joined', room: message.room })
-        sendLatestSummary(socket)
+        // Only a Viewer that has just been opened restores: after that its own Session is the truth.
+        if (!everJoined) onFirstJoin(message.session)
+        everJoined = true
+        sendLatestReport(socket)
+      } else if (message?.type === MessageType.EXPIRED) {
+        // The Room closes the socket; with no `current`, nothing reconnects.
+        current = null
+        joined = false
+        onStatus({ state: 'expired' })
       } else if (message?.type === MessageType.COMMAND) {
         const { id, command } = message
         lastCommand = lastCommand
           .then(async () => {
             const outcome = await onCommand(command)
-            latestSummary = outcome.summary
             // A socket that dropped meanwhile has no one to tell.
             if (socket !== current) return
             send(socket, { type: MessageType.ACK, id, ...outcome })
-            sentSummaryJson = JSON.stringify(latestSummary)
           })
           // Unacked, so the tool replies "sent, unconfirmed"; later commands still run.
           .catch((error) => console.error('[room] command failed', error))
@@ -133,9 +151,9 @@ export function connectToRoom({
   connect()
 
   return {
-    reportSummary(summary) {
-      latestSummary = summary
-      if (current && joined) sendLatestSummary(current)
+    reportSession(report) {
+      latestReport = report
+      if (current && joined) sendLatestReport(current)
     },
   }
 }

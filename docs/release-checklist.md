@@ -46,6 +46,13 @@ Once in Claude desktop and once in ChatGPT desktop in Codex mode. Read the Room 
 
 If one Conversation changes Room partway through, stop the release: the model is not passing `room` as ADR 0003 expects.
 
+## Reopening
+
+Once in each Host, after going to a locus, giving a track a new height and turning on the crosshairs.
+
+- [ ] Reloading the Viewer brings back the same locus, tracks and heights, and the crosshairs.
+- [ ] Closing the Viewer and opening it again from the Join card brings back the same view.
+
 ## Afterwards
 
 - [ ] Anything that differs from the findings in `docs/v1-design.md` is written there.
