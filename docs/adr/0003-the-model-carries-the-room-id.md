@@ -6,6 +6,8 @@ So the Room id travels through the model. `open_viewer` names the Room id in its
 
 **Revised 2026-10-12 (#6).** `open_viewer` without `room` no longer returns the MCP session's Room: it mints a new Room each time. Once a Room keeps a Session for a Viewer to restore, a Room shared between Conversations would open one Conversation's igv-bot on another's last view, and the chat's MCP session is shared by several Conversations. A new Conversation should start with the default Viewer. The MCP session's Room is now only where a command without `room` falls back to, and no Join link names it, so that command is told to pass `room`.
 
+**Revised 2026-10-12 (#7).** `open_viewer` also takes `genome` and `locus`, for a new Room only: without `room` they are saved in the Room it mints, and the Viewer opens there. With `room` they are refused. That Room has a Session of its own and maybe a Viewer showing it, which a genome or locus would silently replace; `change_genome` and `go_to_locus` are the tools for an igv-bot that was already opened.
+
 ## Considered Options
 
 - **Bind the Room to something stable for the Conversation**, as ChatGPT's `x-openai-session` is. Rejected: Claude sends no such thing. The headers were logged on 2026-10-11; `mcp-session-id` is per client and `traceparent` is per request.

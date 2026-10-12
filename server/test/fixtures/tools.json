@@ -12,11 +12,11 @@
           "description": "Only when igv-bot was already opened in this conversation: the Room id from that reply of open_viewer, to get the same igv-bot back, showing what it last showed. Leave it out the first time: igv-bot then opens in a new Room, on the default view."
         },
         "genome": {
-          "description": "Genome id as on the igv.org genome list, such as \"hg19\", \"mm39\" or \"hs1\", to open igv-bot on that genome with its default tracks. Leave it out for hg38. For an igv-bot that is already open, use change_genome instead.",
+          "description": "Only when opening a new igv-bot, without room: genome id as on the igv.org genome list, such as \"hg19\", \"mm39\" or \"hs1\", to open on that genome with its default tracks. Leave it out for hg38. For an igv-bot that was already opened, use change_genome instead.",
           "type": "string"
         },
         "locus": {
-          "description": "Where igv-bot opens: coordinates as chr:start-end, a chromosome name, or a gene name such as \"MYC\". Leave it out for the genome's default view. For an igv-bot that is already open, use go_to_locus or go_to_gene instead.",
+          "description": "Only when opening a new igv-bot, without room: where it opens, as coordinates chr:start-end, a chromosome name, or a gene name such as \"MYC\". Leave it out for the genome's default view. For an igv-bot that was already opened, use go_to_locus or go_to_gene instead.",
           "type": "string"
         }
       }

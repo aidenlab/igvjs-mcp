@@ -17,24 +17,35 @@ export interface Genome {
   name: string
 }
 
+/** How long either address is given to answer. */
+const FETCH_TIMEOUT_MS = 5000
+
 async function fetchList(url: string): Promise<Genome[]> {
-  const response = await fetch(url)
+  const response = await fetch(url, { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) })
   if (!response.ok) throw new Error(`${url} answered ${response.status}`)
-  return (await response.json<Genome[]>()).map(({ id, name }) => ({ id, name: name.trim() }))
+  const rows = await response.json<Array<{ id: string; name?: string }>>()
+  return rows.map(({ id, name }) => ({ id, name: (name ?? id).trim() }))
 }
 
 /**
  * Gives the genome list, fetched from igv.org or else from the backup, and
- * kept for an hour. A list that neither address gives is an error, and the
+ * kept for an hour. When neither address gives it, the list from before is
+ * used for another hour; with no list from before that is an error, and the
  * next call fetches again.
  */
 export function genomeListSource(): () => Promise<Genome[]> {
   let kept: { genomes: Genome[]; fetchedAt: number } | undefined
   return async () => {
     if (kept && Date.now() - kept.fetchedAt < LIST_TTL_MS) return kept.genomes
-    const genomes = await fetchList(GENOME_LIST_URL).catch(() => fetchList(BACKUP_GENOME_LIST_URL))
-    kept = { genomes, fetchedAt: Date.now() }
-    return genomes
+    try {
+      const genomes = await fetchList(GENOME_LIST_URL).catch(() => fetchList(BACKUP_GENOME_LIST_URL))
+      kept = { genomes, fetchedAt: Date.now() }
+    } catch (error) {
+      if (!kept) throw error
+      console.error('[genomes] the genome list could not be fetched again; using the one from before:', error)
+      kept.fetchedAt = Date.now()
+    }
+    return kept.genomes
   }
 }
 

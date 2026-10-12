@@ -4,19 +4,10 @@
  */
 import { describe, it, expect, afterEach, vi } from 'vitest'
 import { genomeListSource, lookUpGenome } from '../src/genomes.ts'
-import { GENOME_LIST, GENOME_LIST_URL } from './genomeList.ts'
+import { GENOME_LIST, GENOME_LIST_URL, serve } from './genomeList.ts'
 
 const BACKUP_URL = 'https://raw.githubusercontent.com/igvteam/igv-data/refs/heads/main/genomes/web/genomes.json'
 const HOUR = 60 * 60 * 1000
-
-/** Answers fetches from `answers`, by address; counts them in the mock it returns. */
-function serve(answers: Record<string, () => Response>) {
-  return vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
-    const url = input instanceof Request ? input.url : String(input)
-    if (!(url in answers)) throw new Error(`unexpected fetch of ${url}`)
-    return answers[url]()
-  })
-}
 
 const forbidden = () => new Response('403 Forbidden', { status: 403 })
 const NAMES = [
@@ -57,6 +48,24 @@ describe('the genome list', () => {
     vi.setSystemTime(Date.now() + 1)
     await listGenomes()
     expect(fetched).toHaveBeenCalledTimes(2)
+  })
+
+  it('from before is used when the hour is up and neither address answers', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    serve({ [GENOME_LIST_URL]: () => Response.json(GENOME_LIST) })
+    const listGenomes = genomeListSource()
+    await listGenomes()
+
+    vi.setSystemTime(Date.now() + HOUR)
+    serve({ [GENOME_LIST_URL]: forbidden, [BACKUP_URL]: forbidden })
+
+    expect(await listGenomes()).toEqual(NAMES)
+  })
+
+  it('names a genome that has no name by its id', async () => {
+    serve({ [GENOME_LIST_URL]: () => Response.json([{ id: 'ce11' }]) })
+
+    expect(await genomeListSource()()).toEqual([{ id: 'ce11', name: 'ce11' }])
   })
 
   it('that neither address gives is an error, and the next call tries again', async () => {
