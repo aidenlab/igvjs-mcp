@@ -43,7 +43,7 @@ A custom connector in Claude (desktop or web) or ChatGPT cannot: those Hosts con
 cloudflared tunnel --url http://localhost:8787
 ```
 
-Only the MCP endpoint needs the tunnel. The Join link still points at `http://localhost:5173`, which your own browser opens, and the Viewer reaches the Worker at `http://localhost:8787` as before.
+Only the MCP endpoint needs the tunnel. The Join link still points at `http://localhost:5173`, which your own browser opens. The Viewer joins its Room through its own address, `localhost:5173/ws`, which the Vite dev server passes on to the Worker at `localhost:8787` (`viewer/vite.config.ts`). It does not call `localhost:8787` itself: Claude desktop's built-in browser blocks a page from opening a socket to another local address, and the Viewer would sit at "Connection lost. Reconnecting…".
 
 Or call the tool by hand:
 
@@ -127,7 +127,8 @@ scripts/
 - `server/wrangler.toml`, `VIEWER_URL`: where the Viewer is served. Join links are built from it.
 - `server/wrangler.toml`, `VIEWER_ORIGINS`: the origins allowed to open `/ws`. Any other `Origin` is refused with 403.
 - `server/.dev.vars` (git-ignored; copy `server/.dev.vars.example`), `SESSION_HMAC_SECRET`: the key that derives ChatGPT's Room ids. Deployed, it is a Worker secret. Without it requests carrying only `x-openai-session` fail; there is no fallback key.
-- `viewer/.env`, `VITE_SERVER_URL`: the server the Viewer connects to.
+- `viewer/.env`, `VITE_SERVER_URL`: the server the Viewer connects to. Locally it is the Viewer's own dev server, which passes `/ws` on to the Worker.
+- `viewer/vite.config.ts`: the dev server's port and its `/ws` pass-through to the local Worker.
 
 The checked-in values are for local development. The dev deployment's values are in `[env.dev]` of `server/wrangler.toml` and in `scripts/deploy-dev.sh`.
 
