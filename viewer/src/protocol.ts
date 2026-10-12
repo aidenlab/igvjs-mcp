@@ -38,7 +38,23 @@ export type Command =
   | { type: 'zoom_in' }
   | { type: 'zoom_out' }
   | { type: 'change_genome'; genome: string }
+  | { type: 'load_tracks'; tracks: TrackToLoad[] }
+  | ({ type: 'remove_track' } & TrackAddress)
   | { type: 'read_session_summary' }
+
+/** A track to load: any URL the browser can fetch. */
+export interface TrackToLoad {
+  url: string
+  /** Absent for igv.js's default, the file's name. */
+  name?: string
+}
+
+/** Which track of the Session summary is meant: one of the two. */
+export interface TrackAddress {
+  name?: string
+  /** Counted from 1 at the top of the Session summary's tracks. */
+  position?: number
+}
 
 export type CommandType = Command['type']
 

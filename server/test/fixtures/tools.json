@@ -119,6 +119,68 @@
     }
   },
   {
+    "name": "load_tracks",
+    "title": "Load tracks",
+    "description": "Load one or several tracks into igv-bot, each from the URL of its file. The URLs come from a reply of search_catalogues (pass the row's url, and its name as the track's name) or from the user, who may give any URL their browser can fetch. Load every track a request asks for in one call: they are shown in the order given, and the Session summary of the reply says where igv.js put them, as a rule above the genome's own annotation track. A track given no name gets igv.js's default, the name of its file. When a loose request matches many tracks in the Catalogues, pick a sensible default, say in one line what you picked, and load it; ask the user only when the candidates differ in a way they would care about. A track that does not load is reported as an error carrying igv.js's own message, as for a file that does not exist or a host that does not permit cross-origin requests; the other tracks of the call are still loaded, and the Session summary shows which. The reply is the resulting Session summary: genome, loci, and tracks in display order.",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {
+        "tracks": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "url": {
+                "type": "string",
+                "description": "The URL of the track's file, such as the url of a search_catalogues row"
+              },
+              "name": {
+                "description": "The name to show the track under, such as the name of a search_catalogues row. Leave it out for the file's name.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "url"
+            ]
+          },
+          "description": "The tracks to load, in the order they are to be shown, top to bottom"
+        },
+        "room": {
+          "description": "The Room id igv-bot was opened with, as given in the reply of open_viewer. Pass it on every call.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "tracks"
+      ]
+    }
+  },
+  {
+    "name": "remove_track",
+    "title": "Remove a track",
+    "description": "Remove one track from igv-bot, addressed by its name or by its position in the tracks of the Session summary, counted from 1 at the top: \"the second track\" is position 2 and \"the bottom one\" is the last. Give name or position, not both. The user also reorders and removes tracks by hand, so take a position from the Session summary of the reply just before, or call read_session_summary first. A name or position that matches no track is reported as an error listing the tracks, and a name that several tracks share as an error giving their positions; either way nothing is removed. The sequence track cannot be removed. The reply is the resulting Session summary: genome, loci, and tracks in display order.",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {
+        "name": {
+          "description": "The name of the track as the Session summary gives it. Case does not matter.",
+          "type": "string"
+        },
+        "position": {
+          "description": "The position of the track in the tracks of the Session summary: 1 is the top track",
+          "type": "number"
+        },
+        "room": {
+          "description": "The Room id igv-bot was opened with, as given in the reply of open_viewer. Pass it on every call.",
+          "type": "string"
+        }
+      }
+    }
+  },
+  {
     "name": "read_session_summary",
     "title": "Read the Session summary",
     "description": "Read what igv-bot is showing now, without changing anything: genome, loci, tracks in display order with name, type, URL and height, and whether the crosshairs and centre line are showing. The user also changes igv-bot by hand (panning, zooming, reordering, resizing or removing tracks) and you are not told when they do. Call this before describing the view or acting on a reference to it, such as \"this region\" or \"the second track\", unless a reply from another igv-bot tool has just given you the Session summary.",

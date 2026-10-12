@@ -54,6 +54,15 @@ describe('a command tool with a Viewer in the Room', () => {
     ['go_to_gene', { gene: 'MYC' }, { type: 'go_to_gene', gene: 'MYC' }],
     ['zoom_in', {}, { type: 'zoom_in' }],
     ['zoom_out', {}, { type: 'zoom_out' }],
+    [
+      'load_tracks',
+      { tracks: [{ url: 'https://example.org/ctcf.bigWig', name: 'K562 CTCF' }, { url: 'https://example.org/peaks.bed' }] },
+      { type: 'load_tracks', tracks: [{ url: 'https://example.org/ctcf.bigWig', name: 'K562 CTCF' }, { url: 'https://example.org/peaks.bed' }] },
+    ],
+    ['remove_track', { name: 'K562 CTCF' }, { type: 'remove_track', name: 'K562 CTCF' }],
+    ['remove_track', { position: 2 }, { type: 'remove_track', position: 2 }],
+    // A number that is no position still reaches the Viewer, whose error lists the tracks.
+    ['remove_track', { position: 0 }, { type: 'remove_track', position: 0 }],
     ['read_session_summary', {}, { type: 'read_session_summary' }],
   ])('%s reaches the Viewer as its command and replies with the Session summary', async (tool, args, command) => {
     const viewer = await joinedViewer('C0MMAND002')

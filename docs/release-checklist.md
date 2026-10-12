@@ -52,6 +52,16 @@ Once in each Host, with the Viewer open on hg38. These are real fetches from igv
 - [ ] "Find 4DN compartments for HUVEC" is answered with 4DN tracks, none of them a contact matrix.
 - [ ] After "switch to mm10", "find CTCF ChIP-seq" is answered with mouse tracks without the genome being named.
 
+## Loading and removing tracks
+
+Once in each Host, with the Viewer open on hg38. These are real fetches from ENCODE and 4DN.
+
+- [ ] "Show me CTCF ChIP-seq in K562" loads one ENCODE track, and the model says in one line which it picked.
+- [ ] "Add the compartments for HUVEC from 4DN" loads a 4DN track.
+- [ ] A pasted URL loads: "load https://hgdownload.soe.ucsc.edu/goldenPath/hg38/phyloP100way/hg38.phyloP100way.bw".
+- [ ] "Load https://example.com/track.bigWig" loads nothing, and the model reports that the file could not be read.
+- [ ] "Remove the second track" and "remove the CTCF track" each remove that track and no other.
+
 ## Room and Conversation
 
 Once in Claude desktop and once in ChatGPT desktop in Codex mode. Read the Room id in the Viewer's status line. The Worker's log (`npx wrangler tail --env dev` in `server`) names the Room each tool call acted on.
