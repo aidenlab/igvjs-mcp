@@ -54,6 +54,11 @@ export function encodeTable(rows: string[][]): string {
   return table(ENCODE_HEADER, rows)
 }
 
+/** More ENCODE rows than a search gives in full: 25, all with target POLR2A. */
+export const MANY_ROWS = Array.from({ length: 25 }, (_, index) =>
+  encodeRow(`ENCFF1${String(index).padStart(2, '0')}AAA`, 'Homo sapiens HepG2', 'ChIP-seq', 'POLR2A', 'signal p-value'),
+)
+
 export const ENCODE_CHIP = encodeTable([
   encodeRow('ENCFF001AAA', 'Homo sapiens K562', 'ChIP-seq', 'CTCF', 'fold change over control'),
   encodeRow('ENCFF002AAA', 'Homo sapiens K562', 'ChIP-seq', 'CTCF', 'signal p-value'),
@@ -69,6 +74,7 @@ export const ENCODE_SIGNALS = encodeTable([
 
 export const ENCODE_OTHER = encodeTable([
   encodeRow('ENCFF008AAA', 'Homo sapiens K562', 'ChIP-seq', 'CTCF', 'IDR thresholded peaks', 'bigBed'),
+  encodeRow('ENCFF009AAA', 'Homo sapiens K562', 'RNA-seq', '', 'gene quantifications', 'tsv'), // a table of numbers, not a track
 ])
 
 const FOUR_DN_HEADER = 'url Project Assembly Type Biosource Assay Replicate Dataset Description Lab Publications Accession Experiment name color altColor'

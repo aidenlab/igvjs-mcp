@@ -33,19 +33,18 @@ export interface CatalogueTable {
   lines: string[]
 }
 
-/** The 4DN rows that are Hi-C contact matrices, which igv.js does not draw, by what their Type column says. */
-const CONTACT_MATRIX = 'contact matrix'
-
 /**
  * Reads a table as igv-data has it: tab-separated, a header row first. The
- * contact matrices of 4DN are left out here, so no search ever finds one.
+ * rows igv.js cannot show as a track are left out here, so no search ever
+ * finds one.
  */
 export function readCatalogueTable(catalogue: CatalogueName, text: string): CatalogueTable {
   const [header = '', ...lines] = text.split('\n')
   const columns = new Map(header.split('\t').map((name, index) => [name.trim(), index]))
-  const type = columns.get('Type') ?? -1
-  const shown = (line: string) => catalogue !== '4DN' || line.split('\t')[type]?.trim().toLowerCase() !== CONTACT_MATRIX
-  return { catalogue, columns, lines: lines.filter((line) => line.trim() !== '' && shown(line)) }
+  const { notATrack } = LAYOUTS[catalogue]
+  const column = columns.get(notATrack.column) ?? -1
+  const isTrack = (line: string) => line.split('\t')[column]?.trim().toLowerCase() !== notATrack.value
+  return { catalogue, columns, lines: lines.filter((line) => line.trim() !== '' && isTrack(line)) }
 }
 
 /** Text as it is matched: lower case, without punctuation. */
@@ -59,6 +58,9 @@ function words(text: string | undefined): string[] {
     .filter(Boolean)
 }
 
+/** The small words of a spoken request, which name no data: "CTCF ChIP-seq in K562" is searched as "CTCF ChIP-seq K562". */
+const SMALL_WORDS = new Set(['a', 'an', 'and', 'for', 'from', 'in', 'of', 'on', 'the', 'with'])
+
 /** Where ENCODE's files are: its tables give each file's address relative to this. */
 const ENCODE_ORIGIN = 'https://www.encodeproject.org'
 
@@ -68,6 +70,10 @@ interface Layout {
   fields: Record<string, string>
   /** The columns each filter reads. */
   filters: Record<Filter, string[]>
+  /** The columns free text does not read: a file's address and colours say nothing of what the file is. */
+  unsearched: string[]
+  /** The rows igv.js cannot show as a track: those with this value, in lower case, in this column. */
+  notATrack: { column: string; value: string }
   url: (fields: Record<string, string>, cell: (column: string) => string) => string
   name: (fields: Record<string, string>, cell: (column: string) => string) => string
 }
@@ -87,6 +93,9 @@ const LAYOUTS: Record<CatalogueName, Layout> = {
       techRep: 'TechRep',
     },
     filters: { biosample: ['Biosample'], assay: ['AssayType'], target: ['Target'], outputType: ['OutputType'] },
+    unsearched: ['ID', 'HREF'],
+    // Quantifications of genes and transcripts: tables of numbers.
+    notATrack: { column: 'Format', value: 'tsv' },
     url: (_, cell) => ENCODE_ORIGIN + cell('HREF'),
     // The name igv-webapp gives an ENCODE track.
     name: ({ biosample, assay, target }) => [biosample, target, assay.toLowerCase() === 'chip-seq' ? '' : assay].filter(Boolean).join(' '),
@@ -109,6 +118,9 @@ const LAYOUTS: Record<CatalogueName, Layout> = {
     },
     // Assay holds the restriction enzyme; that the assay is Hi-C is said in Dataset. The table names no targets.
     filters: { biosample: ['Biosource'], assay: ['Assay', 'Dataset'], target: [], outputType: ['Type'] },
+    unsearched: ['url', 'color', 'altColor'],
+    // Hi-C contact matrices, which igv.js does not draw.
+    notATrack: { column: 'Type', value: 'contact matrix' },
     url: (_, cell) => cell('url'),
     name: ({ outputType, biosample }, cell) => cell('name') || `${outputType} for ${biosample}`,
   },
@@ -145,34 +157,38 @@ export interface CatalogueMatches {
  * answered with twenty rows of CTCFL.
  */
 export function searchCatalogues(tables: CatalogueTable[], query: CatalogueQuery): CatalogueMatches {
-  const textWords = words(query.text)
-  const filters = FILTERS.map((filter) => ({ filter, words: words(query[filter]) })).filter((filter) => filter.words.length > 0)
-  // A filter's words are in its column, so they are in the line: most lines are passed over without being split.
-  const everyWord = [...textWords, ...filters.flatMap((filter) => filter.words)]
+  const textWords = words(query.text).filter((word) => !SMALL_WORDS.has(word))
+  const filters = FILTERS.map((filter) => ({ filter, wanted: words(query[filter]) })).filter(({ wanted }) => wanted.length > 0)
+  // Every word that must be in some column is in the line: most lines are passed over without being split.
+  const everyWord = [...textWords, ...filters.flatMap(({ wanted }) => wanted)]
   const totals: Record<CatalogueName, number> = { ENCODE: 0, '4DN': 0 }
   const whole: CatalogueRow[] = []
   const partial: CatalogueRow[] = []
   for (const table of tables) {
-    const read = filters.map(({ filter, words }) => ({
-      words,
+    const filterColumns = filters.map(({ filter, wanted }) => ({
+      wanted,
       columns: LAYOUTS[table.catalogue].filters[filter].map((column) => table.columns.get(column) ?? -1),
     }))
+    const unsearched = LAYOUTS[table.catalogue].unsearched.map((column) => table.columns.get(column) ?? -1)
     for (const line of table.lines) {
-      const folded = fold(line)
-      if (!everyWord.every((word) => folded.includes(word))) continue
-      if (read.length > 0) {
+      let searched = ''
+      if (everyWord.length > 0) {
+        const folded = fold(line)
+        if (!everyWord.every((word) => folded.includes(word))) continue
         // Folding leaves the tabs between columns where they were.
         const cells = folded.split('\t')
-        const inColumns = read.every(({ words, columns }) => {
+        const inColumns = filterColumns.every(({ wanted, columns }) => {
           const text = columns.map((column) => cells[column] ?? '').join(' ')
-          return words.every((word) => text.includes(word))
+          return wanted.every((word) => text.includes(word))
         })
         if (!inColumns) continue
+        for (const column of unsearched) cells[column] = ''
+        searched = ` ${cells.join(' ').replace(/\s+/g, ' ')} `
+        if (!textWords.every((word) => searched.includes(word))) continue
       }
       totals[table.catalogue]++
       if (whole.length >= MAX_ROWS) continue
-      const spaced = ` ${folded.replace(/\s+/g, ' ')} `
-      if (everyWord.every((word) => spaced.includes(` ${word} `))) whole.push(rowOf(table, line))
+      if (everyWord.every((word) => searched.includes(` ${word} `))) whole.push(rowOf(table, line))
       else if (partial.length < MAX_ROWS) partial.push(rowOf(table, line))
     }
   }
@@ -202,6 +218,9 @@ function tableAddresses(genome: string): Array<{ catalogue: CatalogueName; url: 
   ]
 }
 
+/** A genome id that can be part of a table's address. The id may come from a Viewer, which can show a genome that is not on the igv.org list. */
+const GENOME_ID = /^[\w.-]+$/
+
 /** How long a table is given to arrive. The largest is over 20 MB. */
 const FETCH_TIMEOUT_MS = 20_000
 
@@ -218,19 +237,21 @@ async function fetchTable({ catalogue, url }: { catalogue: CatalogueName; url: s
 
 /**
  * Gives the Catalogue tables of a genome, fetched from igv-data and kept for
- * an hour. Only the genome last asked for is kept: one genome's tables are tens
+ * an hour. Only the genome last fetched is kept: one genome's tables are tens
  * of megabytes. Tables that cannot all be read are an error, and the next call
  * fetches again.
  */
 export function catalogueSource(): (genome: string) => Promise<CatalogueTable[]> {
-  let kept: { genome: string; tables: Promise<CatalogueTable[]>; fetchedAt: number } | undefined
-  return (genome) => {
+  let kept: { genome: string; tables: CatalogueTable[]; fetchedAt: number } | undefined
+  return async (genome) => {
     if (kept && kept.genome === genome && Date.now() - kept.fetchedAt < TABLES_TTL_MS) return kept.tables
-    const fetching = { genome, tables: Promise.all(tableAddresses(genome).map(fetchTable)), fetchedAt: Date.now() }
-    kept = fetching
-    fetching.tables.catch(() => {
-      if (kept === fetching) kept = undefined
-    })
-    return fetching.tables
+    // No Catalogue has tables for a genome with such an id, and it is not put in an address to find out.
+    if (!GENOME_ID.test(genome)) return []
+    // The tables from before are let go first, so that two genomes' are not held at once.
+    kept = undefined
+    // What is kept is the tables and not the promise of them: a Worker's request cannot wait on a fetch another request began.
+    const tables = await Promise.all(tableAddresses(genome).map(fetchTable))
+    kept = { genome, tables, fetchedAt: Date.now() }
+    return tables
   }
 }

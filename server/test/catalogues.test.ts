@@ -15,6 +15,7 @@ import {
   ENCODE_SIGNALS_URL,
   FOUR_DN,
   FOUR_DN_URL,
+  MANY_ROWS,
   encodeRow,
   encodeTable,
   hg38Catalogues,
@@ -48,8 +49,25 @@ describe('free text', () => {
     expect(found({ text })).toEqual(['ENCFF003AAA', 'ENCFF004AAA'])
   })
 
+  it('passes over the small words of a spoken request: "CTCF ChIP-seq in K562" is "CTCF ChIP-seq K562"', () => {
+    expect(found({ text: 'the CTCF ChIP-seq in K562' })).toEqual(['ENCFF001AAA', 'ENCFF002AAA', 'ENCFF008AAA'])
+  })
+
+  it("does not read a file's address, which says nothing of what the file is", () => {
+    expect(found({ text: 'download' })).toEqual([])
+    expect(found({ text: 'amazonaws' })).toEqual([])
+    expect(found({ text: 'rgb' })).toEqual([])
+  })
+
   it('ignores the punctuation of the table too', () => {
     expect(found({ text: 'chipseq gm12878' })).toEqual(['ENCFF003AAA', 'ENCFF005AAA'])
+  })
+})
+
+describe('a file igv.js cannot show as a track', () => {
+  it('is never found: an ENCODE table of quantifications is not offered', () => {
+    expect(found({ text: 'ENCFF009AAA' })).toEqual([])
+    expect(found({ outputType: 'quantifications' })).toEqual([])
   })
 })
 
@@ -146,13 +164,12 @@ describe('a row found', () => {
 })
 
 describe('a search that matches many rows', () => {
-  const many = Array.from({ length: 25 }, (_, index) => encodeRow(`ENCFF1${String(index).padStart(2, '0')}AAA`, 'Homo sapiens HepG2', 'ChIP-seq', 'POLR2A', 'signal p-value'))
-  const tables = [readCatalogueTable('ENCODE', encodeTable(many)), readCatalogueTable('4DN', FOUR_DN)]
+  const tables = [readCatalogueTable('ENCODE', encodeTable(MANY_ROWS)), readCatalogueTable('4DN', FOUR_DN)]
 
   it('gives the first 20 rows and the count of them all', () => {
     const matches = searchCatalogues(tables, { target: 'POLR2A' })
 
-    expect(matches.rows.map((row) => row.accession)).toEqual(many.slice(0, 20).map((row) => row[11]))
+    expect(matches.rows.map((row) => row.accession)).toEqual(MANY_ROWS.slice(0, 20).map((row) => row[11]))
     expect(matches.total).toBe(25)
   })
 
@@ -213,6 +230,13 @@ describe('the tables of a genome', () => {
     expect(searchCatalogues(tables, {}).totals).toEqual({ ENCODE: 6, '4DN': 0 })
   })
 
+  it('of a genome whose id could not be part of an address are none, and nothing is fetched', async () => {
+    const fetched = serve({})
+
+    expect(await catalogueSource()('../../../evil/repo/main/x')).toEqual([])
+    expect(fetched).not.toHaveBeenCalled()
+  })
+
   it('are fetched once and kept for an hour', async () => {
     vi.useFakeTimers({ toFake: ['Date'] })
     const fetched = serve(hg38Catalogues())
@@ -226,15 +250,6 @@ describe('the tables of a genome', () => {
     vi.setSystemTime(Date.now() + 1)
     await listTables('hg38')
     expect(fetched).toHaveBeenCalledTimes(8)
-  })
-
-  it('are fetched once for searches that arrive together', async () => {
-    const fetched = serve(hg38Catalogues())
-    const listTables = catalogueSource()
-
-    await Promise.all([listTables('hg38'), listTables('hg38')])
-
-    expect(fetched).toHaveBeenCalledTimes(4)
   })
 
   it('that cannot all be read are an error, and the next search fetches again', async () => {

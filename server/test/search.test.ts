@@ -4,7 +4,7 @@
  */
 import { describe, it, expect, afterEach, beforeAll } from 'vitest'
 import { MessageType, type SessionSummary } from 'igvjs-mcp-viewer/protocol'
-import { DATA, ENCODE_CHIP, encodeRow, encodeTable, hg38Catalogues, notFound } from './catalogueTables.ts'
+import { DATA, ENCODE_CHIP, MANY_ROWS, encodeTable, hg38Catalogues, notFound } from './catalogueTables.ts'
 import { GENOME_LIST, GENOME_LIST_URL, serve } from './genomeList.ts'
 import { callTool, type ToolResult } from './mcp.ts'
 import { openViewer, join, closeViewers } from './viewers.ts'
@@ -21,17 +21,12 @@ function everyTable(genome: string, answer: () => Response): Record<string, () =
   }
 }
 
-/** More rows than a reply shows. */
-const MANY = encodeTable(
-  Array.from({ length: 25 }, (_, index) => encodeRow(`ENCFF1${String(index).padStart(2, '0')}AAA`, 'Drosophila melanogaster S2', 'ChIP-seq', 'POLR2A', 'signal p-value')),
-)
-
 // hg38 has every table; mm10 and dm6 one ENCODE table each; hs1 none; rn7's cannot be read.
 beforeAll(() => {
   serve({
     [GENOME_LIST_URL]: () => Response.json([...GENOME_LIST, { id: 'dm6', name: 'D. melanogaster (dm6)' }]),
     ...everyTable('dm6', notFound),
-    [`${DATA}/encode/dm6.signals.chip.txt`]: () => new Response(MANY),
+    [`${DATA}/encode/dm6.signals.chip.txt`]: () => new Response(encodeTable(MANY_ROWS)),
     ...hg38Catalogues(),
     ...everyTable('mm10', notFound),
     [`${DATA}/4dn/4dn_GRCm38_tracks.txt`]: notFound,
@@ -88,7 +83,7 @@ describe('search_catalogues given a genome', () => {
     expect(accessionsIn(await callTool('search_catalogues', undefined, args))).toEqual(['ENCFF004AAA'])
   })
 
-  it('searches 4DN in the same request, and never offers a contact matrix', async () => {
+  it('searches 4DN in the same search, and never offers a contact matrix', async () => {
     const result = await callTool('search_catalogues', undefined, { genome: 'hg38', biosample: 'K562', text: 'MboI' })
 
     expect(accessionsIn(result)).toEqual(['4DNFI002AAA'])
@@ -155,6 +150,15 @@ describe('search_catalogues given no genome', () => {
     expect(result.isError).toBe(true)
     expect(result.content[0].text).toBe(
       'Error: it is not known which genome igv-bot is showing in Room SEARCH0003: no Viewer has reported from it. Pass genome, or open igv-bot with open_viewer and search again.',
+    )
+  })
+
+  it("in an MCP session's Room no Viewer has reported from, says to pass room as well, as a command without a Viewer does", async () => {
+    const result = await callTool('search_catalogues', { 'mcp-session-id': 'SEARCH0006' }, { text: 'CTCF' })
+
+    expect(result.isError).toBe(true)
+    expect(result.content[0].text).toBe(
+      "Error: it is not known which genome igv-bot is showing: no Viewer has reported from this MCP session's Room. If igv-bot is already open, call again with room set to the Room id from the reply of open_viewer. Otherwise pass genome, or open igv-bot with open_viewer and search again.",
     )
   })
 

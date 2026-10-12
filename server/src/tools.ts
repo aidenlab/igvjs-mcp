@@ -248,7 +248,7 @@ export function registerTools(
     {
       title: 'Search the ENCODE and 4DN Catalogues',
       description:
-        'Find tracks for a loose request, such as "CTCF ChIP-seq in K562", in the ENCODE and 4DN Catalogues: the tables of signal, peak and annotation files those projects publish for a genome. Use this whenever the user asks for data by what it is instead of by URL. Both Catalogues are searched at once, for the genome igv-bot is showing. Matching ignores case and punctuation, so "H3K27ac", "h3k27ac" and "H3-K27ac" find the same rows; there are no synonyms, so use the Catalogues\' own terms (a cell line as "K562" or "GM12878", an assay as "ChIP-seq" or "DNase-seq"). The reply holds the count of all matching rows, in total and in each Catalogue, and at most 20 of them in full, each with the name and url to load it as a track. When more match than are shown, narrow the search with the filters or with more words; add "4DN" to text to see only 4DN rows. When a loose request matches many tracks, pick a sensible default (for ChIP-seq, a "fold change over control" signal of the replicates together, such as bioRep "1,2"), say in one line what you picked, and load it; ask the user only when the candidates differ in a way they would care about. Hi-C contact matrices are never offered: igv-bot cannot show them.',
+        'Find tracks for a loose request, such as "CTCF ChIP-seq in K562", in the ENCODE and 4DN Catalogues: the tables of signal, peak and annotation files those projects publish for a genome. Use this whenever the user asks for data by what it is instead of by URL. Both Catalogues are searched at once, for the genome igv-bot is showing. Matching ignores case and punctuation, so "H3K27ac", "h3k27ac" and "H3-K27ac" find the same rows; there are no synonyms, so use the Catalogues\' own terms (a cell line as "K562" or "GM12878", an assay as "ChIP-seq" or "DNase-seq"). The reply holds the count of all matching rows, in total and in each Catalogue, and at most 20 of them in full, each with the name and url to load it as a track. When more match than are shown, narrow the search with the filters or with more words. The 4DN rows are the compartments, boundaries and insulation scores of Hi-C experiments: ask for them by outputType. When a loose request matches many tracks, pick a sensible default (for ChIP-seq, a "fold change over control" signal of the replicates together, such as bioRep "1,2"), say in one line what you picked, and load it; ask the user only when the candidates differ in a way they would care about. Hi-C contact matrices and tables of gene or transcript quantifications are never offered: igv-bot cannot show them.',
       inputSchema: { ...SEARCH_ARGUMENTS, room: SEARCH_ROOM_ARGUMENT },
     },
     async ({ room, genome, ...query }) => {
@@ -270,8 +270,11 @@ export function registerTools(
       } else if (summary) {
         searched = summary.genome
       } else if (from) {
+        logRoom('search_catalogues', from, 'no genome known')
         return errorReply(
-          `it is not known which genome igv-bot is showing in Room ${from.roomId}: no Viewer has reported from it. Pass genome, or open igv-bot with open_viewer and search again.`,
+          from.named
+            ? `it is not known which genome igv-bot is showing in Room ${from.roomId}: no Viewer has reported from it. Pass genome, or open igv-bot with open_viewer and search again.`
+            : "it is not known which genome igv-bot is showing: no Viewer has reported from this MCP session's Room. If igv-bot is already open, call again with room set to the Room id from the reply of open_viewer. Otherwise pass genome, or open igv-bot with open_viewer and search again.",
         )
       } else {
         return errorReply('no genome was given and there is no Room to read one from. Pass genome, or pass room.')
@@ -290,7 +293,8 @@ export function registerTools(
       }
 
       const { total, totals, rows } = searchCatalogues(tables, query)
-      console.log(`[mcp] search_catalogues | ${searched} | ${total} match`)
+      if (from) logRoom('search_catalogues', from, `${searched}, ${total} match`)
+      else console.log(`[mcp] search_catalogues | no Room | ${searched}, ${total} match`)
       if (total === 0) {
         return reply(`No track matches in the Catalogues for ${searched}. Every word of text and of each filter must be in a row: search again with fewer words.`)
       }
