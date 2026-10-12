@@ -5,7 +5,7 @@ Lets a person explore genomic data with igv.js beside a Claude or ChatGPT conver
 ## Language
 
 **Host**:
-The chat application, Claude or ChatGPT, that a person talks to and that displays the Viewer.
+The application a person talks to the model in and that displays the Viewer: Claude desktop, claude.ai on the web, or ChatGPT desktop in Codex mode.
 _Avoid_: Client, chat app
 
 **Conversation**:

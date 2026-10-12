@@ -2,7 +2,7 @@
 
 The Viewer is a hosted web page on its own origin. The Connector's "open viewer" tool returns a Join link (the page's URL carrying `?room=`), and the Host opens that link in its Side panel beside the Conversation. In Claude desktop this is the built-in browser pane: the model opens the link there itself, and a small join card (an MCP App) offers an "Open" button that goes through the Host's open-link request, which Claude routes to the same pane. This is how `juicebox-mcp` (Juicebot) works today, and this project copies it.
 
-Where a Host has no Side panel, or does not route links to it, the same Join link opens in a browser tab and everything else works unchanged. ChatGPT should get the Side panel if it supports one; that is to be established by trying it.
+Where a Host has no Side panel, or does not route links to it, the same Join link opens in a browser tab and everything else works unchanged. ChatGPT desktop in Codex mode has a Side panel too, reached by the join card's button and not by the model (#17).
 
 ## Considered Options
 
