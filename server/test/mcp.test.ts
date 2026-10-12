@@ -4,21 +4,10 @@
 import { SELF, env } from 'cloudflare:test'
 import { describe, it, expect } from 'vitest'
 import worker from '../src/index.ts'
+import toolsFixture from './fixtures/tools.json'
+import { rpc, initialize, callTool } from './mcp.ts'
 
 const ROOM_ID = /^[0-9A-HJKMNP-TV-Z]{10}$/ // Crockford base32: no I, L, O, U
-
-let rpcId = 0
-function rpc(method: string, params: object, headers: Record<string, string> = {}) {
-  return SELF.fetch('https://igv-bot.test/mcp', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Accept: 'application/json, text/event-stream', ...headers },
-    body: JSON.stringify({ jsonrpc: '2.0', id: ++rpcId, method, params }),
-  })
-}
-
-function initialize(headers?: Record<string, string>) {
-  return rpc('initialize', { protocolVersion: '2025-03-26', capabilities: {}, clientInfo: { name: 'test', version: '0' } }, headers)
-}
 
 describe('initialize', () => {
   it('answers as igv-bot with an mcp-session-id that is a freshly minted Room id', async () => {
@@ -34,25 +23,7 @@ describe('initialize', () => {
   })
 })
 
-interface ToolResult {
-  content: Array<{ type: string; text?: string; uri?: string; name?: string; mimeType?: string }>
-  structuredContent?: Record<string, unknown>
-  isError?: boolean
-}
-
-async function callTool(name: string, headers?: Record<string, string>) {
-  const res = await rpc('tools/call', { name, arguments: {} }, headers)
-  return (await res.json<{ result: ToolResult }>()).result
-}
-
 describe('open_viewer', () => {
-  it('is the one tool the Connector lists', async () => {
-    const res = await rpc('tools/list', {})
-    const { result } = await res.json<{ result: { tools: Array<{ name: string; title: string }> } }>()
-
-    expect(result.tools.map((tool) => [tool.name, tool.title])).toEqual([['open_viewer', 'Open igv-bot']])
-  })
-
   it("returns the Join link for the session's Room, as text and as a resource link", async () => {
     const result = await callTool('open_viewer', { 'mcp-session-id': '7ZQH4M2K9X' })
 
@@ -140,6 +111,16 @@ describe('Join card', () => {
     const read = await rpc('resources/read', { uri: 'ui://igv-bot/join' })
     const [card] = (await read.json<{ result: { contents: CardResource[] } }>()).result.contents
     expect(card.text).toContain('sc?.joinUrl') // a rename on either side would leave the card scraping the text
+  })
+})
+
+describe('the tools the Connector lists', () => {
+  it('match the pinned fixture: every name, title, description and schema', async () => {
+    const res = await rpc('tools/list', {})
+    const { result } = await res.json<{ result: { tools: Array<Record<string, unknown>> } }>()
+
+    const listed = result.tools.map(({ name, title, description, inputSchema }) => ({ name, title, description, inputSchema }))
+    expect(listed).toEqual(toolsFixture)
   })
 })
 

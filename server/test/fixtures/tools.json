@@ -1,0 +1,68 @@
+[
+  {
+    "name": "open_viewer",
+    "title": "Open igv-bot",
+    "description": "Get the Join link that opens igv-bot, an igv.js genome browser, connected to the Room bound to this MCP session. Use this when the user asks to open a genome browser or says things like \"open igv-bot\", \"open IGV\", \"launch igv-bot\" or \"show me the genome browser\". A greeting addressed to igv-bot (\"hello igv-bot\", \"hello IGV bot\", \"hi igv\") is also a request to open it: call this tool straight away instead of only greeting back. It opens on hg38 in whole-genome view with the default gene annotation track. A card is shown to the user with an Open igv-bot button. If, and only if, you have the built-in browser of the Claude desktop app (the browser panel beside the conversation), open the Join link in it right away: the page connects to this session's Room and later tool calls redraw it there. Never use Claude in Chrome or any other browser tool for this; if the built-in browser is not available, do not try anything else. Do not repeat the link or the Room id in your reply.",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {}
+    }
+  },
+  {
+    "name": "go_to_locus",
+    "title": "Go to a locus",
+    "description": "Move igv-bot to a locus given as coordinates, such as \"chr8:127,735,434-127,742,951\", or to a whole chromosome, such as \"chr8\". Use \"all\" for the whole-genome view. Several loci separated by spaces are shown side by side. For a gene name use go_to_gene. The reply is the resulting Session summary: genome, loci, and tracks in display order.",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {
+        "locus": {
+          "type": "string",
+          "description": "Coordinates as chr:start-end (1-based, commas allowed), a chromosome name, or \"all\""
+        }
+      },
+      "required": [
+        "locus"
+      ]
+    }
+  },
+  {
+    "name": "go_to_gene",
+    "title": "Go to a gene",
+    "description": "Move igv-bot to a gene by its name, such as \"MYC\" or \"BRCA1\", looked up in the current genome. An unknown gene is reported as an error and the view does not move. The reply is the resulting Session summary: genome, loci, and tracks in display order.",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {
+        "gene": {
+          "type": "string",
+          "description": "Gene name or symbol, such as \"MYC\""
+        }
+      },
+      "required": [
+        "gene"
+      ]
+    }
+  },
+  {
+    "name": "zoom_in",
+    "title": "Zoom in",
+    "description": "Zoom igv-bot in by a factor of two, keeping the centre of the view. Call it again to zoom further. The whole-genome view does not zoom: go to a locus or gene first. The reply is the resulting Session summary: genome, loci, and tracks in display order.",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {}
+    }
+  },
+  {
+    "name": "zoom_out",
+    "title": "Zoom out",
+    "description": "Zoom igv-bot out by a factor of two, keeping the centre of the view where possible. Call it again to zoom further. The whole-genome view does not zoom. The reply is the resulting Session summary: genome, loci, and tracks in display order.",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {}
+    }
+  }
+]

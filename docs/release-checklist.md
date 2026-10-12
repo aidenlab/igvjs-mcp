@@ -8,7 +8,7 @@ Only Claude is supported for now (see the findings in `docs/v1-design.md`). Unti
 
 ## Before trying the Hosts
 
-- [ ] `npm run typecheck` and `npm run test:run` pass.
+- [ ] `npm run typecheck`, `npm run test:run` and `npm run test:roundtrip` pass.
 - [ ] `scripts/deploy-dev.sh` finished without error.
 - [ ] `https://igv-bot-dev.3dg.io/` loads hg38 and reads "Not connected. Ask Claude or ChatGPT to open igv-bot."
 - [ ] The Connector is added to Claude and to ChatGPT with the connector URL above and no authentication.
@@ -22,6 +22,15 @@ Run this list four times: Claude desktop, claude.ai on the web, ChatGPT desktop,
 - [ ] The model replies in one short sentence and does not repeat the Join link or the Room id.
 - [ ] The Viewer launches as igv-webapp does: hg38 in whole-genome view with the ruler, the sequence track and RefSeq genes.
 - [ ] The status line reads "Connected · Room …".
+
+## Navigation
+
+Once in each Host, with the Viewer open.
+
+- [ ] "Go to chr8:127,735,434-127,742,951" moves the Viewer there.
+- [ ] "Go to BRCA1" moves the Viewer to the gene.
+- [ ] "Zoom in" and "zoom out" each change the scale by a factor of two.
+- [ ] "Go to NOTAGENE" leaves the view where it was, and the model says the gene was not recognised.
 
 ## Room and Conversation
 

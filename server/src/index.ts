@@ -105,7 +105,11 @@ async function handleMcpRequest(request: Request, env: Env): Promise<Response> {
     }
 
     const mcpServer = new McpServer({ name: 'igv-bot', version: '0.0.0' })
-    registerTools(mcpServer, { roomId, viewerUrl: env.VIEWER_URL })
+    registerTools(mcpServer, {
+      roomId,
+      viewerUrl: env.VIEWER_URL,
+      sendCommand: (room, command) => env.ROOM.get(env.ROOM.idFromName(room)).command(command),
+    })
     const transport = new WebStandardStreamableHTTPServerTransport({
       sessionIdGenerator: undefined,
       enableJsonResponse: true,
