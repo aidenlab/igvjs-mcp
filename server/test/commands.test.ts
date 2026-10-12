@@ -116,8 +116,8 @@ describe('the Session summary a Viewer sends after a change made by hand', () =>
 
   it('is carried by a reply the Viewer does not answer, as the summary from before the call', async () => {
     const viewer = await joinedViewer('SVMMARY001')
-    viewer.send({ type: MessageType.SUMMARY, summary: SUMMARY })
-    viewer.send({ type: MessageType.SUMMARY, summary: PANNED })
+    viewer.send({ type: MessageType.SESSION, session: {}, summary: SUMMARY })
+    viewer.send({ type: MessageType.SESSION, session: {}, summary: PANNED })
 
     const reply = callTool('zoom_in', { 'mcp-session-id': 'SVMMARY001' })
     await nextCommand(viewer)
@@ -133,7 +133,7 @@ describe('the Session summary a Viewer sends after a change made by hand', () =>
   it('is kept by the Room after the Viewer that sent it has gone, and a later Viewer need not send it again', async () => {
     const first = await openViewer('SVMMARY002')
     await join(first)
-    first.send({ type: MessageType.SUMMARY, summary: PANNED })
+    first.send({ type: MessageType.SESSION, session: {}, summary: PANNED })
     await join(first) // answered after the summary was taken in
     closeViewers()
 
@@ -146,7 +146,7 @@ describe('the Session summary a Viewer sends after a change made by hand', () =>
 
   it("gives way to the summary of a later ack", async () => {
     const viewer = await joinedViewer('SVMMARY003')
-    viewer.send({ type: MessageType.SUMMARY, summary: PANNED })
+    viewer.send({ type: MessageType.SESSION, session: {}, summary: PANNED })
     const acked = callTool('go_to_locus', { 'mcp-session-id': 'SVMMARY003' }, { locus: 'chr8:127,735,434-127,742,951' })
     viewer.send({ type: MessageType.ACK, id: (await nextCommand(viewer)).id, ok: true, summary: SUMMARY })
     await acked

@@ -20,6 +20,8 @@ export interface ToolDeps {
   viewerUrl: string
   /** Pushes a command to the Viewers in a Room and waits for the first ack. */
   sendCommand: (roomId: string, command: Command) => Promise<CommandDelivery>
+  /** Makes an expired Room a new one, so that its Join link works again. */
+  reopenRoom: (roomId: string) => Promise<void>
 }
 
 /**
@@ -68,7 +70,7 @@ function joinLinkFor(viewerUrl: string, roomId: string): string {
   return joinLink.toString()
 }
 
-export function registerTools(mcpServer: McpServer, { roomId: sessionRoomId, viewerUrl, sendCommand }: ToolDeps): void {
+export function registerTools(mcpServer: McpServer, { roomId: sessionRoomId, viewerUrl, sendCommand, reopenRoom }: ToolDeps): void {
   mcpServer.registerResource(
     'igv-bot Join card',
     JOIN_CARD_URI,
@@ -93,6 +95,7 @@ export function registerTools(mcpServer: McpServer, { roomId: sessionRoomId, vie
       if ('refusal' in target) return target.refusal
       logRoom('open_viewer', target)
       const { roomId } = target
+      await reopenRoom(roomId)
       const joinLink = joinLinkFor(viewerUrl, roomId)
       const structuredContent: JoinCardContent = { room: roomId, joinUrl: joinLink }
       // A bare URL on its own line: Hosts render it clickable, which a code block

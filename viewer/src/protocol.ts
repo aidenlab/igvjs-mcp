@@ -6,19 +6,29 @@
 
 export const MessageType = {
   JOIN: 'join', // Viewer → Room: {}
-  JOINED: 'joined', // Room → Viewer: {room}
+  JOINED: 'joined', // Room → Viewer: {room}, and {session} when the Room has one saved
+  EXPIRED: 'expired', // Room → Viewer: {}, in answer to a join of a Room whose stored data was deleted; the Room then closes the socket
   COMMAND: 'command', // Room → Viewer: {id, command}
   ACK: 'ack', // Viewer → Room: {id, ok: true, summary} or {id, ok: false, error, summary}
-  SUMMARY: 'summary', // Viewer → Room: {summary}, whenever the Room's copy may be out of date
+  SESSION: 'session', // Viewer → Room: {session, summary}, whenever the Room's copies may be out of date
 } as const
 
 export interface JoinMessage {
   type: typeof MessageType.JOIN
 }
 
+/** A Session as it travels to the Room and back: igv.js's own JSON, which the Room keeps without reading. */
+export type SavedSession = object
+
 export interface JoinedMessage {
   type: typeof MessageType.JOINED
   room: string
+  /** The Session last saved in the Room, for the Viewer to restore. Absent when nothing is saved. */
+  session?: SavedSession
+}
+
+export interface ExpiredMessage {
+  type: typeof MessageType.EXPIRED
 }
 
 /** What a tool call asks the Viewer to do. One member per command type; each has an applier in the Viewer. */
@@ -62,14 +72,17 @@ export interface CommandMessage {
 
 export type AckMessage = { type: typeof MessageType.ACK; id: string } & CommandOutcome
 
-/**
- * The Session summary as it stands: sent on joining and after a change made by
- * hand. A change a command made is reported by its ack.
- */
-export interface SummaryMessage {
-  type: typeof MessageType.SUMMARY
+/** The Session as it stands, with its summary. */
+export interface SessionReport {
+  session: SavedSession
   summary: SessionSummary
 }
 
-export type ViewerMessage = JoinMessage | AckMessage | SummaryMessage
-export type RoomMessage = JoinedMessage | CommandMessage
+/**
+ * Saves the Session and its summary in the Room: sent on joining and after
+ * every change, whoever made it. A command's ack carries the summary alone.
+ */
+export type SessionMessage = { type: typeof MessageType.SESSION } & SessionReport
+
+export type ViewerMessage = JoinMessage | AckMessage | SessionMessage
+export type RoomMessage = JoinedMessage | ExpiredMessage | CommandMessage
