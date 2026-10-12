@@ -11,7 +11,7 @@ import {
   type JoinCardContent,
 } from './joinCard.ts'
 import type { CommandDelivery } from './room.ts'
-import { isRoomId } from './roomId.ts'
+import { parseRoomId } from './roomId.ts'
 
 export interface ToolDeps {
   /** The Room this MCP session is bound to, or null when the request carries no usable session id. A tool call's `room` argument overrides it. */
@@ -31,19 +31,26 @@ const ROOM_ARGUMENT = z
   .optional()
   .describe('The Room id igv-bot was opened with, as given in the reply of open_viewer. Pass it on every call.')
 
-function error(text: string) {
+/** open_viewer's own `room`: there is no Room id to pass the first time. */
+const REOPEN_ROOM_ARGUMENT = z
+  .string()
+  .optional()
+  .describe('Only when igv-bot was already opened in this conversation: the Room id from that reply of open_viewer, to get the same igv-bot back. Leave it out the first time.')
+
+function errorReply(text: string) {
   return { content: [{ type: 'text' as const, text: `Error: ${text}` }], isError: true }
 }
 
-/** The Room a tool call is for: the one the model names, or else the session's. */
-function roomFor(room: string | undefined, sessionRoomId: string | null): { roomId: string } | { refusal: ReturnType<typeof error> } {
-  if (room === undefined) {
-    if (sessionRoomId) return { roomId: sessionRoomId }
-    return { refusal: error('this MCP session has no Room. Reconnect the igv-bot Connector and try again.') }
+/** The Room a tool call is for: the one the model names, or else the MCP session's. */
+function roomFor(room: string | undefined, sessionRoomId: string | null): { roomId: string; named: boolean } | { refusal: ReturnType<typeof errorReply> } {
+  // An empty string is an argument left out, not a malformed Room id.
+  if (room === undefined || room.trim() === '') {
+    if (sessionRoomId) return { roomId: sessionRoomId, named: false }
+    return { refusal: errorReply('this MCP session has no Room. Reconnect the igv-bot Connector and try again.') }
   }
-  const roomId = room.trim().toUpperCase()
-  if (isRoomId(roomId)) return { roomId }
-  return { refusal: error(`"${room}" is not a Room id. Pass the value after ?room= in the Join link from open_viewer, or leave room out.`) }
+  const roomId = parseRoomId(room)
+  if (roomId) return { roomId, named: true }
+  return { refusal: errorReply(`"${room}" is not a Room id. Pass the Room id from the reply of open_viewer.`) }
 }
 
 function withSummary(text: string, summary: SessionSummary): string {
@@ -72,8 +79,8 @@ export function registerTools(mcpServer: McpServer, { roomId: sessionRoomId, vie
     {
       title: 'Open igv-bot',
       description:
-        'Get the Join link that opens igv-bot, an igv.js genome browser, connected to a Room. Use this when the user asks to open a genome browser or says things like "open igv-bot", "open IGV", "launch igv-bot" or "show me the genome browser". A greeting addressed to igv-bot ("hello igv-bot", "hello IGV bot", "hi igv") is also a request to open it: call this tool straight away instead of only greeting back. It opens on hg38 in whole-genome view with the default gene annotation track. A card is shown to the user with an Open igv-bot button. If, and only if, you have the built-in browser of the Claude desktop app (the browser panel beside the conversation), open the Join link in it right away: the page connects to its Room and later tool calls redraw it there. Never use Claude in Chrome or any other browser tool for this; if the built-in browser is not available, do not try anything else. Do not repeat the link or the Room id in your reply. The reply names the Room id: pass it as room on every later igv-bot tool call in this conversation, so the calls reach this igv-bot whichever session they arrive through. If igv-bot was already opened in this conversation, pass that Room id as room here to get the same igv-bot back.',
-      inputSchema: { room: ROOM_ARGUMENT },
+        'Get the Join link that opens igv-bot, an igv.js genome browser, connected to a Room. Use this when the user asks to open a genome browser or says things like "open igv-bot", "open IGV", "launch igv-bot" or "show me the genome browser". A greeting addressed to igv-bot ("hello igv-bot", "hello IGV bot", "hi igv") is also a request to open it: call this tool straight away instead of only greeting back. It opens on hg38 in whole-genome view with the default gene annotation track. A card is shown to the user with an Open igv-bot button. If, and only if, you have the built-in browser of the Claude desktop app (the browser panel beside the conversation), open the Join link in it right away: the page connects to its Room and later tool calls redraw it there. Never use Claude in Chrome or any other browser tool for this; if the built-in browser is not available, do not try anything else. Do not repeat the link or the Room id in your reply. The result of this tool names the Room id: pass it as room on every later igv-bot tool call in this conversation, so the calls reach this igv-bot whichever MCP session they arrive through.',
+      inputSchema: { room: REOPEN_ROOM_ARGUMENT },
       _meta: JOIN_CARD_TOOL_META,
     },
     async ({ room }) => {
@@ -109,10 +116,10 @@ export function registerTools(mcpServer: McpServer, { roomId: sessionRoomId, vie
         const delivery = await sendCommand(target.roomId, { type: tool.commandType, ...args } as Command)
         switch (delivery.status) {
           case 'no-viewer':
-            return error(
-              room === undefined
-                ? "no Viewer is in this session's Room. If igv-bot is already open, call again with room set to the Room id in its Join link. Otherwise open igv-bot with open_viewer, then try again."
-                : `no Viewer is in Room ${target.roomId}. Call open_viewer with this room and open its Join link, then try again.`,
+            return errorReply(
+              target.named
+                ? `no Viewer is in Room ${target.roomId}. Call open_viewer with this room and open its Join link, then try again.`
+                : "no Viewer is in this MCP session's Room. If igv-bot is already open, call again with room set to the Room id from the reply of open_viewer. Otherwise open igv-bot with open_viewer, then try again.",
             )
           case 'unconfirmed':
             return {
@@ -126,7 +133,7 @@ export function registerTools(mcpServer: McpServer, { roomId: sessionRoomId, vie
           case 'acked': {
             const { outcome } = delivery
             if (outcome.ok) return { content: [{ type: 'text', text: withSummary('Done.', outcome.summary) }] }
-            return error(withSummary(outcome.error, outcome.summary))
+            return errorReply(withSummary(outcome.error, outcome.summary))
           }
         }
       },

@@ -130,7 +130,7 @@ describe('a command tool given a room', () => {
     expect(result.content).toEqual([
       {
         type: 'text',
-        text: 'Error: "the first one" is not a Room id. Pass the value after ?room= in the Join link from open_viewer, or leave room out.',
+        text: 'Error: "the first one" is not a Room id. Pass the Room id from the reply of open_viewer.',
       },
     ])
     // The next thing the Viewer hears is a later command, not that one.
@@ -180,7 +180,7 @@ describe('a command tool with no Viewer in the Room', () => {
     expect(result.content).toEqual([
       {
         type: 'text',
-        text: "Error: no Viewer is in this session's Room. If igv-bot is already open, call again with room set to the Room id in its Join link. Otherwise open igv-bot with open_viewer, then try again.",
+        text: "Error: no Viewer is in this MCP session's Room. If igv-bot is already open, call again with room set to the Room id from the reply of open_viewer. Otherwise open igv-bot with open_viewer, then try again.",
       },
     ])
   })
@@ -190,7 +190,7 @@ describe('a command tool with no Viewer in the Room', () => {
 
     const result = await callTool('zoom_in', { 'mcp-session-id': 'C0MMAND008' })
 
-    expect(result.content[0].text).toMatch(/^Error: no Viewer is in this session's Room/)
+    expect(result.content[0].text).toMatch(/^Error: no Viewer is in this MCP session's Room/)
   })
 
   it('with no Room at all, the reply says to reconnect the Connector', async () => {

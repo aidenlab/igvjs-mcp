@@ -76,6 +76,12 @@ describe('open_viewer', () => {
     expect(result.structuredContent).toEqual({ room: '265EDDEXA6', joinUrl: joinLink })
   })
 
+  it.each(['', '  '])("given an empty room (%j), returns the Join link for the session's Room", async (room) => {
+    const result = await callTool('open_viewer', { 'mcp-session-id': '7ZQH4M2K9X' }, { room })
+
+    expect(result.content[1].uri).toBe('http://localhost:5173/?room=7ZQH4M2K9X')
+  })
+
   it('given a room that is not a Room id, replies with an error and no link', async () => {
     const result = await callTool('open_viewer', { 'mcp-session-id': '7ZQH4M2K9X' }, { room: 'nope' })
 
