@@ -68,6 +68,10 @@ describe('a command tool with a Viewer in the Room', () => {
     ['set_track_height', { height: 'shorter', all: true }, { type: 'set_track_height', height: 'shorter', all: true }],
     // A number that is no height still reaches the Viewer, whose error gives the limits.
     ['set_track_height', { height: 0, all: true }, { type: 'set_track_height', height: 0, all: true }],
+    ['set_crosshairs', { show: true }, { type: 'set_crosshairs', show: true }],
+    ['set_crosshairs', { show: false }, { type: 'set_crosshairs', show: false }],
+    ['set_centre_line', { show: true }, { type: 'set_centre_line', show: true }],
+    ['set_centre_line', { show: false }, { type: 'set_centre_line', show: false }],
     ['read_session_summary', {}, { type: 'read_session_summary' }],
   ])('%s reaches the Viewer as its command and replies with the Session summary', async (tool, args, command) => {
     const viewer = await joinedViewer('C0MMAND002')

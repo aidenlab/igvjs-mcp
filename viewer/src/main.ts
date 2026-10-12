@@ -47,15 +47,22 @@ if (room) {
   // arrives while it is loading waits for it. In an expired Room it never starts.
   let restore!: (saved: SavedSession | undefined) => void
   const browser = new Promise<SavedSession | undefined>((resolve) => (restore = resolve)).then(openBrowser)
+  /** Tells the Room the Session may have changed. Does nothing until igv.js has loaded, which a command waits for. */
+  let changed = () => {}
   const { reportSession } = connectToRoom({
     url: roomSocketUrl(import.meta.env.VITE_SERVER_URL, room),
     onStatus: showStatus,
     onFirstJoin: restore,
-    onCommand: async (command) => applyCommand(await browser, command),
+    onCommand: async (command) => {
+      const outcome = await applyCommand(await browser, command)
+      // igv.js announces nothing when its crosshairs or centre line is shown or hidden, by a command as by its own button.
+      changed()
+      return outcome
+    },
   })
   // The Room hears of every change, whoever made it: by hand in igv.js, or by a command.
   void browser.then((loaded) => {
-    const changed = watchChanges(
+    changed = watchChanges(
       loaded,
       () => {
         const session = captureSession(loaded)
