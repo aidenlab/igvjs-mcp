@@ -17,7 +17,7 @@ export type CommandDelivery =
   | { status: 'unconfirmed'; lastSummary?: SessionSummary }
   | { status: 'no-viewer' }
 
-/** Storage key of the latest Session summary a Viewer sent, in an ack or after a change made by hand. */
+/** Storage key of the latest Session summary a Viewer sent, in an ack or in a summary message. */
 const SUMMARY_KEY = 'summary'
 
 /**
@@ -87,8 +87,8 @@ export class Room extends DurableObject<Env> {
     } else if (data?.type === MessageType.ACK) {
       // Later acks of the same command, from other Viewers, find nothing pending.
       const { type: _, id, ...outcome } = data
-      await this.ctx.storage.put(SUMMARY_KEY, outcome.summary)
       this.pending.get(id)?.(outcome)
+      await this.ctx.storage.put(SUMMARY_KEY, outcome.summary)
     } else if (data?.type === MessageType.SUMMARY) {
       await this.ctx.storage.put(SUMMARY_KEY, data.summary)
     }

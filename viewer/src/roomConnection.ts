@@ -66,23 +66,23 @@ export function connectToRoom({
   let failedAttempts = 0
   let lastCommand: Promise<unknown> = Promise.resolve()
   /** The Session summary as the Viewer last knew it, from an ack or a report. */
-  let latest: SessionSummary | null = null
+  let latestSummary: SessionSummary | null = null
   /** The summary the Room was last sent on the current socket, as JSON. */
-  let roomHas: string | null = null
+  let sentSummaryJson: string | null = null
 
   const send = (socket: RoomSocket, message: ViewerMessage) => socket.send(JSON.stringify(message))
 
   function sendLatestSummary(socket: RoomSocket) {
-    if (!latest || JSON.stringify(latest) === roomHas) return
-    send(socket, { type: MessageType.SUMMARY, summary: latest })
-    roomHas = JSON.stringify(latest)
+    if (!latestSummary || JSON.stringify(latestSummary) === sentSummaryJson) return
+    send(socket, { type: MessageType.SUMMARY, summary: latestSummary })
+    sentSummaryJson = JSON.stringify(latestSummary)
   }
 
   function connect() {
     const socket = createSocket(url)
     current = socket
     joined = false
-    roomHas = null
+    sentSummaryJson = null
 
     // A socket that is no longer `current` has dropped; its late events are ignored.
     socket.onopen = () => {
@@ -108,11 +108,11 @@ export function connectToRoom({
         lastCommand = lastCommand
           .then(async () => {
             const outcome = await onCommand(command)
-            latest = outcome.summary
+            latestSummary = outcome.summary
             // A socket that dropped meanwhile has no one to tell.
             if (socket !== current) return
             send(socket, { type: MessageType.ACK, id, ...outcome })
-            roomHas = JSON.stringify(latest)
+            sentSummaryJson = JSON.stringify(latestSummary)
           })
           // Unacked, so the tool replies "sent, unconfirmed"; later commands still run.
           .catch((error) => console.error('[room] command failed', error))
@@ -134,7 +134,7 @@ export function connectToRoom({
 
   return {
     reportSummary(summary) {
-      latest = summary
+      latestSummary = summary
       if (current && joined) sendLatestSummary(current)
     },
   }

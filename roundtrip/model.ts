@@ -26,8 +26,8 @@ async function rpc(method: string, params: object, room?: string) {
   return { headers: res.headers, body: (await res.json()) as { result: ToolResult } }
 }
 
-/** Starts an MCP session as a Host would; its id is the session's Room. */
-export async function newRoom(): Promise<string> {
+/** Starts an MCP session as a Host would and gives its id, which is the id of the session's Room. */
+export async function newSession(): Promise<string> {
   const initialized = await rpc('initialize', { protocolVersion: '2025-03-26', capabilities: {}, clientInfo: { name: 'roundtrip', version: '0' } })
   return initialized.headers.get('mcp-session-id')!
 }
@@ -40,6 +40,12 @@ export async function callTool(room: string, name: string, args: object = {}) {
   expect(text).toContain(marker)
   const summary = JSON.parse(text.slice(text.indexOf(marker) + marker.length)) as SessionSummary
   return { text, isError: result.isError === true, summary }
+}
+
+/** The start and end, in base pairs, of a locus such as "chr8:127,735,434-127,742,951". */
+export function span(locus: string): [number, number] {
+  const [start, end] = locus.split(':')[1].split('-').map((n) => Number(n.replaceAll(',', '')))
+  return [start, end]
 }
 
 /** Opens the Join link of `room` in a headless browser and waits for the Viewer to join. */

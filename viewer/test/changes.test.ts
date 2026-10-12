@@ -3,10 +3,8 @@
  * tests assert on the Session summaries reported.
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { watchChanges, type ChangeSource } from '../src/changes.ts'
+import { QUIET_MS, watchChanges, type ChangeSource } from '../src/changes.ts'
 import type { SessionSummary } from '../src/protocol.ts'
-
-const QUIET_MS = 250
 
 /** A browser whose Session summary is its locus, and that fires events as igv.js does. */
 function fakeBrowser() {
@@ -21,7 +19,6 @@ function fakeBrowser() {
     browser,
     (): SessionSummary => ({ genome: 'hg38', loci: [browser.locus], tracks: [], crosshairs: false, centreLine: false }),
     (summary) => reported.push(summary.loci),
-    QUIET_MS,
   )
   return { browser, reported }
 }

@@ -5,24 +5,18 @@
  */
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import type { Browser, Page } from 'playwright'
-import { callTool, newRoom, openViewer } from '../model.ts'
+import { callTool, newSession, openViewer, span } from '../model.ts'
 
 let browser: Browser
 let page: Page
 let room: string
 
 beforeAll(async () => {
-  room = await newRoom()
+  room = await newSession()
   ;({ browser, page } = await openViewer(room))
 })
 
 afterAll(() => browser?.close())
-
-/** The start and end, in base pairs, of a locus such as "chr8:127,735,434-127,742,951". */
-function span(locus: string): [number, number] {
-  const [start, end] = locus.split(':')[1].split('-').map((n) => Number(n.replaceAll(',', '')))
-  return [start, end]
-}
 
 describe('a change made by hand, round trip', () => {
   it('a pan with the mouse shows in the next reply: read_session_summary gives the new locus', async () => {
@@ -52,6 +46,21 @@ describe('a change made by hand, round trip', () => {
     const second = await callTool(room, 'read_session_summary')
 
     expect(second.summary).toEqual(first.summary)
+  })
+
+  it("a track given a new height from its gear menu shows that height in the next reply's track list", async () => {
+    await page.locator('.igv-gear-menu-column > div').last().locator('div').first().click()
+    await page.getByText('Set track height', { exact: true }).click()
+    const height = page.locator('.igv-ui-generic-dialog-container input:visible')
+    await height.fill('120')
+    await height.press('Enter')
+
+    const reply = await callTool(room, 'read_session_summary')
+
+    expect(reply.summary.tracks).toEqual([
+      { name: 'sequence', type: 'sequence', height: 25 },
+      { name: 'Refseq All', type: 'annotation', url: 'https://igv.org/genomes/data/hg38/ncbiRefSeq.txt.gz', height: 120 },
+    ])
   })
 
   it("a track removed from its gear menu is gone from the next reply's track list", async () => {
