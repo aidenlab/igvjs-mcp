@@ -132,5 +132,44 @@
         }
       }
     }
+  },
+  {
+    "name": "search_catalogues",
+    "title": "Search the ENCODE and 4DN Catalogues",
+    "description": "Find tracks for a loose request, such as \"CTCF ChIP-seq in K562\", in the ENCODE and 4DN Catalogues: the tables of signal, peak and annotation files those projects publish for a genome. Use this whenever the user asks for data by what it is instead of by URL. Both Catalogues are searched at once, for the genome igv-bot is showing. Matching ignores case and punctuation, so \"H3K27ac\", \"h3k27ac\" and \"H3-K27ac\" find the same rows; there are no synonyms, so use the Catalogues' own terms (a cell line as \"K562\" or \"GM12878\", an assay as \"ChIP-seq\" or \"DNase-seq\"). The reply holds the count of all matching rows, in total and in each Catalogue, and at most 20 of them in full, each with the name and url to load it as a track. When more match than are shown, narrow the search with the filters or with more words. The 4DN rows are the compartments, boundaries and insulation scores of Hi-C experiments: ask for them by outputType. When a loose request matches many tracks, pick a sensible default (for ChIP-seq, a \"fold change over control\" signal of the replicates together, such as bioRep \"1,2\"), say in one line what you picked, and load it; ask the user only when the candidates differ in a way they would care about. Hi-C contact matrices and tables of gene or transcript quantifications are never offered: igv-bot cannot show them.",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string",
+          "description": "Free text, such as \"CTCF K562\". Every word must be somewhere in a row, in any column, so use the few words that name the data and leave out words like \"tracks\" or \"data\"."
+        },
+        "biosample": {
+          "type": "string",
+          "description": "Only rows whose biosample (cell line, tissue or cell type) carries these words, such as \"K562\" or \"liver\""
+        },
+        "assay": {
+          "type": "string",
+          "description": "Only rows whose assay carries these words, such as \"ChIP-seq\", \"DNase-seq\", \"RNA-seq\" or \"Hi-C\""
+        },
+        "target": {
+          "type": "string",
+          "description": "Only rows whose target (the protein or histone mark of a ChIP-seq experiment) carries these words, such as \"CTCF\" or \"H3K27ac\". 4DN rows have no target."
+        },
+        "outputType": {
+          "type": "string",
+          "description": "Only rows whose output type carries these words, such as \"fold change over control\", \"signal p-value\" or \"peaks\" in ENCODE, and \"compartments\", \"boundaries\" or \"insulation score\" in 4DN"
+        },
+        "genome": {
+          "type": "string",
+          "description": "Genome id as on the igv.org genome list, such as \"hg38\" or \"mm10\". Leave it out to search for the genome igv-bot is showing, which is nearly always what is wanted."
+        },
+        "room": {
+          "type": "string",
+          "description": "The Room id igv-bot was opened with, as given in the reply of open_viewer. Pass it on every call: the search is for the genome that igv-bot is showing."
+        }
+      }
+    }
   }
 ]

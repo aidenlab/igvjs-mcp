@@ -43,6 +43,15 @@ Once in each Host, with the Viewer open and a track or two loaded.
 - [ ] "Switch to hg99" leaves the Viewer as it was, and the model says that genome is not available.
 - [ ] In a new Conversation, "open igv-bot on mm10 at chr11:101,442,001-101,444,000" opens the Viewer on that genome and locus.
 
+## Catalogue search
+
+Once in each Host, with the Viewer open on hg38. These are real fetches from igv-data; the first search of a genome takes a few seconds.
+
+- [ ] "Find CTCF ChIP-seq in K562" is answered with ENCODE tracks, and the model says how many matched.
+- [ ] "Find H3-K27ac in GM12878" finds the same tracks as "h3k27ac".
+- [ ] "Find 4DN compartments for HUVEC" is answered with 4DN tracks, none of them a contact matrix.
+- [ ] After "switch to mm10", "find CTCF ChIP-seq" is answered with mouse tracks without the genome being named.
+
 ## Room and Conversation
 
 Once in Claude desktop and once in ChatGPT desktop in Codex mode. Read the Room id in the Viewer's status line. The Worker's log (`npx wrangler tail --env dev` in `server`) names the Room each tool call acted on.
