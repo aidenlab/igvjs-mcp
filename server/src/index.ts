@@ -108,7 +108,7 @@ async function handleMcpRequest(request: Request, env: Env): Promise<Response> {
     registerTools(mcpServer, {
       roomId,
       viewerUrl: env.VIEWER_URL,
-      sendCommand: (room, command) => env.ROOM.get(env.ROOM.idFromName(room)).command(command),
+      sendCommand: (commandRoomId, command) => env.ROOM.get(env.ROOM.idFromName(commandRoomId)).command(command),
     })
     const transport = new WebStandardStreamableHTTPServerTransport({
       sessionIdGenerator: undefined,

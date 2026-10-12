@@ -40,6 +40,10 @@ _Avoid_: State, context
 The live channel on the server that joins the Connector to its Viewer, identified by a Room id. It carries commands to the Viewer and keeps the latest Session summary and Session.
 _Avoid_: Session, channel
 
+**Command**:
+One instruction from a tool call to the Viewer, such as "go to this gene", pushed through the Room and answered with an ack.
+_Avoid_: Action, message, request
+
 **Join link**:
 The Viewer's URL carrying `?room=`; opening it shows the Viewer connected to that Room.
 _Avoid_: Viewer URL, connection URL, shareable URL

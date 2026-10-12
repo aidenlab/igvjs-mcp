@@ -14,9 +14,9 @@ The vocabulary used here (Host, Connector, Viewer, Room, Join link, …) is defi
 - The `open_viewer` tool returns a **Join link**: the Viewer's URL carrying `?room=`. Opening it shows the Viewer, which joins that Room over WebSocket, shows the Room id in its status line, and reconnects by itself if the socket drops.
 - Hosts that render MCP Apps also show a **Join card** in the Conversation: one line of status and an "Open igv-bot" button that opens the Join link through the Host.
 
-- The model moves the Viewer with **command tools**: `go_to_locus`, `go_to_gene`, `zoom_in` and `zoom_out`. A tool call becomes one command pushed to every Viewer in the Room; the Viewer applies it to igv.js and acks, and the first ack becomes the reply. Every reply carries the **Session summary**: genome, loci, tracks in display order, and whether the crosshairs and centre line are showing. With no Viewer in the Room the reply says to open one; with no ack within 15 seconds it is "sent, unconfirmed".
+- The model moves the Viewer with **Commands**, each sent by a tool of its own: `go_to_locus`, `go_to_gene`, `zoom_in` and `zoom_out`. A tool call becomes one command pushed to every Viewer in the Room; the Viewer applies it to igv.js and acks, and the first ack becomes the reply. An acked reply carries the **Session summary**: genome, loci, tracks in display order, and whether the crosshairs and centre line are showing. With no Viewer in the Room the reply says to open one; with no ack within 15 seconds it is "sent, unconfirmed". Neither of those has a summary to carry.
 
-A command tool is one row of `server/src/commandTools.ts`, its command in `viewer/src/protocol.ts` and its applier in `viewer/src/commands.ts`.
+A Command's tool is one row of `server/src/commandTools.ts`, its command in `viewer/src/protocol.ts` and its applier in `viewer/src/commands.ts`.
 
 ## Requirements
 
