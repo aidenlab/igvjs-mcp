@@ -187,6 +187,8 @@ The crosshairs are a vertical and a horizontal line that follow the pointer. The
 - Showing what is already showing, or hiding what is hidden, changes nothing and is not an error.
 - The whole-genome view has neither: showing one there is an error.
 - Going to the whole-genome view hides both, and they stay hidden at the next locus.
+- A person also turns each on and off with igv.js's own Crosshairs and Center Line buttons, so the model takes what is showing from the Session summary, not from what it last set.
+- Both are part of the Session: reloading the Viewer, or opening it again from the Join link, brings them back as they were left.
 
 ## Reading
 
