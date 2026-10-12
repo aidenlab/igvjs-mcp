@@ -40,9 +40,9 @@ Once in each Host, with the Viewer open.
 Once in Claude desktop and once in ChatGPT desktop in Codex mode. Read the Room id in the Viewer's status line. The Worker's log (`npx wrangler tail --env dev` in `server`) names the Room each tool call acted on.
 
 - [ ] The first command after opening igv-bot works, and the Viewer does not reload. The Room id in the status line is the same before and after.
-- [ ] Asking for igv-bot again later in the same Conversation gives the same Room.
+- [ ] Asking for igv-bot again later in the same Conversation gives the same Room, showing the last view.
 - [ ] After quitting and reopening the app, the same Conversation still gives the same Room.
-- [ ] A second Conversation open at the same time: note whether it gets its own Room. Sharing one is accepted for v1.
+- [ ] A new Conversation gets a Room of its own and the default Viewer, with the first Conversation's igv-bot still open.
 
 If one Conversation changes Room partway through, stop the release: the model is not passing `room` as ADR 0003 expects.
 

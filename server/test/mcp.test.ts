@@ -2,10 +2,14 @@
  * MCP face: JSON-RPC over POST /mcp on the Worker under test.
  */
 import { SELF, env } from 'cloudflare:test'
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, afterEach } from 'vitest'
+import { MessageType } from 'igvjs-mcp-viewer/protocol'
 import worker from '../src/index.ts'
 import toolsFixture from './fixtures/tools.json'
-import { rpc, initialize, callTool } from './mcp.ts'
+import { rpc, initialize, callTool, type ToolResult } from './mcp.ts'
+import { openViewer, join, closeViewers } from './viewers.ts'
+
+afterEach(closeViewers)
 
 const ROOM_ID = /^[0-9A-HJKMNP-TV-Z]{10}$/ // Crockford base32: no I, L, O, U
 
@@ -23,23 +27,32 @@ describe('initialize', () => {
   })
 })
 
+/** The Room an open_viewer reply names. */
+function roomOf(result: ToolResult): string {
+  return (result.structuredContent as { room: string }).room
+}
+
 describe('open_viewer', () => {
-  it("returns the Join link for the session's Room, as text and as a resource link", async () => {
+  it('without a room, returns the Join link for a new Room, as text and as a resource link', async () => {
     const result = await callTool('open_viewer', { 'mcp-session-id': '7ZQH4M2K9X' })
 
-    const joinLink = 'http://localhost:5173/?room=7ZQH4M2K9X' // VIEWER_URL in wrangler.toml
+    const room = roomOf(result)
+    expect(room).toMatch(ROOM_ID)
+    const joinLink = `http://localhost:5173/?room=${room}` // VIEWER_URL in wrangler.toml
     expect(result.isError).toBeFalsy()
     expect(result.content[0].type).toBe('text')
     expect(result.content[0].text).toContain(`\n${joinLink}\n`) // on a line of its own, so Hosts render it clickable
     expect(result.content[1]).toMatchObject({ type: 'resource_link', uri: joinLink, name: 'Open igv-bot', mimeType: 'text/html' })
   })
 
-  it('the Room of a session just initialized is the one in its Join link', async () => {
+  it("a new Conversation gets a Room of its own: two calls without a room in one MCP session name two Rooms, neither the session's", async () => {
     const session = (await initialize()).headers.get('mcp-session-id')!
 
-    const result = await callTool('open_viewer', { 'mcp-session-id': session })
+    const first = roomOf(await callTool('open_viewer', { 'mcp-session-id': session }))
+    const second = roomOf(await callTool('open_viewer', { 'mcp-session-id': session }))
 
-    expect(result.content[1].uri).toBe(`http://localhost:5173/?room=${session}`)
+    expect(second).not.toBe(first)
+    expect([first, second]).not.toContain(session)
   })
 
   it('tells the model to use only the built-in browser, reply briefly and not repeat the link or Room id', async () => {
@@ -58,13 +71,13 @@ describe('open_viewer', () => {
   it('tells the model to pass the Room id as room on every later tool call, and names the id', async () => {
     const res = await rpc('tools/list', {})
     const { result } = await res.json<{ result: { tools: Array<{ description: string }> } }>()
-    const reply = (await callTool('open_viewer', { 'mcp-session-id': '7ZQH4M2K9X' })).content[0].text!
+    const reply = (await callTool('open_viewer', undefined, { room: '265EDDEXA6' })).content[0].text!
 
     for (const wording of [result.tools[0].description, reply]) {
       expect(wording).toMatch(/as room on every later igv-bot tool call/)
     }
-    expect(reply).toContain('Room id: 7ZQH4M2K9X.')
-    expect(reply.match(/7ZQH4M2K9X/g)).toHaveLength(2) // there and in the Join link
+    expect(reply).toContain('Room id: 265EDDEXA6.')
+    expect(reply.match(/265EDDEXA6/g)).toHaveLength(2) // there and in the Join link
   })
 
   it("given a room, returns the Join link for that Room, not the session's", async () => {
@@ -76,10 +89,11 @@ describe('open_viewer', () => {
     expect(result.structuredContent).toEqual({ room: '265EDDEXA6', joinUrl: joinLink })
   })
 
-  it.each(['', '  '])("given an empty room (%j), returns the Join link for the session's Room", async (room) => {
+  it.each(['', '  '])('given an empty room (%j), returns the Join link for a new Room', async (room) => {
     const result = await callTool('open_viewer', { 'mcp-session-id': '7ZQH4M2K9X' }, { room })
 
-    expect(result.content[1].uri).toBe('http://localhost:5173/?room=7ZQH4M2K9X')
+    expect(roomOf(result)).toMatch(ROOM_ID)
+    expect(roomOf(result)).not.toBe('7ZQH4M2K9X')
   })
 
   it('given a room that is not a Room id, replies with an error and no link', async () => {
@@ -93,13 +107,11 @@ describe('open_viewer', () => {
   it.each([
     ['no session id', undefined],
     ['a session id that is not a Room id', { 'mcp-session-id': 'not a room' }],
-  ])('with %s, replies with an error and no link', async (_, headers) => {
+  ])('with %s, still returns the Join link for a new Room', async (_, headers) => {
     const result = await callTool('open_viewer', headers)
 
-    expect(result.isError).toBe(true)
-    expect(result.content).toEqual([
-      { type: 'text', text: 'Error: this MCP session has no Room. Reconnect the igv-bot Connector and try again.' },
-    ])
+    expect(result.isError).toBeFalsy()
+    expect(result.content[1].uri).toBe(`http://localhost:5173/?room=${roomOf(result)}`)
   })
 })
 
@@ -139,7 +151,7 @@ describe('Join card', () => {
   })
 
   it("is handed the Join link and Room id as the tool's structured content", async () => {
-    const result = await callTool('open_viewer', { 'mcp-session-id': '7ZQH4M2K9X' })
+    const result = await callTool('open_viewer', undefined, { room: '7ZQH4M2K9X' })
 
     expect(result.structuredContent).toEqual({ room: '7ZQH4M2K9X', joinUrl: 'http://localhost:5173/?room=7ZQH4M2K9X' })
     const read = await rpc('resources/read', { uri: 'ui://igv-bot/join' })
@@ -174,18 +186,25 @@ describe("ChatGPT's path: x-openai-session and no mcp-session-id", () => {
     expect((await initialize({ 'x-openai-session': raw })).headers.get('mcp-session-id')).not.toBe(raw)
   })
 
-  it('open_viewer carrying only x-openai-session returns the Join link for that Room', async () => {
-    const room = (await initialize({ 'x-openai-session': 'openai-c' })).headers.get('mcp-session-id')
+  it('a command carrying only x-openai-session and no room goes to the Room derived from it', async () => {
+    const room = (await initialize({ 'x-openai-session': 'openai-c' })).headers.get('mcp-session-id')!
+    const viewer = await openViewer(room)
+    await join(viewer)
 
-    const result = await callTool('open_viewer', { 'x-openai-session': 'openai-c' })
+    const reply = callTool('zoom_in', { 'x-openai-session': 'openai-c' })
 
-    expect(result.content[1].uri).toBe(`http://localhost:5173/?room=${room}`)
+    expect(await viewer.next()).toMatchObject({ type: MessageType.COMMAND, command: { type: 'zoom_in' } })
+    await reply
   })
 
   it('mcp-session-id is used when the Host sends it', async () => {
-    const result = await callTool('open_viewer', { 'mcp-session-id': '7ZQH4M2K9X', 'x-openai-session': 'openai-d' })
+    const viewer = await openViewer('7ZQH4M2K9X')
+    await join(viewer)
 
-    expect(result.content[1].uri).toBe('http://localhost:5173/?room=7ZQH4M2K9X')
+    const reply = callTool('zoom_in', { 'mcp-session-id': '7ZQH4M2K9X', 'x-openai-session': 'openai-d' })
+
+    expect(await viewer.next()).toMatchObject({ type: MessageType.COMMAND, command: { type: 'zoom_in' } })
+    await reply
   })
 
   /** open_viewer on a Worker deployed without the secret. */

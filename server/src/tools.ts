@@ -11,10 +11,10 @@ import {
   type JoinCardContent,
 } from './joinCard.ts'
 import type { CommandDelivery } from './room.ts'
-import { parseRoomId } from './roomId.ts'
+import { mintRoomId, parseRoomId } from './roomId.ts'
 
 export interface ToolDeps {
-  /** The Room this MCP session is bound to, or null when the request carries no usable session id. A tool call's `room` argument overrides it. */
+  /** The Room this MCP session is bound to, or null when the request carries no usable session id. A command without a `room` argument acts on it; open_viewer never does. */
   roomId: string | null
   /** The Viewer's address; a Join link is this URL carrying `?room=`. */
   viewerUrl: string
@@ -33,17 +33,17 @@ const ROOM_ARGUMENT = z
   .optional()
   .describe('The Room id igv-bot was opened with, as given in the reply of open_viewer. Pass it on every call.')
 
-/** open_viewer's own `room`: there is no Room id to pass the first time. */
+/** open_viewer's own `room`: there is no Room id to pass the first time, and without one igv-bot opens in a new Room. */
 const REOPEN_ROOM_ARGUMENT = z
   .string()
   .optional()
-  .describe('Only when igv-bot was already opened in this conversation: the Room id from that reply of open_viewer, to get the same igv-bot back. Leave it out the first time.')
+  .describe('Only when igv-bot was already opened in this conversation: the Room id from that reply of open_viewer, to get the same igv-bot back, showing what it last showed. Leave it out the first time: igv-bot then opens in a new Room, on the default view.')
 
 function errorReply(text: string) {
   return { content: [{ type: 'text' as const, text: `Error: ${text}` }], isError: true }
 }
 
-/** The Room a tool call is for: the one the model names, or else the MCP session's. */
+/** The Room a command is for: the one the model names, or else the MCP session's. */
 function roomFor(room: string | undefined, sessionRoomId: string | null): { roomId: string; named: boolean } | { refusal: ReturnType<typeof errorReply> } {
   // An empty string is an argument left out, not a malformed Room id.
   if (room === undefined || room.trim() === '') {
@@ -91,11 +91,21 @@ export function registerTools(mcpServer: McpServer, { roomId: sessionRoomId, vie
       _meta: JOIN_CARD_TOOL_META,
     },
     async ({ room }) => {
-      const target = roomFor(room, sessionRoomId)
-      if ('refusal' in target) return target.refusal
-      logRoom('open_viewer', target)
-      const { roomId } = target
-      await renewRoom(roomId)
+      // Without `room` this is the first open_viewer of a Conversation, and a
+      // Conversation gets a Room of its own: an MCP session may be shared by
+      // several, and its Room would hand one the Session another saved.
+      let roomId: string
+      if (room === undefined || room.trim() === '') {
+        roomId = mintRoomId()
+        console.log(`[mcp] open_viewer | new Room ${roomId}`)
+      } else {
+        const target = roomFor(room, sessionRoomId)
+        if ('refusal' in target) return target.refusal
+        logRoom('open_viewer', target)
+        roomId = target.roomId
+        // The Room may have expired since the model was given its id.
+        await renewRoom(roomId)
+      }
       const joinLink = joinLinkFor(viewerUrl, roomId)
       const structuredContent: JoinCardContent = { room: roomId, joinUrl: joinLink }
       // A bare URL on its own line: Hosts render it clickable, which a code block
