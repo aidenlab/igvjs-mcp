@@ -2,13 +2,15 @@
  * MCP face: JSON-RPC over POST /mcp on the Worker under test.
  */
 import { SELF, env } from 'cloudflare:test'
-import { describe, it, expect, afterEach } from 'vitest'
+import { describe, it, expect, afterEach, beforeAll } from 'vitest'
 import { MessageType } from 'igvjs-mcp-viewer/protocol'
 import worker from '../src/index.ts'
 import toolsFixture from './fixtures/tools.json'
+import { serveGenomeList } from './genomeList.ts'
 import { rpc, initialize, callTool, type ToolResult } from './mcp.ts'
 import { openViewer, join, closeViewers } from './viewers.ts'
 
+beforeAll(serveGenomeList)
 afterEach(closeViewers)
 
 const ROOM_ID = /^[0-9A-HJKMNP-TV-Z]{10}$/ // Crockford base32: no I, L, O, U
@@ -112,6 +114,58 @@ describe('open_viewer', () => {
 
     expect(result.isError).toBeFalsy()
     expect(result.content[1].uri).toBe(`http://localhost:5173/?room=${roomOf(result)}`)
+  })
+})
+
+describe('open_viewer given a genome and locus', () => {
+  /** What a Viewer that opens the Join link of `result` is told to restore. */
+  async function restoredBy(result: ToolResult) {
+    const viewer = await openViewer(roomOf(result))
+    const joined = await join(viewer)
+    expect(joined.type).toBe(MessageType.JOINED)
+    return (joined as { session?: object }).session
+  }
+
+  it('opens a new Room whose Viewer starts on that genome and locus', async () => {
+    const result = await callTool('open_viewer', undefined, { genome: 'mm10', locus: 'chr11:101,442,000-101,553,000' })
+
+    expect(result.isError).toBeFalsy()
+    expect(result.content[1].uri).toBe(`http://localhost:5173/?room=${roomOf(result)}`)
+    expect(result.content[0].text).toContain('igv-bot opens on mm10 at chr11:101,442,000-101,553,000.')
+    expect(await restoredBy(result)).toEqual({ genome: 'mm10', locus: 'chr11:101,442,000-101,553,000' })
+  })
+
+  it("given a genome alone, the Viewer starts on that genome's default view, in the list's spelling of its id", async () => {
+    const result = await callTool('open_viewer', undefined, { genome: 'HS1', locus: '' })
+
+    expect(result.content[0].text).toContain('igv-bot opens on hs1.')
+    expect(await restoredBy(result)).toEqual({ genome: 'hs1' })
+  })
+
+  it('given a locus alone, the Viewer starts on hg38 at that locus', async () => {
+    const result = await callTool('open_viewer', undefined, { locus: 'MYC' })
+
+    expect(await restoredBy(result)).toEqual({ genome: 'hg38', locus: 'MYC' })
+  })
+
+  it('given neither, nothing is saved in the new Room: the Viewer shows its default', async () => {
+    const result = await callTool('open_viewer')
+
+    expect(result.content[0].text).not.toContain('igv-bot opens on')
+    expect(await restoredBy(result)).toBeUndefined()
+  })
+
+  it('given a genome that is not on the igv.org list, replies that it is unavailable, with no link', async () => {
+    const result = await callTool('open_viewer', undefined, { genome: 'hg99', locus: 'chr1' })
+
+    expect(result.isError).toBe(true)
+    expect(result.structuredContent).toBeUndefined()
+    expect(result.content).toEqual([
+      {
+        type: 'text',
+        text: 'Error: the genome "hg99" is not available: it is not on the igv.org genome list. The genomes available are: hs1 (Human (T2T CHM13-v2.0/hs1)); hg38 (Human (GRCh38/hg38)); mm10 (Mouse (GRCm38/mm10)); rn7 (Rat (rn7)). igv-bot was not opened.',
+      },
+    ])
   })
 })
 

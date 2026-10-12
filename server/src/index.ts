@@ -10,11 +10,15 @@
  */
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js'
+import { genomeListSource } from './genomes.ts'
 import { deriveRoomId, isRoomId, mintRoomId } from './roomId.ts'
 import { registerTools } from './tools.ts'
 
 // Re-exported so Cloudflare can find the Durable Object class.
 export { Room } from './room.ts'
+
+// One list for the life of the isolate, shared by every request it serves.
+const listGenomes = genomeListSource()
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -111,6 +115,8 @@ async function handleMcpRequest(request: Request, env: Env): Promise<Response> {
       viewerUrl: env.VIEWER_URL,
       sendCommand: (commandRoomId, command) => env.ROOM.get(env.ROOM.idFromName(commandRoomId)).command(command),
       renewRoom: (renewedRoomId) => env.ROOM.get(env.ROOM.idFromName(renewedRoomId)).renew(),
+      startRoomOn: (startedRoomId, session) => env.ROOM.get(env.ROOM.idFromName(startedRoomId)).startOn(session),
+      listGenomes,
     })
     const transport = new WebStandardStreamableHTTPServerTransport({
       sessionIdGenerator: undefined,

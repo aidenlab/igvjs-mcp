@@ -35,6 +35,14 @@ Once in each Host, with the Viewer open.
 - [ ] "Zoom in" and "zoom out" each change the scale by a factor of two.
 - [ ] "Go to NOTAGENE" leaves the view where it was, and the model says the gene was not recognised.
 
+## Genome
+
+Once in each Host, with the Viewer open and a track or two loaded.
+
+- [ ] "Switch to mm39" shows the mouse genome with its own default tracks, and the model names the new genome.
+- [ ] "Switch to hg99" leaves the Viewer as it was, and the model says that genome is not available.
+- [ ] In a new Conversation, "open igv-bot on mm10 at chr11:101,442,001-101,444,000" opens the Viewer on that genome and locus.
+
 ## Room and Conversation
 
 Once in Claude desktop and once in ChatGPT desktop in Codex mode. Read the Room id in the Viewer's status line. The Worker's log (`npx wrangler tail --env dev` in `server`) names the Room each tool call acted on.

@@ -37,6 +37,7 @@ export type Command =
   | { type: 'go_to_gene'; gene: string }
   | { type: 'zoom_in' }
   | { type: 'zoom_out' }
+  | { type: 'change_genome'; genome: string }
   | { type: 'read_session_summary' }
 
 export type CommandType = Command['type']

@@ -3,11 +3,13 @@
  * face, a fake Viewer on the Room's socket receives the command and acks it,
  * and the ack becomes the tool's reply.
  */
-import { describe, it, expect, afterEach } from 'vitest'
+import { describe, it, expect, afterEach, beforeAll } from 'vitest'
 import { MessageType, type CommandMessage, type SessionSummary } from 'igvjs-mcp-viewer/protocol'
+import { serveGenomeList } from './genomeList.ts'
 import { callTool } from './mcp.ts'
 import { openViewer, join, closeViewers, type FakeViewer } from './viewers.ts'
 
+beforeAll(serveGenomeList)
 afterEach(closeViewers)
 
 const ACK_TIMEOUT_MS = 300 // the binding in vitest.config.ts; 15 s when deployed
@@ -247,6 +249,57 @@ describe('a command tool with no Viewer in the Room', () => {
 
     expect(result.isError).toBe(true)
     expect(result.content[0].text).toBe('Error: this MCP session has no Room. Reconnect the igv-bot Connector and try again.')
+  })
+})
+
+describe('change_genome', () => {
+  const MOUSE: SessionSummary = {
+    genome: 'mm10',
+    loci: ['all'],
+    tracks: [{ name: 'Refseq Genes', type: 'annotation', url: 'https://example.org/mm10/refGene.txt.gz', height: 70 }],
+    crosshairs: false,
+    centreLine: false,
+  }
+
+  it('for a genome on the igv.org list reaches the Viewer as its command, and replies with the Session summary of the new genome', async () => {
+    const viewer = await joinedViewer('GEN0ME0001')
+
+    const reply = callTool('change_genome', undefined, { genome: 'mm10', room: 'GEN0ME0001' })
+    const message = await nextCommand(viewer)
+    expect(message.command).toEqual({ type: 'change_genome', genome: 'mm10' })
+    viewer.send({ type: MessageType.ACK, id: message.id, ok: true, summary: MOUSE })
+
+    const result = await reply
+    expect(result.isError).toBeFalsy()
+    expect(summaryIn(result.content[0].text!)).toEqual(MOUSE)
+  })
+
+  it('for a genome that is not on the list replies that it is unavailable, naming those that are, and the Viewer hears nothing', async () => {
+    const viewer = await joinedViewer('GEN0ME0002')
+
+    const result = await callTool('change_genome', undefined, { genome: 'hg99', room: 'GEN0ME0002' })
+
+    expect(result.isError).toBe(true)
+    expect(result.content).toEqual([
+      {
+        type: 'text',
+        text: 'Error: the genome "hg99" is not available: it is not on the igv.org genome list. The genomes available are: hs1 (Human (T2T CHM13-v2.0/hs1)); hg38 (Human (GRCh38/hg38)); mm10 (Mouse (GRCm38/mm10)); rn7 (Rat (rn7)). igv-bot was left as it was.',
+      },
+    ])
+    // The next thing the Viewer hears is a later command, not that one.
+    const later = callTool('zoom_out', undefined, { room: 'GEN0ME0002' })
+    expect((await nextCommand(viewer)).command).toEqual({ type: 'zoom_out' })
+    await later
+  })
+
+  it("takes the genome id as a person might type it, and sends the Viewer the list's own spelling", async () => {
+    const viewer = await joinedViewer('GEN0ME0003')
+
+    const reply = callTool('change_genome', undefined, { genome: ' MM10 ', room: 'GEN0ME0003' })
+    const message = await nextCommand(viewer)
+    expect(message.command).toEqual({ type: 'change_genome', genome: 'mm10' })
+    viewer.send({ type: MessageType.ACK, id: message.id, ok: true, summary: MOUSE })
+    await reply
   })
 })
 

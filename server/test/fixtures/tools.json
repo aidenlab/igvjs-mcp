@@ -2,7 +2,7 @@
   {
     "name": "open_viewer",
     "title": "Open igv-bot",
-    "description": "Get the Join link that opens igv-bot, an igv.js genome browser, connected to a Room. Use this when the user asks to open a genome browser or says things like \"open igv-bot\", \"open IGV\", \"launch igv-bot\" or \"show me the genome browser\". A greeting addressed to igv-bot (\"hello igv-bot\", \"hello IGV bot\", \"hi igv\") is also a request to open it: call this tool straight away instead of only greeting back. It opens on hg38 in whole-genome view with the default gene annotation track. A card is shown to the user with an Open igv-bot button. If, and only if, you have the built-in browser of the Claude desktop app (the browser panel beside the conversation), open the Join link in it right away: the page connects to its Room and later tool calls redraw it there. Never use Claude in Chrome or any other browser tool for this; if the built-in browser is not available, do not try anything else. Do not repeat the link or the Room id in your reply. The result of this tool names the Room id: pass it as room on every later igv-bot tool call in this conversation, so the calls reach this igv-bot whichever MCP session they arrive through.",
+    "description": "Get the Join link that opens igv-bot, an igv.js genome browser, connected to a Room. Use this when the user asks to open a genome browser or says things like \"open igv-bot\", \"open IGV\", \"launch igv-bot\" or \"show me the genome browser\". A greeting addressed to igv-bot (\"hello igv-bot\", \"hello IGV bot\", \"hi igv\") is also a request to open it: call this tool straight away instead of only greeting back. It opens on hg38 in whole-genome view with the default gene annotation track, or on the genome and locus you pass. A card is shown to the user with an Open igv-bot button. If, and only if, you have the built-in browser of the Claude desktop app (the browser panel beside the conversation), open the Join link in it right away: the page connects to its Room and later tool calls redraw it there. Never use Claude in Chrome or any other browser tool for this; if the built-in browser is not available, do not try anything else. Do not repeat the link or the Room id in your reply. The result of this tool names the Room id: pass it as room on every later igv-bot tool call in this conversation, so the calls reach this igv-bot whichever MCP session they arrive through.",
     "inputSchema": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "type": "object",
@@ -10,6 +10,14 @@
         "room": {
           "type": "string",
           "description": "Only when igv-bot was already opened in this conversation: the Room id from that reply of open_viewer, to get the same igv-bot back, showing what it last showed. Leave it out the first time: igv-bot then opens in a new Room, on the default view."
+        },
+        "genome": {
+          "description": "Genome id as on the igv.org genome list, such as \"hg19\", \"mm39\" or \"hs1\", to open igv-bot on that genome with its default tracks. Leave it out for hg38. For an igv-bot that is already open, use change_genome instead.",
+          "type": "string"
+        },
+        "locus": {
+          "description": "Where igv-bot opens: coordinates as chr:start-end, a chromosome name, or a gene name such as \"MYC\". Leave it out for the genome's default view. For an igv-bot that is already open, use go_to_locus or go_to_gene instead.",
+          "type": "string"
         }
       }
     }
@@ -86,6 +94,28 @@
           "description": "The Room id igv-bot was opened with, as given in the reply of open_viewer. Pass it on every call."
         }
       }
+    }
+  },
+  {
+    "name": "change_genome",
+    "title": "Change genome",
+    "description": "Change igv-bot to another genome assembly, such as \"hg19\", \"mm39\" or \"hs1\" (human T2T). The tracks now loaded are removed and the new genome opens with its own default tracks, at its default view. Only the genomes on the igv.org genome list are available; for one that is not, the reply says so, lists those that are, and igv-bot is left as it was. The reply is the resulting Session summary: genome, loci, and tracks in display order.",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {
+        "genome": {
+          "type": "string",
+          "description": "Genome id as on the igv.org genome list, such as \"hg38\", \"hg19\", \"mm39\" or \"hs1\""
+        },
+        "room": {
+          "type": "string",
+          "description": "The Room id igv-bot was opened with, as given in the reply of open_viewer. Pass it on every call."
+        }
+      },
+      "required": [
+        "genome"
+      ]
     }
   },
   {
