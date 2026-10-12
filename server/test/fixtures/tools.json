@@ -8,8 +8,8 @@
       "type": "object",
       "properties": {
         "room": {
-          "type": "string",
-          "description": "Only when igv-bot was already opened in this conversation: the Room id from that reply of open_viewer, to get the same igv-bot back, showing what it last showed. Leave it out the first time: igv-bot then opens in a new Room, on the default view."
+          "description": "Only when igv-bot was already opened in this conversation: the Room id from that reply of open_viewer, to get the same igv-bot back, showing what it last showed. Leave it out the first time: igv-bot then opens in a new Room, on the default view.",
+          "type": "string"
         },
         "genome": {
           "description": "Only when opening a new igv-bot, without room: genome id as on the igv.org genome list, such as \"hg19\", \"mm39\" or \"hs1\", to open on that genome with its default tracks. Leave it out for hg38. For an igv-bot that was already opened, use change_genome instead.",
@@ -35,8 +35,8 @@
           "description": "Coordinates as chr:start-end (1-based, commas allowed), a chromosome name, or \"all\""
         },
         "room": {
-          "type": "string",
-          "description": "The Room id igv-bot was opened with, as given in the reply of open_viewer. Pass it on every call."
+          "description": "The Room id igv-bot was opened with, as given in the reply of open_viewer. Pass it on every call.",
+          "type": "string"
         }
       },
       "required": [
@@ -57,8 +57,8 @@
           "description": "Gene name or symbol, such as \"MYC\""
         },
         "room": {
-          "type": "string",
-          "description": "The Room id igv-bot was opened with, as given in the reply of open_viewer. Pass it on every call."
+          "description": "The Room id igv-bot was opened with, as given in the reply of open_viewer. Pass it on every call.",
+          "type": "string"
         }
       },
       "required": [
@@ -75,8 +75,8 @@
       "type": "object",
       "properties": {
         "room": {
-          "type": "string",
-          "description": "The Room id igv-bot was opened with, as given in the reply of open_viewer. Pass it on every call."
+          "description": "The Room id igv-bot was opened with, as given in the reply of open_viewer. Pass it on every call.",
+          "type": "string"
         }
       }
     }
@@ -90,8 +90,8 @@
       "type": "object",
       "properties": {
         "room": {
-          "type": "string",
-          "description": "The Room id igv-bot was opened with, as given in the reply of open_viewer. Pass it on every call."
+          "description": "The Room id igv-bot was opened with, as given in the reply of open_viewer. Pass it on every call.",
+          "type": "string"
         }
       }
     }
@@ -109,13 +109,77 @@
           "description": "Genome id as on the igv.org genome list, such as \"hg38\", \"hg19\", \"mm39\" or \"hs1\""
         },
         "room": {
-          "type": "string",
-          "description": "The Room id igv-bot was opened with, as given in the reply of open_viewer. Pass it on every call."
+          "description": "The Room id igv-bot was opened with, as given in the reply of open_viewer. Pass it on every call.",
+          "type": "string"
         }
       },
       "required": [
         "genome"
       ]
+    }
+  },
+  {
+    "name": "load_tracks",
+    "title": "Load tracks",
+    "description": "Load one or several tracks into igv-bot, each from the URL of its file. The URLs come from a reply of search_catalogues (pass the row's url, and its name as the track's name) or from the user, who may give any URL their browser can fetch. Load every track a request asks for in one call: they are shown in the order given, where igv.js puts new tracks, above the genome's own annotation track. A track given no name gets igv.js's default, the name of its file. When a loose request matches many tracks in the Catalogues, pick a sensible default, say in one line what you picked, and load it; ask the user only when the candidates differ in a way they would care about. A track that does not load is reported as an error carrying igv.js's own message, as for a file that does not exist or a host that does not permit cross-origin requests; the other tracks of the call are still loaded, and the Session summary shows which. The reply is the resulting Session summary: genome, loci, and tracks in display order.",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {
+        "tracks": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "url": {
+                "type": "string",
+                "description": "The URL of the track's file, such as the url of a search_catalogues row"
+              },
+              "name": {
+                "description": "The name to show the track under, such as the name of a search_catalogues row. Leave it out for the file's name.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "url"
+            ]
+          },
+          "description": "The tracks to load, in the order they are to be shown, top to bottom"
+        },
+        "room": {
+          "description": "The Room id igv-bot was opened with, as given in the reply of open_viewer. Pass it on every call.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "tracks"
+      ]
+    }
+  },
+  {
+    "name": "remove_track",
+    "title": "Remove a track",
+    "description": "Remove one track from igv-bot, addressed by its name or by its position in the tracks of the Session summary, counted from 1 at the top: \"the second track\" is position 2 and \"the bottom one\" is the last. Give name or position, not both. The user also reorders and removes tracks by hand, so take a position from the Session summary of the reply just before, or call read_session_summary first. A name or position that matches no track, and a name that several tracks share, is reported as an error listing the tracks, and nothing is removed. The sequence track cannot be removed. The reply is the resulting Session summary: genome, loci, and tracks in display order.",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {
+        "name": {
+          "description": "The name of the track as the Session summary gives it. Case does not matter.",
+          "type": "string"
+        },
+        "position": {
+          "description": "The position of the track in the tracks of the Session summary: 1 is the top track",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "room": {
+          "description": "The Room id igv-bot was opened with, as given in the reply of open_viewer. Pass it on every call.",
+          "type": "string"
+        }
+      }
     }
   },
   {
@@ -127,8 +191,8 @@
       "type": "object",
       "properties": {
         "room": {
-          "type": "string",
-          "description": "The Room id igv-bot was opened with, as given in the reply of open_viewer. Pass it on every call."
+          "description": "The Room id igv-bot was opened with, as given in the reply of open_viewer. Pass it on every call.",
+          "type": "string"
         }
       }
     }
@@ -142,32 +206,32 @@
       "type": "object",
       "properties": {
         "text": {
-          "type": "string",
-          "description": "Free text, such as \"CTCF K562\". Every word must be somewhere in a row, in any column, so use the few words that name the data and leave out words like \"tracks\" or \"data\"."
+          "description": "Free text, such as \"CTCF K562\". Every word must be somewhere in a row, in any column, so use the few words that name the data and leave out words like \"tracks\" or \"data\".",
+          "type": "string"
         },
         "biosample": {
-          "type": "string",
-          "description": "Only rows whose biosample (cell line, tissue or cell type) carries these words, such as \"K562\" or \"liver\""
+          "description": "Only rows whose biosample (cell line, tissue or cell type) carries these words, such as \"K562\" or \"liver\"",
+          "type": "string"
         },
         "assay": {
-          "type": "string",
-          "description": "Only rows whose assay carries these words, such as \"ChIP-seq\", \"DNase-seq\", \"RNA-seq\" or \"Hi-C\""
+          "description": "Only rows whose assay carries these words, such as \"ChIP-seq\", \"DNase-seq\", \"RNA-seq\" or \"Hi-C\"",
+          "type": "string"
         },
         "target": {
-          "type": "string",
-          "description": "Only rows whose target (the protein or histone mark of a ChIP-seq experiment) carries these words, such as \"CTCF\" or \"H3K27ac\". 4DN rows have no target."
+          "description": "Only rows whose target (the protein or histone mark of a ChIP-seq experiment) carries these words, such as \"CTCF\" or \"H3K27ac\". 4DN rows have no target.",
+          "type": "string"
         },
         "outputType": {
-          "type": "string",
-          "description": "Only rows whose output type carries these words, such as \"fold change over control\", \"signal p-value\" or \"peaks\" in ENCODE, and \"compartments\", \"boundaries\" or \"insulation score\" in 4DN"
+          "description": "Only rows whose output type carries these words, such as \"fold change over control\", \"signal p-value\" or \"peaks\" in ENCODE, and \"compartments\", \"boundaries\" or \"insulation score\" in 4DN",
+          "type": "string"
         },
         "genome": {
-          "type": "string",
-          "description": "Genome id as on the igv.org genome list, such as \"hg38\" or \"mm10\". Leave it out to search for the genome igv-bot is showing, which is nearly always what is wanted."
+          "description": "Genome id as on the igv.org genome list, such as \"hg38\" or \"mm10\". Leave it out to search for the genome igv-bot is showing, which is nearly always what is wanted.",
+          "type": "string"
         },
         "room": {
-          "type": "string",
-          "description": "The Room id igv-bot was opened with, as given in the reply of open_viewer. Pass it on every call: the search is for the genome that igv-bot is showing."
+          "description": "The Room id igv-bot was opened with, as given in the reply of open_viewer. Pass it on every call: the search is for the genome that igv-bot is showing.",
+          "type": "string"
         }
       }
     }
