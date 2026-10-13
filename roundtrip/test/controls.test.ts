@@ -23,7 +23,7 @@ afterAll(() => browser?.close())
 const MYC = 'chr8:127,735,434-127,742,951'
 const BRCA1 = 'chr17:43,044,295-43,125,364'
 
-const shareableUrl = () => page.locator('.controls')
+const shareableUrlStrip = () => page.locator('.controls')
 // igv.js draws itself in a shadow root, which a locator reaches into.
 const navigationBar = () => page.locator('.igv-navbar')
 const locusBox = () => page.locator('.igv-search-input')
@@ -40,18 +40,18 @@ beforeEach(async () => {
 
 describe('the Controls, round trip', () => {
   it('the Controls are shown when the Viewer opens', async () => {
-    expect(await shareableUrl().isVisible()).toBe(true)
+    expect(await shareableUrlStrip().isVisible()).toBe(true)
     expect(await navigationBar().isVisible()).toBe(true)
     expect(await page.getByRole('button', { name: 'Hide controls' }).getAttribute('aria-expanded')).toBe('true')
   })
 
   it('"Hide controls" hides the Shareable URL and the Navigation bar, and the genome browser takes the space they leave', async () => {
-    const height = (await shareableUrl().boundingBox())!.height + (await navigationBar().boundingBox())!.height
+    const height = (await shareableUrlStrip().boundingBox())!.height + (await navigationBar().boundingBox())!.height
     const shown = await tracksTop()
 
     await hide()
 
-    expect(await shareableUrl().isVisible()).toBe(false)
+    expect(await shareableUrlStrip().isVisible()).toBe(false)
     expect(await navigationBar().isVisible()).toBe(false)
     // The Navigation bar leaves its margin too.
     expect(await tracksTop()).toBeLessThanOrEqual(shown - height)
@@ -61,7 +61,7 @@ describe('the Controls, round trip', () => {
 
     await show()
 
-    expect(await shareableUrl().isVisible()).toBe(true)
+    expect(await shareableUrlStrip().isVisible()).toBe(true)
     expect(await navigationBar().isVisible()).toBe(true)
     expect(await tracksTop()).toBe(shown)
     expect(await page.locator('.viewer__status').isVisible()).toBe(true)
@@ -138,7 +138,7 @@ describe('the Controls, round trip', () => {
 
     await page.locator('.shareable-url__copy:enabled').waitFor()
     expect(await navigationBar().isVisible()).toBe(true)
-    expect(await shareableUrl().isVisible()).toBe(true)
+    expect(await shareableUrlStrip().isVisible()).toBe(true)
     expect(await page.getByRole('button', { name: 'Hide controls' }).isVisible()).toBe(true)
   })
 })

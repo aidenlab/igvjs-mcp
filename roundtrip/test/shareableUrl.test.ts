@@ -81,7 +81,7 @@ describe('the Shareable URL, round trip', () => {
     await webapp.close()
   })
 
-  it('the Viewer shows the same link in a field a person can select, kept up to date as the Session changes', async () => {
+  it('the Controls show the same link in a field a person can select, kept up to date as the Session changes', async () => {
     await callTool(room, 'go_to_locus', { locus: MYC })
     const field = page.locator('.shareable-url__field')
 
