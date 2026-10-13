@@ -25,6 +25,8 @@ type Browser = GenomeBrowser &
     navbar: {
       /** igv.js's Select Tracks button. */
       multiTrackSelectButton: { setVisibility(show: boolean): void }
+      /** igv.js's locus box. */
+      searchInput: HTMLInputElement
     }
   }
 
@@ -43,6 +45,10 @@ async function createBrowser(config: CreateOpt): Promise<Browser> {
   // The Navigation bar is without igv.js's Select Tracks button too. igv.js 3.8.9 builds and shows
   // it whatever `showMultiSelectButton` says, so it is hidden here, once there is a bar to hide it on.
   browser.navbar.multiTrackSelectButton.setVisibility(false)
+  // Nor has it igv.js's magnifying glass. igv.js 3.8.9 has no option for it and keeps no hold of it,
+  // so it is found beside the locus box. A locus typed into the box is still gone to on Enter.
+  const searchIcon = browser.navbar.searchInput.parentElement?.querySelector<HTMLElement>('.igv-search-icon-container')
+  if (searchIcon) searchIcon.style.display = 'none'
   controls.setGenomeBrowser(browser)
   return browser
 }

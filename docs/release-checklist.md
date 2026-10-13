@@ -93,7 +93,7 @@ Once in each Host, with the Viewer open at a locus and a track or two loaded.
 - [ ] With the Controls hidden, per-track gear menus, drag-to-reorder and click popups work.
 - [ ] A link asked for while the Controls are hidden opens igv-webapp with its own navigation bar showing.
 - [ ] After a reload the Controls are shown.
-- [ ] The Navigation bar has no Save Image and no Select Tracks button, before and after a reload.
+- [ ] The Navigation bar has no Save Image button, no Select Tracks button and no magnifying glass beside the locus box, before and after a reload.
 
 ## Room and Conversation
 

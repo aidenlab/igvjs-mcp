@@ -29,6 +29,8 @@ const shareableUrlStrip = () => page.locator('.controls')
 // igv.js draws itself in a shadow root, which a locator reaches into.
 const navigationBar = () => page.locator('.igv-navbar')
 const locusBox = () => page.locator('.igv-search-input')
+/** igv.js's magnifying glass, beside the locus box. */
+const searchIcon = () => page.locator('.igv-search-icon-container')
 const hide = () => page.getByRole('button', { name: 'Hide controls' }).click()
 const show = () => page.getByRole('button', { name: 'Show controls' }).click()
 /** How far down the page the tracks of the genome browser start. */
@@ -132,7 +134,7 @@ describe('the Controls, round trip', () => {
     await loading.close()
   })
 
-  it('the Navigation bar shows no Save Image and no Select Tracks button, on the default Viewer and on a restored Session', async () => {
+  it('the Navigation bar shows no Save Image button, no Select Tracks button and no magnifying glass, on the default Viewer and on a restored Session', async () => {
     /** The tooltips of the buttons the bar shows: igv.js gives each button its name as one. */
     const labels = () =>
       navigationBar().evaluate((bar) =>
@@ -144,6 +146,7 @@ describe('the Controls, round trip', () => {
     expect(await labels()).toContain('Crosshairs')
     expect(await labels()).not.toContain('Save Image')
     expect(await labels()).not.toContain('Select Tracks')
+    expect(await searchIcon().isVisible()).toBe(false)
 
     // The Room now has a Session for the reload to restore.
     await callTool(room, 'go_to_locus', { locus: MYC })
@@ -155,6 +158,7 @@ describe('the Controls, round trip', () => {
     expect(await labels()).toContain('Crosshairs')
     expect(await labels()).not.toContain('Save Image')
     expect(await labels()).not.toContain('Select Tracks')
+    expect(await searchIcon().isVisible()).toBe(false)
   })
 
   it('a reload shows the Controls again', async () => {
