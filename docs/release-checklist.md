@@ -79,15 +79,20 @@ Once in each Host, with the Viewer open at a locus.
 - [ ] "Show the centre line", then "hide it", does each.
 - [ ] After the crosshairs are turned on by hand, "are the crosshairs on?" is answered yes.
 
-## Shareable URL and Control panel
+## Shareable URL and Controls
 
 Once in each Host, with the Viewer open at a locus and a track or two loaded.
 
 - [ ] "Give me a link to share this view" is answered with one igv-webapp link, whole, and it is not the Join link.
 - [ ] Opened in an ordinary browser, the link shows the same genome, locus and tracks in igv-webapp.
-- [ ] The Control panel shows the same link, and its Copy button copies it: pasted into a browser, it opens the same view.
-- [ ] After a pan by hand, the link in the Control panel has changed.
-- [ ] "Hide controls" retracts the Control panel and the genome browser moves up; "Show controls" brings it back.
+- [ ] The Viewer shows the same link above the genome browser, and its Copy button copies it: pasted into a browser, it opens the same view.
+- [ ] After a pan by hand, the link in the Viewer has changed.
+- [ ] "Hide controls" hides the Shareable URL and the Navigation bar, and the genome browser moves up; the status line and the button stay. "Show controls" brings both back.
+- [ ] Shown again, the Navigation bar works as before: locus box, chromosome list, zoom, and the crosshairs and centre line buttons.
+- [ ] With the Controls hidden, "go to MYC" moves the view, and the locus box shows it when the Controls are shown again.
+- [ ] With the Controls hidden, per-track gear menus, drag-to-reorder and click popups work.
+- [ ] A link asked for while the Controls are hidden opens igv-webapp with its own navigation bar showing.
+- [ ] After a reload the Controls are shown.
 
 ## Room and Conversation
 
