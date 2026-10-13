@@ -40,7 +40,7 @@ When a loose request matches many tracks, the model picks a sensible default, sa
 
 - **Controls**: the Shareable URL and the Navigation bar, hidden and shown together with one button, "Hide controls" and "Show controls" (#34).
   - Shareable URL: the link in a selectable field with a copy button, in its own strip above the genome browser. It opens igv-webapp with the Session carried in the URL.
-  - Navigation bar: igv.js's own, as igv.js ships it but for the Save Image button, which the Viewer switches off at creation (`showSVGButton: false`), for a restored Session as for the default Viewer. A person types a chromosome, coordinates or a gene into its locus box.
+  - Navigation bar: igv.js's own, as igv.js ships it but for two buttons, on a restored Session as on the default Viewer. Save Image is switched off at creation (`showSVGButton: false`). Select Tracks is hidden once igv.js has loaded (`navbar.multiTrackSelectButton.setVisibility(false)`), since igv.js 3.8.9 shows it whatever `showMultiSelectButton` says; it is therefore on the bar while igv.js loads. With it goes Overlay Tracks, which igv.js shows only while tracks are selected. A person types a chromosome, coordinates or a gene into its locus box.
   - Hidden, the two leave their space to the genome browser. The Viewer's status line and the button are always shown.
   - The Controls are shown when the Viewer opens. Whether they are hidden is kept nowhere: not in the browser's storage, the Room, the Session or the Shareable URL, so a reload shows them again, and a Shareable URL opens igv-webapp with its navigation bar showing.
   - Hiding and showing is done by hand only: there is no tool for it, and the Session summary does not mention it.

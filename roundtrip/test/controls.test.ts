@@ -132,13 +132,18 @@ describe('the Controls, round trip', () => {
     await loading.close()
   })
 
-  it('the Navigation bar has no Save Image button, on the default Viewer and on a restored Session', async () => {
-    /** What the bar's buttons say, as text or as a tooltip. */
+  it('the Navigation bar shows no Save Image and no Select Tracks button, on the default Viewer and on a restored Session', async () => {
+    /** The tooltips of the buttons the bar shows: igv.js gives each button its name as one. */
     const labels = () =>
-      navigationBar().evaluate((bar) => Array.from(bar.querySelectorAll('[class*="button"]'), (button) => `${button.textContent} ${button.getAttribute('title')}`).join('|'))
+      navigationBar().evaluate((bar) =>
+        Array.from(bar.querySelectorAll('.igv-navbar-text-button, .igv-navbar-icon-button'))
+          .filter((button) => button.getClientRects().length > 0)
+          .map((button) => button.getAttribute('title')),
+      )
 
     expect(await labels()).toContain('Crosshairs')
     expect(await labels()).not.toContain('Save Image')
+    expect(await labels()).not.toContain('Select Tracks')
 
     // The Room now has a Session for the reload to restore.
     await callTool(room, 'go_to_locus', { locus: MYC })
@@ -149,6 +154,7 @@ describe('the Controls, round trip', () => {
     await expect.poll(() => locusBox().inputValue()).toBe(MYC)
     expect(await labels()).toContain('Crosshairs')
     expect(await labels()).not.toContain('Save Image')
+    expect(await labels()).not.toContain('Select Tracks')
   })
 
   it('a reload shows the Controls again', async () => {

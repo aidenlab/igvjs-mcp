@@ -19,7 +19,14 @@ function showStatus(status: RoomStatus) {
   else delete statusElement.dataset.room
 }
 
-type Browser = GenomeBrowser & ChangeSource & NavigationBarOwner
+type Browser = GenomeBrowser &
+  ChangeSource &
+  NavigationBarOwner & {
+    navbar: {
+      /** igv.js's Select Tracks button. */
+      multiTrackSelectButton: { setVisibility(show: boolean): void }
+    }
+  }
 
 // The default Viewer: hg38 in whole-genome view, with the genome's own default
 // gene annotation track and nothing else.
@@ -33,6 +40,9 @@ const VIEWER_OPTIONS = { showSVGButton: false }
 /** igv.js showing `config`, as the genome browser on the page: Controls hidden while it loaded are hidden on it. */
 async function createBrowser(config: CreateOpt): Promise<Browser> {
   const browser = (await igv.createBrowser(browserElement, { ...config, ...VIEWER_OPTIONS })) as unknown as Browser
+  // The Navigation bar is without igv.js's Select Tracks button too. igv.js 3.8.9 builds and shows
+  // it whatever `showMultiSelectButton` says, so it is hidden here, once there is a bar to hide it on.
+  browser.navbar.multiTrackSelectButton.setVisibility(false)
   controls.setGenomeBrowser(browser)
   return browser
 }
