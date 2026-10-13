@@ -25,9 +25,14 @@ type Browser = GenomeBrowser & ChangeSource & NavigationBarOwner
 // gene annotation track and nothing else.
 const DEFAULT_VIEWER: CreateOpt = { genome: 'hg38', locus: 'all' }
 
+// What the Viewer asks of igv.js whatever it shows. A Session does not carry
+// these, so they are given with a restored one as with the default Viewer.
+// The Navigation bar is without igv.js's Save Image button.
+const VIEWER_OPTIONS = { showSVGButton: false }
+
 /** igv.js showing `config`, as the genome browser on the page: Controls hidden while it loaded are hidden on it. */
 async function createBrowser(config: CreateOpt): Promise<Browser> {
-  const browser = (await igv.createBrowser(browserElement, config)) as unknown as Browser
+  const browser = (await igv.createBrowser(browserElement, { ...config, ...VIEWER_OPTIONS })) as unknown as Browser
   controls.setGenomeBrowser(browser)
   return browser
 }

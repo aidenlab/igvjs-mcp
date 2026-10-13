@@ -22,6 +22,8 @@ afterAll(() => browser?.close())
 
 const MYC = 'chr8:127,735,434-127,742,951'
 const BRCA1 = 'chr17:43,044,295-43,125,364'
+/** Long enough for the Viewer to see that igv.js has gone quiet and save its Session in the Room. */
+const SAVED_MS = 1500
 
 const shareableUrlStrip = () => page.locator('.controls')
 // igv.js draws itself in a shadow root, which a locator reaches into.
@@ -128,6 +130,25 @@ describe('the Controls, round trip', () => {
     await loading.getByRole('button', { name: 'Show controls' }).click()
     expect(await loading.locator('.igv-navbar').isVisible()).toBe(true)
     await loading.close()
+  })
+
+  it('the Navigation bar has no Save Image button, on the default Viewer and on a restored Session', async () => {
+    /** What the bar's buttons say, as text or as a tooltip. */
+    const labels = () =>
+      navigationBar().evaluate((bar) => Array.from(bar.querySelectorAll('[class*="button"]'), (button) => `${button.textContent} ${button.getAttribute('title')}`).join('|'))
+
+    expect(await labels()).toContain('Crosshairs')
+    expect(await labels()).not.toContain('Save Image')
+
+    // The Room now has a Session for the reload to restore.
+    await callTool(room, 'go_to_locus', { locus: MYC })
+    await page.waitForTimeout(SAVED_MS)
+    await page.reload()
+    await page.locator('.shareable-url__copy:enabled').waitFor()
+
+    await expect.poll(() => locusBox().inputValue()).toBe(MYC)
+    expect(await labels()).toContain('Crosshairs')
+    expect(await labels()).not.toContain('Save Image')
   })
 
   it('a reload shows the Controls again', async () => {
