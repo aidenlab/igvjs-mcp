@@ -2,7 +2,7 @@ import igv, { type CreateOpt } from 'igv'
 import './styles/viewer.scss'
 import { watchChanges, type ChangeSource } from './changes.ts'
 import { applyCommand, captureSession, type GenomeBrowser } from './commands.ts'
-import { controlPanel } from './controlPanel.ts'
+import { controls as pageControls, type NavigationBarOwner } from './controls.ts'
 import type { SavedSession, SessionReport } from './protocol.ts'
 import { connectToRoom, roomSocketUrl, statusText, type RoomStatus } from './roomConnection.ts'
 import { sessionSummary } from './session.ts'
@@ -10,7 +10,7 @@ import { shareableUrl } from './shareableUrl.ts'
 
 const statusElement = document.querySelector<HTMLElement>('.viewer__status')!
 const browserElement = document.querySelector<HTMLElement>('.viewer__browser')!
-const panel = controlPanel()
+const controls = pageControls()
 
 function showStatus(status: RoomStatus) {
   statusElement.textContent = statusText(status)
@@ -19,14 +19,32 @@ function showStatus(status: RoomStatus) {
   else delete statusElement.dataset.room
 }
 
-type Browser = GenomeBrowser & ChangeSource
+type Browser = GenomeBrowser &
+  ChangeSource &
+  NavigationBarOwner & {
+    navbar: {
+      /** igv.js's Select Tracks button. */
+      multiTrackSelectButton: { setVisibility(show: boolean): void }
+    }
+  }
 
 // The default Viewer: hg38 in whole-genome view, with the genome's own default
 // gene annotation track and nothing else.
 const DEFAULT_VIEWER: CreateOpt = { genome: 'hg38', locus: 'all' }
 
-function createBrowser(config: CreateOpt): Promise<Browser> {
-  return igv.createBrowser(browserElement, config) as unknown as Promise<Browser>
+// What the Viewer asks of igv.js whatever it shows. A Session does not carry
+// these, so they are given with a restored one as with the default Viewer.
+// The Navigation bar is without igv.js's Save Image button.
+const VIEWER_OPTIONS = { showSVGButton: false }
+
+/** igv.js showing `config`, as the genome browser on the page: Controls hidden while it loaded are hidden on it. */
+async function createBrowser(config: CreateOpt): Promise<Browser> {
+  const browser = (await igv.createBrowser(browserElement, { ...config, ...VIEWER_OPTIONS })) as unknown as Browser
+  // The Navigation bar is without igv.js's Select Tracks button too. igv.js 3.8.9 builds and shows
+  // it whatever `showMultiSelectButton` says, so it is hidden here, once there is a bar to hide it on.
+  browser.navbar.multiTrackSelectButton.setVisibility(false)
+  controls.setGenomeBrowser(browser)
+  return browser
 }
 
 /** igv.js showing the Session saved in the Room, or the default Viewer when there is none or it will not load. */
@@ -46,7 +64,7 @@ async function openBrowser(saved: SavedSession | undefined): Promise<Browser> {
 /**
  * Watches igv.js for changes, whoever makes them: by hand in igv.js, or by a
  * command. After each, `reportSession` is given the Session as it stands and
- * the Control panel shows its Shareable URL. Returns the function to call
+ * the Controls show its Shareable URL. Returns the function to call
  * after a change igv.js does not announce.
  */
 function watchSession(loaded: Browser, reportSession: (report: SessionReport) => void = () => {}): () => void {
@@ -59,7 +77,7 @@ function watchSession(loaded: Browser, reportSession: (report: SessionReport) =>
     (report) => {
       // The Room first: it is told whatever becomes of the link.
       reportSession(report)
-      panel.showShareableUrl(shareableUrl(loaded))
+      controls.showShareableUrl(shareableUrl(loaded))
     },
   )
   // igv.js announces nothing when its crosshairs or centre line button is pressed.

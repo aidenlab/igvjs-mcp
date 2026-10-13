@@ -217,4 +217,4 @@ No arguments. Changes nothing: the reply gives the Shareable URL on a line of it
 - It is long, since it holds the whole Session, and the model gives it whole.
 - It shows the view as it was when asked for: after a change, the model gets a new one.
 - The Viewer answers it, so with no Viewer in the Room there is no link.
-- A person copies the same link by hand from the Viewer's Control panel, which keeps it up to date as the Session changes.
+- A person copies the same link by hand from the Viewer, which shows it above the genome browser and keeps it up to date as the Session changes. It is one of the Controls, so "Hide controls" hides it, with the Navigation bar.

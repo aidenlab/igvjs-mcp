@@ -38,12 +38,16 @@ When a loose request matches many tracks, the model picks a sensible default, sa
 
 ## What the person does by hand
 
-- **Control panel**, retractable, with exactly two widgets:
-  - Shareable URL: the link in a selectable field with a copy button. It opens igv-webapp with the Session carried in the URL.
-  - Locus box: one text box taking a chromosome, coordinates or a gene. Select-all on focus; compact readout when unfocused (`chr7:127.4–127.5 Mb`), exact coordinates on focus; a dropdown of recent loci visited in this Room, whoever navigated there.
-- **igv.js itself**: the navigation bar is hidden. Per-track gear menus, drag-to-reorder and click popups stay. The gear scales up on hover; this is a Viewer-side style, not a change to igv.js.
+- **Controls**: the Shareable URL and the Navigation bar, hidden and shown together with one button, "Hide controls" and "Show controls" (#34).
+  - Shareable URL: the link in a selectable field with a copy button, in its own strip above the genome browser. It opens igv-webapp with the Session carried in the URL.
+  - Navigation bar: igv.js's own, as igv.js ships it but for two buttons, on a restored Session as on the default Viewer. Save Image is switched off at creation (`showSVGButton: false`). Select Tracks is hidden once igv.js has loaded (`navbar.multiTrackSelectButton.setVisibility(false)`), since igv.js 3.8.9 shows it whatever `showMultiSelectButton` says; it is therefore on the bar while igv.js loads. With it goes Overlay Tracks, which igv.js shows only while tracks are selected. A person types a chromosome, coordinates or a gene into its locus box.
+  - Hidden, the two leave their space to the genome browser. The Viewer's status line and the button are always shown.
+  - The Controls are shown when the Viewer opens. Whether they are hidden is kept nowhere: not in the browser's storage, the Room, the Session or the Shareable URL, so a reload shows them again, and a Shareable URL opens igv-webapp with its navigation bar showing.
+  - Hiding and showing is done by hand only: there is no tool for it, and the Session summary does not mention it.
+  - As built: igv.js 3.8.9 draws itself in a shadow root, so the Viewer's stylesheets do not reach the Navigation bar, and igv.js has no public call to hide it after creation. One function in `viewer/src/controls.ts` does what igv.js's own `showNavigation: false` does, and is the one place to change when igv.js gains a public call.
+- **igv.js itself**: per-track gear menus, drag-to-reorder and click popups stay, with the Controls shown or hidden.
 
-The Control panel is deliberately minimal and expected to be tuned later. There is no genome picker and no track-loading widget.
+The Controls are deliberately minimal. There is no genome picker and no track-loading widget.
 
 ## Data
 

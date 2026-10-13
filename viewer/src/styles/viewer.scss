@@ -54,20 +54,20 @@ body {
     }
   }
 
-  &__panel-toggle {
+  &__controls-toggle {
     @include button;
   }
 }
 
-// In the flow of the page above the genome browser, so that retracted it
+// In the flow of the page above the genome browser, so that hidden it
 // leaves its height to the genome browser.
-.control-panel {
+.controls {
   padding: 6px 12px;
   background: $panel-colour;
   border-top: 1px solid $border-colour;
   border-bottom: 1px solid $border-colour;
 
-  &--retracted {
+  &--hidden {
     display: none;
   }
 }

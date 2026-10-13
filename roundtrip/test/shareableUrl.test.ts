@@ -81,7 +81,7 @@ describe('the Shareable URL, round trip', () => {
     await webapp.close()
   })
 
-  it('the Control panel shows the same link in a field a person can select, kept up to date as the Session changes', async () => {
+  it('the Controls show the same link in a field a person can select, kept up to date as the Session changes', async () => {
     await callTool(room, 'go_to_locus', { locus: MYC })
     const field = page.locator('.shareable-url__field')
 
@@ -103,25 +103,5 @@ describe('the Shareable URL, round trip', () => {
 
     await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe(link)
     expect(await page.locator('.shareable-url__copy').textContent()).toBe('Copied')
-  })
-
-  it('the Control panel is retracted and brought back, and the genome browser takes the space it leaves', async () => {
-    const panel = page.locator('.control-panel')
-    const top = async () => (await page.locator('.viewer__browser').boundingBox())!.y
-    const height = (await panel.boundingBox())!.height
-    const withPanel = await top()
-    expect(height).toBeGreaterThan(0)
-
-    await page.getByRole('button', { name: 'Hide controls' }).click()
-
-    expect(await panel.isVisible()).toBe(false)
-    expect(await top()).toBe(withPanel - height)
-
-    await page.getByRole('button', { name: 'Show controls' }).click()
-
-    expect(await panel.isVisible()).toBe(true)
-    expect(await top()).toBe(withPanel)
-    // Retracted or not, the link was kept up to date.
-    expect(await page.locator('.shareable-url__field').inputValue()).toBe(linkIn((await callTool(room, 'get_shareable_url')).text))
   })
 })

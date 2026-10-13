@@ -21,12 +21,16 @@ The Host's own browser pane beside the Conversation, where the Viewer is shown. 
 _Avoid_: Sidebar, artifact panel, canvas
 
 **Viewer**:
-The web page, opened in the Side panel, that houses the igv.js genome browser and the Control panel. A person knows it as igv-bot.
+The web page, opened in the Side panel, that houses the igv.js genome browser and the Shareable URL. A person knows it as igv-bot.
 _Avoid_: Widget, app, embed
 
-**Control panel**:
-The retractable region of the Viewer holding the widgets a person uses to manipulate the genome browser directly.
-_Avoid_: Side panel, sidebar, toolbar
+**Navigation bar**:
+igv.js's own bar across the top of the genome browser, holding its locus box, chromosome list, zoom and toggle buttons.
+_Avoid_: Navbar, toolbar, header
+
+**Controls**:
+The Shareable URL and the Navigation bar, which a person hides and shows together with one button in the Viewer.
+_Avoid_: Control panel, side panel, sidebar, toolbar
 
 **Session**:
 The complete description of what the genome browser is showing: genome, loci and tracks, as igv.js defines it. It is the single source of truth and is owned by the Viewer.
