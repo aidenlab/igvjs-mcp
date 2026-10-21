@@ -1,0 +1,708 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>How igvjs-mcp works</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap">
+<style>
+/* Layout: one 38rem reading column, notes in the right margin, figures across both. Ink for the Worker and the Host, blue for the Viewer. */
+:root {
+  --bg: #f5f6f4;
+  --box: #ffffff;
+  --fg: #1b1d1c;
+  --muted: #636966;
+  --rule: #cdd2ce;
+  --igv: #2a5f9e;               /* igv's blue */
+  --jb: #b8231a;                /* the red of a contact map */
+  --serif: "Source Serif 4", "Iowan Old Style", Georgia, serif;
+  --sans: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #151716; --box: #1e2120; --fg: #e5e7e4; --muted: #9aa19c; --rule: #3b403d; --igv: #7fadea; --jb: #ff7566;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #151716; --box: #1e2120; --fg: #e5e7e4; --muted: #9aa19c; --rule: #3b403d; --igv: #7fadea; --jb: #ff7566;
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--serif);
+  font-size: 1.0625rem;
+  line-height: 1.6;
+}
+.page {
+  max-width: 64rem;
+  margin-inline: auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 3.5rem 5rem;
+}
+.page :is(h1, h2, h3, p, ol, ul, .tablewrap) { max-width: 38rem; }
+
+h1 {
+  font-family: var(--sans);
+  font-weight: 600;
+  font-size: 2rem;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  margin: 0 0 0.75rem;
+  text-wrap: balance;
+}
+.lede {
+  font-size: 1.2rem;
+  line-height: 1.5;
+  color: var(--muted);
+  margin: 0 0 2.5rem;
+}
+h2 {
+  font-family: var(--sans);
+  font-weight: 600;
+  font-size: 1.0625rem;
+  margin: 3.25rem 0 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--fg);
+  text-wrap: balance;
+}
+h3 {
+  font-family: var(--sans);
+  font-weight: 600;
+  font-size: 0.95rem;
+  margin: 2rem 0 0.5rem;
+}
+p { margin: 0 0 1rem; }
+ol, ul { margin: 0 0 1rem; padding-left: 1.4rem; }
+li { margin-bottom: 0.4rem; }
+code { font-family: var(--mono); font-size: 0.84em; }
+.igv { color: var(--igv); }
+.jb { color: var(--jb); }
+a { color: inherit; text-decoration-color: var(--rule); text-underline-offset: 0.15em; }
+a:hover { text-decoration-color: currentColor; }
+a:focus-visible { outline: 2px solid var(--igv); outline-offset: 2px; }
+
+/* Contents */
+.toc {
+  font-family: var(--sans);
+  font-size: 0.85rem;
+  line-height: 1.5;
+  margin: 0 0 1rem;
+  padding: 0;
+  list-style: none;
+  max-width: 38rem;
+  columns: 2 14rem;
+}
+.toc li { margin: 0 0 0.2rem; break-inside: avoid; }
+.toc a { text-decoration: none; color: var(--muted); }
+.toc a:hover { color: var(--fg); }
+
+/* Margin notes */
+.note {
+  font-family: var(--sans);
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: var(--muted);
+  max-width: 38rem;
+  margin: 0 0 1rem;
+}
+@media (min-width: 64rem) {
+  .note {
+    float: right;
+    clear: right;
+    width: 17rem;
+    margin: 0.35rem 0 1rem 2rem;
+  }
+}
+
+/* Figures */
+figure { clear: both; margin: 2rem 0 2.25rem; }
+.figwrap { overflow-x: auto; }
+svg.fig {
+  display: block;
+  width: 100%;
+  min-width: 46rem;
+  height: auto;
+  color: var(--fg);
+  font-family: var(--sans);
+}
+figcaption {
+  font-family: var(--sans);
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: var(--muted);
+  max-width: 38rem;
+  margin-top: 0.75rem;
+}
+figcaption b { color: var(--fg); font-weight: 600; }
+.fig text { fill: currentColor; font-size: 12.5px; }
+.fig .t-h { font-weight: 600; }
+.fig .t-s { font-size: 10.5px; fill: var(--muted); }
+.fig .t-m { font-family: var(--mono); font-size: 11px; }
+.fig .t-n { font-size: 11px; font-weight: 600; fill: var(--muted); }
+.fig .t-band { font-size: 10px; font-weight: 600; letter-spacing: 0.12em; fill: var(--muted); }
+.fig .tag { font-size: 11px; font-weight: 600; fill: var(--muted); }
+.fig .k { paint-order: stroke; stroke: var(--bg); stroke-width: 5px; stroke-linejoin: round; }
+.fig .ci { fill: var(--igv); }
+.fig .cj { fill: var(--jb); }
+.fig .bx { fill: var(--box); stroke: currentColor; stroke-width: 1; }
+.fig .bx-g { fill: var(--box); stroke: currentColor; stroke-width: 1.75; }
+.fig .bx-i { fill: var(--box); stroke: var(--igv); stroke-width: 1.25; }
+.fig .bx-j { fill: var(--box); stroke: var(--jb); stroke-width: 1.25; }
+.fig .bx-q { fill: none; stroke: var(--rule); stroke-width: 1; }
+.fig .win { fill: none; stroke: var(--muted); stroke-width: 1; }
+.fig .sep { stroke: var(--rule); stroke-width: 1; stroke-dasharray: 2 4; }
+.fig .life { stroke: var(--rule); stroke-width: 1; }
+/* Wires: thin is a request and its reply, thick a WebSocket that stays open, dashed a page fetched once. */
+.fig .w { stroke: currentColor; stroke-width: 1; fill: none; }
+.fig .ws { stroke-width: 2.75; }
+.fig .pg { stroke-dasharray: 5 4; }
+.fig .wi { stroke: var(--igv); }
+.fig .wj { stroke: var(--jb); }
+.fig .ah { fill: currentColor; }
+.fig .ahi { fill: var(--igv); }
+.fig .ahj { fill: var(--jb); }
+.fig .dot { fill: currentColor; }
+.fig .hollow { fill: var(--box); stroke: currentColor; stroke-width: 1; }
+
+/* Key to the line styles */
+.key {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1.75rem;
+  font-family: var(--sans);
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin: 0.9rem 0 0;
+  max-width: 50rem;
+}
+.key span { display: inline-flex; align-items: center; gap: 0.5rem; }
+.key svg { width: 34px; height: 8px; color: var(--fg); }
+
+/* Tables */
+.tablewrap { overflow-x: auto; margin: 1.25rem 0 1.5rem; }
+.page .tablewrap.wide { max-width: 64rem; }
+table {
+  border-collapse: collapse;
+  width: 100%;
+  font-family: var(--sans);
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+th, td {
+  text-align: left;
+  vertical-align: top;
+  padding: 0.5rem 1.1rem 0.5rem 0;
+  border-bottom: 1px solid var(--rule);
+}
+thead th { font-weight: 600; border-bottom: 1px solid var(--fg); }
+tbody th { font-weight: 600; white-space: nowrap; }
+tbody tr:last-child :is(th, td) { border-bottom: 0; }
+td code, th code { font-size: 0.92em; }
+td.n, th.n { font-weight: 600; color: var(--muted); width: 1.5rem; }
+td.how { white-space: nowrap; }
+.end {
+  font-family: var(--sans);
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin-top: 3.5rem;
+  max-width: 38rem;
+}
+</style>
+</head>
+<body>
+
+<!-- Arrowheads shared by every figure. -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <marker id="a" viewBox="0 0 8 8" refX="7.5" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0.5 L8 4 L0 7.5z" class="ah" style="fill: var(--fg)"/></marker>
+    <marker id="ai" viewBox="0 0 8 8" refX="7.5" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0.5 L8 4 L0 7.5z" style="fill: var(--igv)"/></marker>
+    <marker id="aj" viewBox="0 0 8 8" refX="7.5" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0.5 L8 4 L0 7.5z" style="fill: var(--jb)"/></marker>
+    <marker id="as" viewBox="0 0 8 8" refX="6" refY="4" markerWidth="4" markerHeight="4" orient="auto-start-reverse"><path d="M0 0.5 L8 4 L0 7.5z" style="fill: var(--fg)"/></marker>
+    <marker id="asi" viewBox="0 0 8 8" refX="6" refY="4" markerWidth="4" markerHeight="4" orient="auto-start-reverse"><path d="M0 0.5 L8 4 L0 7.5z" style="fill: var(--igv)"/></marker>
+    <marker id="asj" viewBox="0 0 8 8" refX="6" refY="4" markerWidth="4" markerHeight="4" orient="auto-start-reverse"><path d="M0 0.5 L8 4 L0 7.5z" style="fill: var(--jb)"/></marker>
+  </defs>
+</svg>
+
+<main class="page">
+
+<h1>How igvjs-mcp works</h1>
+<p class="lede">Five parts, three on the internet and two on the person’s computer, cooperate so that a model can drive the igv.js genome browser from a conversation. A person knows the result as igv-bot. This document shows what each part is, which wires join them, and what crosses each wire.</p>
+
+<ul class="toc">
+  <li><a href="#parts">The parts and the wires</a></li>
+  <li><a href="#room">One Room id, three ways in</a></li>
+  <li><a href="#open">Scenario: “open igv-bot”</a></li>
+  <li><a href="#call">Scenario: “go to MYC”</a></li>
+  <li><a href="#hand">When the person changes the view</a></li>
+  <li><a href="#server">Calls that stop at the server</a></li>
+  <li><a href="#state">What each part keeps</a></li>
+  <li><a href="#wrong">When something goes wrong</a></li>
+  <li><a href="#addresses">Addresses</a></li>
+</ul>
+
+<h2 id="parts">The parts and the wires</h2>
+
+<figure>
+  <div class="figwrap">
+  <svg class="fig" viewBox="0 0 1000 640" role="img" aria-label="Map of igvjs-mcp. On the internet: the Host's servers, the igv-bot Worker with its Room, the public data hosts, and the static site that serves the Viewer page. On the person's computer: the Host app, with the conversation holding the Join card, and the Side panel, the Host’s in-app browser pane, holding the Viewer, which houses igv.js. Wires A to G join them.">
+
+    <text class="t-band" x="20" y="24">ON THE INTERNET</text>
+    <line class="sep" x1="0" y1="352" x2="1000" y2="352"/>
+    <text class="t-band" x="20" y="372">ON THE PERSON’S COMPUTER</text>
+
+    <!-- Host's servers -->
+    <rect class="bx" x="20" y="60" width="180" height="110"/>
+    <text class="t-h" x="110" y="100" text-anchor="middle">Host</text>
+    <text class="t-s" x="110" y="120" text-anchor="middle">Claude or ChatGPT,</text>
+    <text class="t-s" x="110" y="135" text-anchor="middle">on its maker’s servers;</text>
+    <text class="t-s" x="110" y="150" text-anchor="middle">runs the model</text>
+
+    <!-- The Worker -->
+    <rect class="bx-g" x="290" y="60" width="210" height="190"/>
+    <text class="t-h" x="395" y="85" text-anchor="middle">igv-bot Worker</text>
+    <text class="t-s t-m" x="395" y="102" text-anchor="middle">igv-bot-mcp-dev.3dg.io</text>
+    <text class="t-m" x="306" y="132" style="font-size:10.5px">/mcp</text>
+    <text class="t-s" x="346" y="132">14 tools, for the Host</text>
+    <text class="t-m" x="306" y="152" style="font-size:10.5px">/ws</text>
+    <text class="t-s" x="346" y="152">for the Viewer</text>
+    <rect class="bx" x="304" y="196" width="182" height="40"/>
+    <text class="t-h" x="395" y="213" text-anchor="middle" style="font-size:11.5px">Room</text>
+    <text class="t-s" x="395" y="228" text-anchor="middle">a Durable Object per id</text>
+
+    <!-- Public data hosts -->
+    <rect class="bx-q" x="600" y="60" width="200" height="95"/>
+    <text class="t-h" x="700" y="88" text-anchor="middle">Public data hosts</text>
+    <text class="t-s" x="700" y="108" text-anchor="middle">igv.org, igv-data on GitHub,</text>
+    <text class="t-s" x="700" y="123" text-anchor="middle">ENCODE, 4DN and any other</text>
+    <text class="t-s" x="700" y="138" text-anchor="middle">a track’s URL names</text>
+
+    <!-- Viewer page site -->
+    <rect class="bx-q" x="830" y="232" width="130" height="56"/>
+    <text class="t-s" x="895" y="255" text-anchor="middle" style="fill: var(--fg)">Viewer page</text>
+    <text class="t-s" x="895" y="271" text-anchor="middle">static site</text>
+
+    <!-- The person's computer -->
+    <rect class="win" x="20" y="384" width="955" height="244"/>
+    <line class="win" x1="20" y1="406" x2="975" y2="406"/>
+    <text class="t-s" x="32" y="399">Host app: Claude desktop, or ChatGPT desktop in Codex mode</text>
+    <line class="win" x1="290" y1="406" x2="290" y2="628"/>
+    <text x="155" y="452" text-anchor="middle">Conversation</text>
+    <text class="t-s" x="155" y="470" text-anchor="middle">the person and the model</text>
+    <rect class="bx" x="55" y="500" width="200" height="88"/>
+    <text class="t-h" x="155" y="528" text-anchor="middle">Join card</text>
+    <text class="t-s" x="155" y="546" text-anchor="middle">an MCP App: one line</text>
+    <text class="t-s" x="155" y="561" text-anchor="middle">of status and an</text>
+    <text class="t-s" x="155" y="576" text-anchor="middle">Open igv-bot button</text>
+    <text class="t-s" x="306" y="424">Side panel</text>
+
+    <rect class="bx-i" x="306" y="432" width="656" height="184"/>
+    <text class="t-h ci" x="322" y="456">Viewer</text>
+    <text class="t-s t-m" x="322" y="473">igv-bot-web-dev.pages.dev/?room=7KQ2M9XA4T</text>
+    <text class="t-s" x="322" y="500">status line:</text>
+    <text class="t-s" x="322" y="515" style="fill: var(--fg)">Connected · Room 7KQ2M9XA4T</text>
+    <text class="t-s" x="322" y="545">Controls: the Shareable URL,</text>
+    <text class="t-s" x="322" y="560">and igv.js’s Navigation bar,</text>
+    <text class="t-s" x="322" y="575">hidden and shown together</text>
+
+    <rect class="bx" x="560" y="478" width="380" height="122"/>
+    <text class="t-h" x="750" y="535" text-anchor="middle">igv.js</text>
+    <text class="t-s" x="750" y="553" text-anchor="middle">the genome browser; owns the Session</text>
+
+    <!-- G: the conversation -->
+    <line class="w" x1="110" y1="171" x2="110" y2="434" marker-start="url(#a)" marker-end="url(#a)"/>
+    <text class="tag k" x="118" y="290">G</text>
+    <text class="t-s k" x="130" y="290">messages</text>
+
+    <!-- A: tool calls -->
+    <line class="w" x1="201" y1="112" x2="289" y2="112" marker-start="url(#a)" marker-end="url(#a)"/>
+    <text class="k" x="245" y="104" text-anchor="middle" style="font-size:11px"><tspan class="tag">A</tspan>  tool calls</text>
+
+    <!-- E: the Worker's own reads -->
+    <line class="w" x1="599" y1="112" x2="502" y2="112" marker-end="url(#a)"/>
+    <text class="tag k" x="512" y="104">E</text>
+    <text class="t-s k" x="524" y="104">genome list,</text>
+    <text class="t-s k" x="524" y="130">Catalogues</text>
+
+    <!-- B: the Room's socket -->
+    <line class="w ws wi" x1="420" y1="237" x2="420" y2="430" marker-start="url(#asi)" marker-end="url(#asi)"/>
+    <text class="tag k" x="428" y="300">B</text>
+    <text class="t-s k" x="440" y="300">commands, acks</text>
+    <text class="t-s k" x="440" y="314">and Session reports</text>
+
+    <!-- D: the Viewer's own data -->
+    <line class="w wi" x1="700" y1="156" x2="700" y2="430" marker-end="url(#ai)"/>
+    <text class="tag k" x="708" y="300">D</text>
+    <text class="t-s k" x="720" y="300">genomes, tracks,</text>
+    <text class="t-s k" x="720" y="314">gene lookups</text>
+
+    <!-- C: the Viewer's page files -->
+    <line class="w pg wi" x1="895" y1="289" x2="895" y2="430" marker-end="url(#ai)"/>
+    <text class="tag k" x="903" y="318">C</text>
+    <text class="t-s k" x="903" y="334">page</text>
+
+    <!-- F: the Join card asks the Host to open the Join link -->
+    <line class="w" x1="256" y1="544" x2="304" y2="544" marker-end="url(#a)"/>
+    <text class="tag k" x="264" y="536">F</text>
+  </svg>
+  </div>
+  <div class="key" aria-hidden="true">
+    <span><svg viewBox="0 0 34 8"><line x1="0" y1="4" x2="34" y2="4" stroke="currentColor" stroke-width="1"/></svg>a request and its reply, over HTTPS</span>
+    <span><svg viewBox="0 0 34 8"><line x1="0" y1="4" x2="34" y2="4" stroke="currentColor" stroke-width="2.75"/></svg>a WebSocket that stays open</span>
+    <span><svg viewBox="0 0 34 8"><line x1="0" y1="4" x2="34" y2="4" stroke="currentColor" stroke-width="1" stroke-dasharray="5 4"/></svg>page files, fetched once when a page opens</span>
+  </div>
+  <figcaption><b>Figure 1.</b> Every part and every wire. Blue belongs to the Viewer, which houses igv.js; black is the Worker’s and the Host’s. Arrowheads show which way the content flows. The Side panel is the Host’s in-app browser pane. Of the parts on the internet, the Worker is a Cloudflare Worker and the Viewer page is a Cloudflare Pages site; the data hosts belong to others. The Join card also loads its MCP Apps client from <code>unpkg.com</code>, which is not drawn.</figcaption>
+</figure>
+
+<aside class="note">The Host’s request to the Worker comes from Anthropic’s or OpenAI’s servers, not from the person’s computer. That is why the Worker needs a public <code>https://</code> address even during local development, and why a local Worker is tried in those Hosts through a tunnel.</aside>
+
+<p>Two things carry the whole design. First, the Worker draws nothing and loads no genomic data: igv.js runs only in the Viewer, a web page in the person’s Side panel, and fetches its genomes and tracks from the data hosts itself. Second, the Worker cannot reach the Viewer by itself. It waits for the Viewer to open a WebSocket to the Room named in its Join link, and pushes every Command down that socket.</p>
+
+<p>So a single request from the model crosses two wires on the way out (<b>A</b>, then <b>B</b>) and the same two on the way back. Everything else in the figure exists to set those wires up, to feed igv.js its data, and to keep the Room’s copy of the view in step with the Viewer.</p>
+
+<div class="tablewrap wide">
+<table>
+  <thead><tr><th class="n"></th><th>Between</th><th>How</th><th>What crosses it</th><th>When</th></tr></thead>
+  <tbody>
+    <tr><td class="n">A</td><td>Host and Worker</td><td class="how">POST <code>/mcp</code></td><td>MCP JSON-RPC. <code>initialize</code>, answered with a Room id as the <code>mcp-session-id</code> header; <code>tools/list</code> and <code>tools/call</code>; <code>resources/read</code> for the Join card. Each is answered at once, as JSON; there is no event stream. Every call except the first <code>open_viewer</code> names the Room id in its <code>room</code> argument.</td><td>Each time the model uses a tool.</td></tr>
+    <tr><td class="n igv">B</td><td>Room and Viewer</td><td class="how">WebSocket <code>/ws?room=</code></td><td>Down: <code>joined</code>, with the Session saved in the Room if there is one; <code>expired</code>; a Command. Up: <code>join</code>; an ack with igv.js’s result and the Session summary; and the Session with its summary after every change, whoever made it.</td><td>Opened by the Viewer when it loads. Stays open, and is reopened when it drops.</td></tr>
+    <tr><td class="n igv">C</td><td>Viewer page site and Viewer</td><td class="how">GET</td><td>The Viewer’s HTML, scripts and styles, igv.js among them.</td><td>Once, when the Join link opens.</td></tr>
+    <tr><td class="n igv">D</td><td>Data hosts and Viewer</td><td class="how">GET</td><td>Genome sequences and annotations, track files, gene lookups. igv.js fetches them itself, from any host the browser’s CORS rules allow.</td><td>Whenever igv.js needs them.</td></tr>
+    <tr><td class="n">E</td><td>Data hosts and Worker</td><td class="how">GET</td><td>The igv.org genome list, and a genome’s ENCODE and 4DN Catalogue tables from igv-data. Each is kept for an hour.</td><td>When a call names a genome, or searches the Catalogues.</td></tr>
+    <tr><td class="n">F</td><td>Join card and Host app</td><td class="how">MCP Apps messages</td><td>Down: <code>open_viewer</code>’s result, the Room id and the Join link. Up: <code>ui/open-link</code> with the Join link, when Open igv-bot is pressed.</td><td>Once per <code>open_viewer</code>.</td></tr>
+    <tr><td class="n">G</td><td>Host app and Host servers</td><td class="how">the Host’s own</td><td>The conversation. The Worker never sees it.</td><td>Always.</td></tr>
+  </tbody>
+</table>
+</div>
+
+<p>Three wires are missing on purpose. The Worker never serves the Viewer: anything but <code>/mcp</code> and <code>/ws</code> is answered 404, and the page comes from its own site. The Join card never holds the genome browser: the Host’s sandbox forbids framing another site, so the card carries a link and a button and nothing more. And the Viewer never calls <code>/mcp</code>: it reaches the Worker only through its Room’s socket.</p>
+
+<h2 id="room">One Room id, three ways in</h2>
+
+<p>A Room ties one conversation to its Viewer. It is a Cloudflare Durable Object, one per Room id, and the id is ten Crockford base32 characters, short enough to sit in a Join link and long enough to be unguessable. A tool call can name its Room in three ways, and the Worker takes the first it finds.</p>
+
+<figure>
+  <div class="figwrap">
+  <svg class="fig" viewBox="0 0 1000 214" role="img" aria-label="Three ways a tool call names its Room: the room argument, the mcp-session-id header, or the x-openai-session header by HMAC. All lead to one Room, 7KQ2M9XA4T, which the Viewer also reaches through the room in its Join link.">
+    <rect class="bx-g" x="20" y="14" width="250" height="52"/>
+    <text class="t-h" x="145" y="36" text-anchor="middle">the <tspan class="t-m">room</tspan> argument</text>
+    <text class="t-s" x="145" y="54" text-anchor="middle">carried by the model; first</text>
+
+    <rect class="bx" x="20" y="80" width="250" height="52"/>
+    <text class="t-h" x="145" y="102" text-anchor="middle">the <tspan class="t-m">mcp-session-id</tspan> header</text>
+    <text class="t-s" x="145" y="120" text-anchor="middle">minted on initialize; else</text>
+
+    <rect class="bx" x="20" y="146" width="250" height="52"/>
+    <text class="t-h" x="145" y="168" text-anchor="middle">the <tspan class="t-m">x-openai-session</tspan> header</text>
+    <text class="t-s" x="145" y="186" text-anchor="middle">by HMAC, for ChatGPT; else</text>
+
+    <path class="w" d="M271 40 H320 V100 H378" marker-end="url(#a)"/>
+    <line class="w" x1="271" y1="106" x2="378" y2="106" marker-end="url(#a)"/>
+    <path class="w" d="M271 172 H320 V112 H378" marker-end="url(#a)"/>
+
+    <rect class="bx-g" x="380" y="66" width="220" height="80"/>
+    <text class="t-h" x="490" y="90" text-anchor="middle">Room</text>
+    <text class="t-m" x="490" y="112" text-anchor="middle" style="font-size:14px;font-weight:500">7KQ2M9XA4T</text>
+    <text class="t-s" x="490" y="132" text-anchor="middle">one Durable Object</text>
+
+    <line class="w ws wi" x1="758" y1="106" x2="603" y2="106" marker-end="url(#asi)"/>
+    <text class="t-s k ci" x="680" y="96" text-anchor="middle"><tspan class="t-m">/ws?room=</tspan></text>
+
+    <rect class="bx-i" x="760" y="66" width="220" height="80"/>
+    <text class="t-h ci" x="870" y="90" text-anchor="middle">Viewer</text>
+    <text class="t-s" x="870" y="110" text-anchor="middle">reads <tspan class="t-m">?room=</tspan> from</text>
+    <text class="t-s" x="870" y="125" text-anchor="middle">its own Join link</text>
+  </svg>
+  </div>
+  <figcaption><b>Figure 2.</b> How a tool call and a Viewer reach the same Room. The model’s <code>room</code> argument wins over both headers. The Viewer is never told the id by the Worker: it reads it from the address it was opened at.</figcaption>
+</figure>
+
+<aside class="note">The two headers predate the <code>room</code> argument and are kept as fallbacks. ChatGPT does not echo <code>mcp-session-id</code> but sends <code>x-openai-session</code> on every request; the Worker turns that into a Room id with HMAC-SHA256 under the <code>SESSION_HMAC_SECRET</code> secret, so the raw value never appears in a link.</aside>
+
+<p>The Room id comes from the model on every call rather than from the MCP session because a Host does not keep one session per conversation. Claude desktop makes its first calls from the chat and, once the model has used the Side panel, every later call from a second MCP session with a Room of its own, which is empty. The model is the one thing that stays with the conversation (ADR 0003).</p>
+
+<p>For the same reason <code>open_viewer</code> without <code>room</code> never returns the MCP session’s Room: it mints a new one. The chat’s MCP session is shared by several conversations, and a Room shared between them would open one conversation’s igv-bot on another’s last view. A new conversation starts on the default view; <code>open_viewer</code> with <code>room</code> gets the same igv-bot back.</p>
+
+<h2 id="open">Scenario: “open igv-bot”</h2>
+
+<p>The person types “open igv-bot”. The model calls <code>open_viewer</code>, and a few steps later the Viewer shows hg38 and its status line reads “Connected”. Only the second step involves the model.</p>
+
+<figure>
+  <div class="figwrap">
+  <svg class="fig" viewBox="0 0 1000 520" role="img" aria-label="Sequence for opening igv-bot, with time running downward, across seven lifelines: Host, Join card, Worker, Room, Viewer page site, Viewer, data hosts.">
+    <text class="t-h" x="70" y="32" text-anchor="middle">Host</text>
+    <text class="t-h" x="205" y="32" text-anchor="middle">Join card</text>
+    <text class="t-h" x="340" y="32" text-anchor="middle">Worker</text>
+    <text class="t-h" x="480" y="32" text-anchor="middle">Room</text>
+    <text class="t-h ci" x="640" y="32" text-anchor="middle">Viewer page site</text>
+    <text class="t-h ci" x="790" y="32" text-anchor="middle">Viewer</text>
+    <text class="t-h" x="930" y="32" text-anchor="middle" style="opacity:.6">Data hosts</text>
+    <line class="life" x1="70" y1="46" x2="70" y2="510"/>
+    <line class="life" x1="205" y1="46" x2="205" y2="510"/>
+    <line class="life" x1="340" y1="46" x2="340" y2="510"/>
+    <line class="life" x1="480" y1="46" x2="480" y2="510"/>
+    <line class="life" x1="640" y1="46" x2="640" y2="510"/>
+    <line class="life" x1="790" y1="46" x2="790" y2="510"/>
+    <line class="life" x1="930" y1="46" x2="930" y2="510"/>
+
+    <!-- 1 -->
+    <text class="t-n" x="12" y="86">1</text>
+    <line class="w" x1="70" y1="82" x2="339" y2="82" marker-end="url(#as)"/>
+    <text class="t-m k" x="205" y="76" text-anchor="middle">initialize</text>
+    <line class="w" x1="340" y1="106" x2="71" y2="106" marker-end="url(#as)"/>
+    <text class="k" x="205" y="100" text-anchor="middle" style="font-size:11.5px">mcp-session-id</text>
+
+    <!-- 2 -->
+    <text class="t-n" x="12" y="150">2</text>
+    <line class="w" x1="70" y1="146" x2="339" y2="146" marker-end="url(#as)"/>
+    <text class="t-m k" x="205" y="140" text-anchor="middle">open_viewer</text>
+    <line class="w" x1="340" y1="170" x2="71" y2="170" marker-end="url(#as)"/>
+    <text class="k" x="205" y="164" text-anchor="middle" style="font-size:11.5px">Room id and Join link</text>
+    <text class="t-s" x="348" y="160">mints a Room id</text>
+
+    <!-- 3 -->
+    <text class="t-n" x="12" y="214">3</text>
+    <line class="w" x1="70" y1="210" x2="204" y2="210" marker-end="url(#as)"/>
+    <text class="k" x="137" y="204" text-anchor="middle" style="font-size:11.5px">tool result</text>
+    <text class="t-s" x="213" y="214">shows Open igv-bot</text>
+
+    <!-- 4 -->
+    <text class="t-n" x="12" y="258">4</text>
+    <line class="w pg" x1="70" y1="254" x2="789" y2="254" marker-end="url(#as)"/>
+    <text class="k" x="560" y="248" text-anchor="middle" style="font-size:11.5px">opens Join link in the Side panel</text>
+
+    <!-- 5 -->
+    <text class="t-n" x="12" y="298">5</text>
+    <line class="w pg wi" x1="640" y1="294" x2="787" y2="294" marker-end="url(#asi)"/>
+    <text class="k ci" x="715" y="288" text-anchor="middle" style="font-size:11.5px">page</text>
+
+    <!-- 6 -->
+    <text class="t-n" x="12" y="342">6</text>
+    <line class="w ws wi" x1="790" y1="338" x2="483" y2="338" marker-end="url(#asi)"/>
+    <text class="k ci" x="560" y="331" text-anchor="middle" style="font-size:11.5px">join</text>
+    <line class="w ws wi" x1="480" y1="368" x2="787" y2="368" marker-end="url(#asi)"/>
+    <text class="k ci" x="560" y="361" text-anchor="middle" style="font-size:11.5px">joined, and any saved Session</text>
+
+    <!-- 7 -->
+    <text class="t-n" x="12" y="416">7</text>
+    <line class="w wi" x1="930" y1="412" x2="793" y2="412" marker-end="url(#asi)"/>
+    <text class="k ci" x="860" y="406" text-anchor="middle" style="font-size:11.5px">hg38, genes</text>
+    <text class="t-s" x="798" y="436">igv.js starts</text>
+
+    <!-- 8 -->
+    <text class="t-n" x="12" y="474">8</text>
+    <line class="w ws wi" x1="790" y1="470" x2="483" y2="470" marker-end="url(#asi)"/>
+    <text class="k ci" x="560" y="463" text-anchor="middle" style="font-size:11.5px">Session and summary</text>
+    <text class="t-s" x="488" y="494">keeps both</text>
+  </svg>
+  </div>
+  <figcaption><b>Figure 3.</b> Opening igv-bot, with time running downward. Step 1 happens once per MCP session, when the Host connects; steps 2 to 8 once per conversation. From step 8 on, the Room hears of every change to the view.</figcaption>
+</figure>
+
+<div class="tablewrap wide">
+<table>
+  <thead><tr><th class="n"></th><th>Wire</th><th>What happens</th></tr></thead>
+  <tbody>
+    <tr><td class="n">1</td><td>A</td><td>The Host posts <code>initialize</code>. The Worker answers with a freshly minted Room id as the <code>mcp-session-id</code> header, which the Host sends back on later requests. That Room is only a fallback; no Join link ever names it.</td></tr>
+    <tr><td class="n">2</td><td>A</td><td>The model calls <code>open_viewer</code>. The Worker mints a new Room id and replies with it and the Join link, <code>https://igv-bot-web-dev.pages.dev/?room=7KQ2M9XA4T</code>. The Viewer is not contacted, and nothing is stored in the Room. The reply tells the model to open the link in the Side panel if it has one, to pass the Room id on every later call, and to repeat neither to the person.</td></tr>
+    <tr><td class="n">3</td><td>A, F</td><td>A Host that renders MCP Apps reads the Join card from the Worker and hands it the result. The card shows one line of status and an Open igv-bot button. Other Hosts show the text link.</td></tr>
+    <tr><td class="n">4</td><td></td><td>The model opens the Join link in Claude desktop’s Side panel. Where it cannot, the person presses Open igv-bot, and the card asks the Host to open the link; ChatGPT desktop in Codex mode reaches its Side panel this way. Where a Host has no Side panel, the link opens in a browser tab, and everything after works unchanged.</td></tr>
+    <tr><td class="n">5</td><td>C</td><td>The Side panel fetches the Viewer page from its static site.</td></tr>
+    <tr><td class="n">6</td><td>B</td><td>The Viewer reads the Room id from its own address and opens a WebSocket to <code>/ws?room=</code>. The Worker refuses any <code>Origin</code> not on <code>VIEWER_ORIGINS</code> and hands the socket to the Room, which answers <code>join</code> with <code>joined</code>, carrying the Session saved there if there is one.</td></tr>
+    <tr><td class="n">7</td><td>D</td><td>Only now does igv.js start: on the saved Session, or on the default view, hg38 in whole-genome view with its gene annotation track. It fetches the genome from the data hosts itself.</td></tr>
+    <tr><td class="n">8</td><td>B</td><td>The Viewer sends its first report: the Session, as igv.js writes it, and the Session summary. The Room keeps both. The status line reads “Connected · Room 7KQ2M9XA4T”.</td></tr>
+  </tbody>
+</table>
+</div>
+
+<aside class="note"><code>open_viewer</code> also takes <code>genome</code> and <code>locus</code>, for a new Room only. The Worker checks the genome on the igv.org list (wire E) before minting anything, then saves the two in the new Room as its Session. The Viewer restores them in step 7 like any saved Session.</aside>
+
+<p>igv.js waits for step 6 on purpose. Started any earlier, it would draw the default view and then throw it away for the saved one. A Command that arrives while igv.js is still loading waits for it.</p>
+
+<h2 id="call">Scenario: “go to MYC”</h2>
+
+<p>With igv-bot open, the person asks to go to MYC. The model calls <code>go_to_gene</code>. The call travels out along A and B, and its answer returns along the same wires, carrying the Session summary with it.</p>
+
+<figure>
+  <div class="figwrap">
+  <svg class="fig" viewBox="0 0 1000 410" role="img" aria-label="Sequence for one tool call: Host to Worker, Worker to Room, Room to Viewer, the Viewer looks the gene up, and the ack returns the same way. A quarter of a second after igv.js goes quiet the Viewer reports the Session to the Room.">
+    <text class="t-h" x="70" y="32" text-anchor="middle">Host</text>
+    <text class="t-h" x="260" y="32" text-anchor="middle">Worker</text>
+    <text class="t-h" x="450" y="32" text-anchor="middle">Room</text>
+    <text class="t-h ci" x="680" y="32" text-anchor="middle">Viewer</text>
+    <text class="t-h" x="900" y="32" text-anchor="middle" style="opacity:.6">Data hosts</text>
+    <line class="life" x1="70" y1="46" x2="70" y2="400"/>
+    <line class="life" x1="260" y1="46" x2="260" y2="400"/>
+    <line class="life" x1="450" y1="46" x2="450" y2="400"/>
+    <line class="life" x1="680" y1="46" x2="680" y2="400"/>
+    <line class="life" x1="900" y1="46" x2="900" y2="400"/>
+
+    <!-- 1 -->
+    <text class="t-n" x="12" y="86">1</text>
+    <line class="w" x1="70" y1="82" x2="259" y2="82" marker-end="url(#as)"/>
+    <text class="t-m k" x="165" y="76" text-anchor="middle">go_to_gene  gene: MYC, room</text>
+
+    <!-- 2 -->
+    <text class="t-n" x="12" y="120">2</text>
+    <line class="w" x1="260" y1="116" x2="449" y2="116" marker-end="url(#as)"/>
+    <text class="t-m k" x="355" y="110" text-anchor="middle">command</text>
+
+    <!-- 3 -->
+    <text class="t-n" x="12" y="158">3</text>
+    <line class="w ws wi" x1="450" y1="154" x2="677" y2="154" marker-end="url(#asi)"/>
+    <text class="k ci" x="565" y="147" text-anchor="middle" style="font-size:11.5px">command</text>
+
+    <!-- 4 -->
+    <text class="t-n" x="12" y="198">4</text>
+    <line class="w wi" x1="680" y1="194" x2="899" y2="194" marker-end="url(#asi)"/>
+    <text class="k ci" x="790" y="188" text-anchor="middle" style="font-size:11.5px">MYC?</text>
+    <line class="w wi" x1="900" y1="218" x2="681" y2="218" marker-end="url(#asi)"/>
+    <text class="k ci" x="790" y="212" text-anchor="middle" style="font-size:11.5px">locus, tracks’ data</text>
+    <text class="t-s" x="690" y="240">igv.js moves to MYC</text>
+
+    <!-- 5 -->
+    <text class="t-n" x="12" y="274">5</text>
+    <line class="w ws wi" x1="680" y1="270" x2="453" y2="270" marker-end="url(#asi)"/>
+    <text class="k ci" x="565" y="263" text-anchor="middle" style="font-size:11.5px">ack, summary</text>
+
+    <!-- 6 -->
+    <text class="t-n" x="12" y="308">6</text>
+    <line class="w" x1="450" y1="304" x2="261" y2="304" marker-end="url(#as)"/>
+    <text class="k" x="355" y="298" text-anchor="middle" style="font-size:11.5px">acked</text>
+
+    <!-- 7 -->
+    <text class="t-n" x="12" y="342">7</text>
+    <line class="w" x1="260" y1="338" x2="71" y2="338" marker-end="url(#as)"/>
+    <text class="k" x="165" y="332" text-anchor="middle" style="font-size:11.5px">Done, and the Session summary</text>
+
+    <!-- 8 -->
+    <text class="t-n" x="12" y="384">8</text>
+    <line class="w ws wi" x1="680" y1="380" x2="453" y2="380" marker-end="url(#asi)"/>
+    <text class="k ci" x="565" y="373" text-anchor="middle" style="font-size:11.5px">Session and summary</text>
+    <text class="t-s" x="690" y="384">0.25 s after igv.js goes quiet</text>
+  </svg>
+  </div>
+  <figcaption><b>Figure 4.</b> One tool call. Steps 1 to 7 are the call itself; step 8 is the Viewer’s report of the change it made, which the model does not wait for. Step 2 is a call from the Worker to its own Durable Object, inside Cloudflare.</figcaption>
+</figure>
+
+<div class="tablewrap wide">
+<table>
+  <thead><tr><th class="n"></th><th>Wire</th><th>What happens</th></tr></thead>
+  <tbody>
+    <tr><td class="n">1</td><td>A</td><td>The Host posts <code>tools/call</code> for <code>go_to_gene</code> with <code>gene</code> and <code>room</code>. The Worker reads the Room id, in any case and with spaces trimmed, and refuses one that is malformed.</td></tr>
+    <tr><td class="n">2</td><td></td><td>The Worker asks the Room to send the Command <code>{type: go_to_gene, gene: MYC}</code>. Every Command tool does exactly this; each is one row of <code>server/src/commandTools.ts</code>.</td></tr>
+    <tr><td class="n">3</td><td>B</td><td>The Room gives the Command a request id, pushes it to every Viewer in the Room, and waits up to 15 s for the first ack.</td></tr>
+    <tr><td class="n">4</td><td>D</td><td>The Viewer applies the Command to igv.js, one at a time and in the order they arrive. igv.js looks MYC up and fetches what the new view needs directly from the data hosts, not through the Worker.</td></tr>
+    <tr><td class="n">5</td><td>B</td><td>The Viewer acks with the request id, <code>ok</code> or igv.js’s own error, and the Session summary as it now stands. The Room keeps the summary.</td></tr>
+    <tr><td class="n">6</td><td></td><td>The Room hands the outcome back to the Worker. A later ack of the same Command, from a second Viewer, finds nothing waiting and is dropped.</td></tr>
+    <tr><td class="n">7</td><td>A</td><td>The Worker replies “Done.” with the Session summary: genome, loci, the tracks in display order with their heights, and whether the crosshairs and centre line are showing. The model turns it into its answer.</td></tr>
+    <tr><td class="n">8</td><td>B</td><td>igv.js announced the move, so once it has been quiet for a quarter of a second the Viewer sends the Session and its summary. The Room keeps both, for a Viewer that opens later.</td></tr>
+  </tbody>
+</table>
+</div>
+
+<aside class="note">An unknown gene is not a failed call. igv.js reports that it found nothing, the Viewer acks with that error and the unchanged summary, and the model is told so in igv.js’s own words.</aside>
+
+<p>The reply always carries a Session summary because the model cannot see the screen. Each answer tells it what is there now, so its next call can name a track by its position or its name without asking first.</p>
+
+<h2 id="hand">When the person changes the view</h2>
+
+<p>The person also works in igv.js directly: panning, zooming, dragging tracks into a new order, removing one, using a track’s gear menu. None of this goes through the model, and the model is not notified.</p>
+
+<p>The Viewer listens for igv.js’s change events, whoever caused them. When igv.js has been quiet for a quarter of a second it sends the Room the Session and its summary along B, so a drag that fires an event on every frame is one message. A Session the Room already has is not sent again, and one reported while the socket is down is sent on the next join. igv.js announces nothing when its crosshairs or centre line button is pressed, so the Viewer also treats a click in the browser as a possible change.</p>
+
+<p>The model learns of a hand change in one of two ways: from the Session summary in the reply to its next call, or by asking with <code>read_session_summary</code>, a Command that changes nothing. Its description tells the model to ask before acting on “this region” or “the second track”.</p>
+
+<h2 id="server">Calls that stop at the server</h2>
+
+<p>Of the 14 tools, 12 are Commands and follow Figure 4. Two never reach the Viewer at all, and one Command is checked against the genome list before it is sent.</p>
+
+<div class="tablewrap wide">
+<table>
+  <thead><tr><th>Tool</th><th>Wires</th><th>What the Worker does</th></tr></thead>
+  <tbody>
+    <tr><th><code>open_viewer</code></th><td>A, and E when given a genome</td><td>Mints a Room id, or renews the one it is given, and builds the Join link. With <code>genome</code> or <code>locus</code>, saves them in the new Room for the Viewer to restore. Sends the Viewer nothing.</td></tr>
+    <tr><th><code>search_catalogues</code></th><td>A, E</td><td>Reads the genome from the Room’s last Session summary unless given one, fetches that genome’s ENCODE and 4DN tables, and replies with the count of all matching rows and at most 20 of them, each with the name and URL to load it. Sends the Viewer nothing.</td></tr>
+    <tr><th><code>change_genome</code></th><td>A, E, then B</td><td>Looks the genome up on the igv.org list first. One that is not there is refused with the list of those that are, and the Viewer is left as it was. One that is there is sent, spelled as the list spells it.</td></tr>
+  </tbody>
+</table>
+</div>
+
+<aside class="note">igv.org refuses requests that do not come from a browser, a Worker’s among them, so the deployed Worker ends up reading igv.js’s own backup of the genome list, on GitHub. The Catalogue tables come from the same repository; ENCODE’s for one genome hold some 190,000 rows.</aside>
+
+<p>A search finds tracks; it does not load them. The model passes the rows it picked to <code>load_tracks</code>, a Command, and igv.js fetches each file from its URL along D.</p>
+
+<h2 id="state">What each part keeps</h2>
+
+<p>The table says what survives between requests, and where. The Viewer is the source of truth for what is on screen; the Room’s copy is a mirror, read only by a Viewer that opens later and by a search that needs the genome.</p>
+
+<div class="tablewrap wide">
+<table>
+  <thead><tr><th>Part</th><th>Keeps</th><th>For how long</th></tr></thead>
+  <tbody>
+    <tr><th>The model</th><td>The Room id, in the conversation</td><td>As long as the conversation</td></tr>
+    <tr><th>The Host</th><td>The <code>mcp-session-id</code> from <code>initialize</code></td><td>As long as the MCP session</td></tr>
+    <tr><th>Worker, at <code>/mcp</code></th><td>Nothing per request: each gets a fresh MCP server. Per Worker instance, the genome list and one genome’s Catalogue tables.</td><td>An hour each, then fetched again</td></tr>
+    <tr><th>Room</th><td>The Viewer’s socket, Commands waiting for an ack, the latest Session summary, and the last Session</td><td>Deleted 24 hours after the last message from a Viewer, unless a Viewer is still connected; the Room is then marked expired</td></tr>
+    <tr><th>Join card</th><td>The Join link</td><td>As long as the conversation shows it</td></tr>
+    <tr><th class="igv">Viewer</th><td>The Session: genome, loci, tracks, heights, crosshairs, centre line</td><td>Until the page closes; restored from the Room when the Join link is opened again</td></tr>
+  </tbody>
+</table>
+</div>
+
+<p>Only a Viewer that has just been opened restores the Room’s Session. One that loses its socket and rejoins keeps its own, since its own is the truth. Reopening the Join link therefore brings back the last view, and nothing has to enforce one live Viewer per Room.</p>
+
+<h2 id="wrong">When something goes wrong</h2>
+
+<div class="tablewrap wide">
+<table>
+  <thead><tr><th>What happens</th><th>Where</th><th>What the model or the person sees</th></tr></thead>
+  <tbody>
+    <tr><td>A call’s <code>room</code> is not a Room id</td><td>A</td><td>The Worker refuses it, and says to pass the Room id from <code>open_viewer</code>’s reply.</td></tr>
+    <tr><td>A call carries no <code>room</code>, and its MCP session’s Room has no Viewer</td><td>A</td><td>An error that says to call again with <code>room</code>, or to open igv-bot first.</td></tr>
+    <tr><td>Only <code>x-openai-session</code> arrives, and the secret is not set</td><td>A</td><td>The request fails as a server misconfiguration. There is no fallback key.</td></tr>
+    <tr><td>A genome is not on the igv.org list, or the list cannot be read</td><td>E</td><td>An error listing the genomes available, or saying to try again. Nothing is sent to the Viewer.</td></tr>
+    <tr><td>The Catalogue tables cannot be read</td><td>E</td><td>An error that says to try again.</td></tr>
+    <tr><td>No Viewer has joined the Room</td><td>B</td><td>An error that says to call <code>open_viewer</code> with this <code>room</code> and open its Join link.</td></tr>
+    <tr><td>The Viewer does not ack within 15 s</td><td>B</td><td>“Sent, unconfirmed”, with the Session summary the Room last heard, from before the call.</td></tr>
+    <tr><td>igv.js raises an error applying a Command</td><td>B, D</td><td>igv.js’s own message, with the Session summary. For <code>load_tracks</code>, the other tracks of the call are still loaded.</td></tr>
+    <tr><td>The Viewer’s socket drops</td><td>B</td><td>“Connection lost. Reconnecting…”. The Viewer rejoins after 1 s, 2 s, up to 5 s, and sends any report it is owed. igv.js still works by hand meanwhile.</td></tr>
+    <tr><td>The Viewer joins an expired Room</td><td>B</td><td>“This igv-bot has expired.” The Room closes the socket and the Viewer does not retry. <code>open_viewer</code> with that <code>room</code> renews it, and the Join link works again.</td></tr>
+    <tr><td>The Viewer is served from an origin not on <code>VIEWER_ORIGINS</code></td><td>B</td><td>The socket is refused with 403. The Viewer stays at “Reconnecting…”.</td></tr>
+    <tr><td>The saved Session does not load</td><td>D</td><td>The Viewer shows the default view instead, so a reload does not fail the same way again.</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h2 id="addresses">Addresses</h2>
+
+<p>These are the development deployment. Both parts run on one Cloudflare account, the one that owns the <code>3dg.io</code> zone. They are deployed as a matched pair: the Worker names the Viewer’s address in <code>VIEWER_URL</code>, and the Viewer is built with the Worker’s address in <code>VITE_SERVER_URL</code>, fixed at build time.</p>
+
+<div class="tablewrap wide">
+<table>
+  <thead><tr><th>Part</th><th>Address</th><th>Endpoints</th></tr></thead>
+  <tbody>
+    <tr><th>Worker</th><td><code>https://igv-bot-mcp-dev.3dg.io</code></td><td><code>/mcp</code> for Hosts, <code>/ws</code> for Viewers</td></tr>
+    <tr><th class="igv">Viewer page</th><td><code>https://igv-bot-web-dev.pages.dev</code></td><td>static files; the custom domain <code>igv-bot-dev.3dg.io</code> is not attached yet</td></tr>
+    <tr><th>Genome list</th><td><code>https://igv.org/genomes/genomes3.json</code></td><td>with a backup in <code>igvteam/igv-data</code> on GitHub</td></tr>
+    <tr><th>Catalogue tables</th><td><code>raw.githubusercontent.com/igvteam/igv-data</code></td><td><code>data/encode/</code> and <code>data/4dn/</code></td></tr>
+    <tr><th>Shareable URL</th><td><code>https://igv.org/app/</code></td><td>igv-webapp, with the whole Session in the link; no Room</td></tr>
+  </tbody>
+</table>
+</div>
+
+<p>Locally the Worker runs on <code>localhost:8787</code> and the Viewer on <code>localhost:5173</code>, and the Viewer reaches its Room through its own address: the Vite dev server passes <code>/ws</code> on to the Worker. Claude desktop’s Side panel blocks a page from opening a socket to another local address.</p>
+
+<p>The words used here (Host, Connector, Side panel, Viewer, Room, Command, Session, Session summary, Join link, Join card, Catalogue, Shareable URL) are defined in <code>GLOSSARY.md</code>. The decision to show the Viewer as a web page in the Side panel is ADR 0001, the decision to push Commands through a Room is ADR 0002, and the decision to have the model carry the Room id is ADR 0003.</p>
+
+<p class="end">Written 21 October 2026 from the code at commit 1c7ebda.</p>
+
+</main>
+</body>
+</html>
