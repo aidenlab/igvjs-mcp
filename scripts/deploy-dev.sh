@@ -17,7 +17,8 @@
 set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PROJECT="${PROJECT:-igv-bot-web-dev}"
-VITE_SERVER_URL="${VITE_SERVER_URL:-https://igv-bot-mcp-dev.3dg.io}"
+WORKER_URL="https://igv-bot-mcp-dev.3dg.io"
+VITE_SERVER_URL="${VITE_SERVER_URL:-$WORKER_URL}"
 TARGET="${1:-all}"
 cd "$REPO_ROOT"
 # Pages commands do not read wrangler.toml, so they are given its account here.
@@ -37,8 +38,8 @@ deploy_viewer() {
 }
 
 case "$TARGET" in
-  worker) npm run test:run; deploy_worker ;;
+  worker) npm run test:run; deploy_worker; echo "MCP server URL: $WORKER_URL/mcp" ;;
   viewer) npm run test:run; deploy_viewer ;;
-  all)    npm run test:run; deploy_worker; deploy_viewer ;;
+  all)    npm run test:run; deploy_worker; deploy_viewer; echo "MCP server URL: $WORKER_URL/mcp" ;;
   *)      echo "usage: scripts/deploy-dev.sh [worker|viewer|all]" >&2; exit 2 ;;
 esac
