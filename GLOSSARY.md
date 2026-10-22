@@ -29,19 +29,23 @@ igv.js's own bar across the top of the genome browser, holding its locus box, ch
 _Avoid_: Navbar, toolbar, header
 
 **Controls**:
-The Shareable URL and the Navigation bar, which a person hides and shows together with one button in the Viewer.
+The Shareable URL and the Navigation bar, hidden and shown together, by a person with one button in the Viewer or by the model. They are hidden when the Viewer first opens.
 _Avoid_: Control panel, side panel, sidebar, toolbar
 
 **Session**:
 The complete description of what the genome browser is showing: genome, loci and tracks, as igv.js defines it. It is the single source of truth and is owned by the Viewer.
-_Avoid_: State, config
+_Avoid_: State, config; and "session" for the connection between the Host and the server (an MCP session) or for the Conversation
+
+**Viewer settings**:
+What the Viewer shows around the genome browser that is no part of the Session, such as whether the Controls are shown. Owned by the Viewer and kept beside the Session, never in it, so the Session stays exactly as igv.js defines it.
+_Avoid_: State, Viewer state, preferences
 
 **Session summary**:
-The compact account of the Session that the model is given with every tool reply, reflecting every change, whoever made it.
+The compact account of the Session and the Viewer settings that the model is given with every tool reply, reflecting every change, whoever made it.
 _Avoid_: State, context
 
 **Room**:
-The live channel on the server that joins the Connector to its Viewer, identified by a Room id. It carries commands to the Viewer and keeps the latest Session summary and Session, until it expires after a day with no Viewer and no message.
+The live channel on the server that joins the Connector to its Viewer, identified by a Room id. It carries commands to the Viewer and keeps the latest Session summary, Session and Viewer settings, until it expires after a day with no Viewer and no message.
 _Avoid_: Session, channel
 
 **Command**:
