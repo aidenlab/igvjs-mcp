@@ -14,6 +14,7 @@ The tools the Connector gives the model, and how each is used. The wording the m
 | [`remove_track`](#remove_track) | Removes one track |
 | [`set_track_height`](#set_track_height) | Sets the height of one, several or all tracks |
 | [`set_crosshairs`](#set_crosshairs-and-set_centre_line), [`set_centre_line`](#set_crosshairs-and-set_centre_line) | Shows or hides the crosshairs, or the centre line |
+| [`set_controls`](#set_controls) | Shows or hides the Controls: the Shareable URL and the Navigation bar |
 | [`read_session_summary`](#read_session_summary) | Reads what igv-bot is showing, changing nothing |
 | [`get_shareable_url`](#get_shareable_url) | Gets a link that opens the current view in igv-webapp |
 
@@ -21,7 +22,7 @@ The tools the Connector gives the model, and how each is used. The wording the m
 
 **`room`.** `open_viewer` names a Room id in its reply. Every other tool takes it as the optional argument `room`, and the model passes it on every call, so that the call reaches the same igv-bot whichever MCP session it arrives through (ADR 0003). It is left out of the examples below.
 
-**The reply.** Every tool but `open_viewer` replies with the Session summary: the genome, the loci, the tracks in display order (name, type, URL and height in whole pixels), and whether the crosshairs and centre line are showing. A person also changes the Viewer by hand, and the model is not told when they do: the Session summary of the latest reply is how it learns.
+**The reply.** Every tool but `open_viewer` replies with the Session summary: the genome, the loci, the tracks in display order (name, type, URL and height in whole pixels), whether the crosshairs and centre line are showing, and whether the controls are. A person also changes the Viewer by hand, and the model is not told when they do: the Session summary of the latest reply is how it learns.
 
 **Errors.** A reply that begins `Error:` says what went wrong, and still carries the Session summary when a Viewer answered. Three replies are not about the tool itself:
 
@@ -191,6 +192,26 @@ The crosshairs are a vertical and a horizontal line that follow the pointer. The
 - A person also turns each on and off with igv.js's own Crosshairs and Center Line buttons, so the model takes what is showing from the Session summary, not from what it last set.
 - Both are part of the Session: reloading the Viewer, or opening it again from the Join link, brings them back as they were left.
 
+## Controls
+
+### `set_controls`
+
+The Controls are the Shareable URL, in a strip with a copy button, and igv.js's Navigation bar, with its locus box and buttons. They are hidden and shown together, and start hidden.
+
+| Argument | |
+| --- | --- |
+| `show` (required) | `true` to show, `false` to hide |
+
+```text
+"hide the controls"                    set_controls { show: false }
+"show me the navigation bar"           set_controls { show: true }
+```
+
+- The Session summary says whether they are showing, as `controls`.
+- Showing what is already showing, or hiding what is hidden, changes nothing and is not an error.
+- A person also hides and shows them with the "Hide controls" and "Show controls" button, so the model takes what is showing from the Session summary, not from what it last set. A click reaches only the Viewer it was made in; `set_controls`, as every Command, reaches every Viewer in the Room.
+- They are kept in the Viewer settings, beside the Session and not in it (ADR 0004): reloading the Viewer, or opening it again from the Join link, brings them back as they were left. They are not in the Shareable URL, which is the same whether they are shown or hidden.
+
 ## Reading
 
 ### `read_session_summary`
@@ -217,4 +238,4 @@ No arguments. Changes nothing: the reply gives the Shareable URL on a line of it
 - It is long, since it holds the whole Session, and the model gives it whole.
 - It shows the view as it was when asked for: after a change, the model gets a new one.
 - The Viewer answers it, so with no Viewer in the Room there is no link.
-- A person copies the same link by hand from the Viewer, which shows it above the genome browser and keeps it up to date as the Session changes. It is one of the Controls, so it is hidden, with the Navigation bar, until the person shows the Controls.
+- A person copies the same link by hand from the Viewer, which shows it above the genome browser and keeps it up to date as the Session changes. It is one of the Controls, so it is hidden, with the Navigation bar, until the person or the model shows the Controls.

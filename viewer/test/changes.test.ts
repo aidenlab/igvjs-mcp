@@ -17,7 +17,7 @@ function fakeBrowser() {
   const reported: string[][] = []
   const changed = watchChanges(
     browser,
-    (): SessionSummary => ({ genome: 'hg38', loci: [browser.locus], tracks: [], crosshairs: false, centreLine: false }),
+    (): SessionSummary => ({ genome: 'hg38', loci: [browser.locus], tracks: [], crosshairs: false, centreLine: false, controls: false }),
     (summary) => reported.push(summary.loci),
   )
   return { browser, reported, changed }

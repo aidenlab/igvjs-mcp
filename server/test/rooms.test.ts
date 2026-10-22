@@ -29,6 +29,7 @@ const SUMMARY: SessionSummary = {
   tracks: [{ name: 'Refseq Genes', type: 'annotation', url: 'https://example.org/refGene.txt.gz', height: 70 }],
   crosshairs: true,
   centreLine: false,
+  controls: false,
 }
 
 /** A Session as igv.js writes it. The Room keeps it without reading it. */

@@ -59,6 +59,7 @@ export type Command =
   | ({ type: 'set_track_height'; height: TrackHeight } & TrackSelection)
   | { type: 'set_crosshairs'; show: boolean }
   | { type: 'set_centre_line'; show: boolean }
+  | { type: 'set_controls'; show: boolean }
   | { type: 'read_session_summary' }
   | { type: 'get_shareable_url' }
 
@@ -99,7 +100,7 @@ export interface TrackSummary {
   height: number
 }
 
-/** The compact account of the Session the model is given with every tool reply. */
+/** The compact account of the Session and the Viewer settings the model is given with every tool reply. */
 export interface SessionSummary {
   genome: string
   loci: string[]
@@ -107,6 +108,8 @@ export interface SessionSummary {
   tracks: TrackSummary[]
   crosshairs: boolean
   centreLine: boolean
+  /** Whether the Controls are showing: from the Viewer settings, not the Session. */
+  controls: boolean
 }
 
 /** What a command that asks the Viewer for an answer is answered with. */

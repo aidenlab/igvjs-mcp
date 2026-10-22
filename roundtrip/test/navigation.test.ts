@@ -37,6 +37,7 @@ describe('navigation, round trip', () => {
       ],
       crosshairs: false,
       centreLine: false,
+      controls: false,
     })
   })
 

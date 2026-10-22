@@ -19,7 +19,7 @@ beforeAll(async () => {
   room = await newSession()
   ;({ browser, page } = await openViewer(room))
 
-  // What the person leaves: a locus, a taller gene track, and both display toggles on.
+  // What the person leaves: a locus, a taller gene track, both display toggles on, and the Controls shown.
   await callTool(room, 'go_to_locus', { locus: 'chr8:127,735,434-127,742,951' })
   await page.locator('.igv-gear-menu-column > div').last().locator('div').first().click()
   await page.getByText('Set track height', { exact: true }).click()
@@ -47,10 +47,11 @@ describe('reopening, round trip', () => {
       ],
       crosshairs: true,
       centreLine: true,
+      controls: true,
     })
   })
 
-  it('a reload restores the Session: genome, locus, tracks with their heights, and both display toggles', async () => {
+  it('a reload restores the Session (genome, locus, tracks with their heights, and both display toggles) and, beside it, the Controls shown', async () => {
     await page.reload()
     await page.locator('.viewer__status--joined').waitFor()
 
@@ -84,6 +85,7 @@ describe('reopening, round trip', () => {
         ],
         crosshairs: false,
         centreLine: false,
+        controls: false,
       })
     } finally {
       await other.browser.close()

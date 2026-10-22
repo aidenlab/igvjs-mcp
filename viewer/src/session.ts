@@ -1,4 +1,4 @@
-import type { SessionSummary, TrackSummary } from './protocol.ts'
+import type { SessionSummary, TrackSummary, ViewerSettings } from './protocol.ts'
 
 /** One track of a Session: the fields the Session summary reads. igv.js writes many more. */
 export interface SessionTrack {
@@ -33,19 +33,28 @@ export function displayOrder(tracks: SessionTrack[]): number[] {
     .map(({ index }) => index)
 }
 
-/** The Session summary for `session`. Pure: the same Session always gives the same summary. */
-export function sessionSummary(session: Session): SessionSummary {
-  const tracks = displayOrder(session.tracks).map((index): TrackSummary => {
+/** The tracks of the Session summary for `session`, in display order. */
+export function trackSummaries(session: Session): TrackSummary[] {
+  return displayOrder(session.tracks).map((index): TrackSummary => {
     const track = session.tracks[index]
     const type = track.type ?? 'unknown'
     return { name: track.name || type, type, ...(track.url ? { url: track.url } : {}), height: Math.round(track.height ?? 0) }
   })
+}
 
+/** The loci of `session`: one, or several when the view is split. */
+export function sessionLoci(session: Session): string[] {
+  return [session.locus].flat()
+}
+
+/** The Session summary for `session` and `viewerSettings`. Pure: the same two always give the same summary. */
+export function sessionSummary(session: Session, viewerSettings: ViewerSettings): SessionSummary {
   return {
     genome: session.reference.id ?? session.reference.name ?? 'unknown',
-    loci: [session.locus].flat(),
-    tracks,
+    loci: sessionLoci(session),
+    tracks: trackSummaries(session),
     crosshairs: session.showCursorGuide === true,
     centreLine: session.showCenterGuide === true,
+    controls: viewerSettings.controls,
   }
 }

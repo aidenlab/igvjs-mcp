@@ -12,7 +12,13 @@ const statusElement = document.querySelector<HTMLElement>('.viewer__status')!
 const browserElement = document.querySelector<HTMLElement>('.viewer__browser')!
 /** Where the Viewer settings go after every change: to the Room, once there is one. */
 let reportViewerSettings: (settings: ViewerSettings) => void = () => {}
-const controls = pageControls(document, (settings) => reportViewerSettings(settings))
+/** Tells the Room the Session summary may have changed. Does nothing until igv.js has loaded, which a command waits for. */
+let changed = () => {}
+const controls = pageControls(document, (settings) => {
+  reportViewerSettings(settings)
+  // The Session summary says whether the Controls are showing.
+  changed()
+})
 
 function showStatus(status: RoomStatus) {
   statusElement.textContent = statusText(status)
@@ -81,7 +87,7 @@ function watchSession(loaded: Browser, reportSession: (report: SessionReport) =>
     loaded,
     () => {
       const session = captureSession(loaded)
-      return { session, summary: sessionSummary(session) }
+      return { session, summary: sessionSummary(session, controls.viewerSettings()) }
     },
     (report) => {
       // The Room first: it is told whatever becomes of the link.
@@ -101,8 +107,6 @@ if (room) {
   // arrives while it is loading waits for it. In an expired Room it never starts.
   let restore!: (saved: SavedSession | undefined) => void
   const browser = new Promise<SavedSession | undefined>((resolve) => (restore = resolve)).then(openBrowser)
-  /** Tells the Room the Session may have changed. Does nothing until igv.js has loaded, which a command waits for. */
-  let changed = () => {}
   const connection = connectToRoom({
     url: roomSocketUrl(import.meta.env.VITE_SERVER_URL, room),
     onStatus: showStatus,
@@ -111,7 +115,7 @@ if (room) {
       restore(saved)
     },
     onCommand: async (command) => {
-      const outcome = await applyCommand(await browser, command)
+      const outcome = await applyCommand(await browser, command, controls)
       // igv.js announces nothing when its crosshairs or centre line is shown or hidden, by a command as by its own button.
       changed()
       return outcome
@@ -125,5 +129,7 @@ if (room) {
 } else {
   statusElement.textContent = 'Not connected. Ask Claude or ChatGPT to open igv-bot.'
   // With no Room the Shareable URL still works: it needs none.
-  void createBrowser(DEFAULT_VIEWER).then((loaded) => watchSession(loaded))
+  void createBrowser(DEFAULT_VIEWER).then((loaded) => {
+    changed = watchSession(loaded)
+  })
 }

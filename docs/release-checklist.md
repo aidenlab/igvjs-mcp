@@ -92,7 +92,9 @@ Once in each Host, with the Viewer open at a locus and a track or two loaded.
 - [ ] With the Controls hidden, "go to MYC" moves the view, and the locus box shows it when the Controls are shown again.
 - [ ] With the Controls hidden, per-track gear menus, drag-to-reorder and click popups work.
 - [ ] A link asked for while the Controls are hidden opens igv-webapp with its own navigation bar showing.
-- [ ] After a reload the Controls are shown.
+- [ ] After a reload the Controls are as they were left, shown or hidden.
+- [ ] "Hide the controls" hides them, as the button does, and the button then reads "Show controls". "Show the controls" brings them back.
+- [ ] After the Controls are shown by hand, "are the controls showing?" is answered yes.
 - [ ] The Navigation bar has no Save Image button, no Select Tracks button and no magnifying glass beside the locus box, before and after a reload.
 
 ## Room and Conversation

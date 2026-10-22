@@ -20,6 +20,7 @@ const SUMMARY: SessionSummary = {
   tracks: [{ name: 'Refseq Genes', type: 'annotation', url: 'https://example.org/refGene.txt.gz', height: 70 }],
   crosshairs: false,
   centreLine: false,
+  controls: false,
 }
 
 async function joinedViewer(room: string) {
@@ -72,6 +73,8 @@ describe('a command tool with a Viewer in the Room', () => {
     ['set_crosshairs', { show: false }, { type: 'set_crosshairs', show: false }],
     ['set_centre_line', { show: true }, { type: 'set_centre_line', show: true }],
     ['set_centre_line', { show: false }, { type: 'set_centre_line', show: false }],
+    ['set_controls', { show: true }, { type: 'set_controls', show: true }],
+    ['set_controls', { show: false }, { type: 'set_controls', show: false }],
     ['read_session_summary', {}, { type: 'read_session_summary' }],
   ])('%s reaches the Viewer as its command and replies with the Session summary', async (tool, args, command) => {
     const viewer = await joinedViewer('C0MMAND002')
@@ -292,6 +295,7 @@ describe('change_genome', () => {
     tracks: [{ name: 'Refseq Genes', type: 'annotation', url: 'https://example.org/mm10/refGene.txt.gz', height: 70 }],
     crosshairs: false,
     centreLine: false,
+    controls: false,
   }
 
   it('for a genome on the igv.org list reaches the Viewer as its command, and replies with the Session summary of the new genome', async () => {

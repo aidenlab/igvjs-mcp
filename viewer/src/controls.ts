@@ -29,6 +29,8 @@ export interface Controls {
    * Room has them already.
    */
   restoreViewerSettings(settings: ViewerSettings): void
+  /** The Viewer settings as they now stand, whoever last changed them. */
+  viewerSettings(): ViewerSettings
 }
 
 /**
@@ -116,5 +118,6 @@ export function controls(page: ParentNode = document, reportViewerSettings: (set
     restoreViewerSettings(settings) {
       if (!changed) show(settings.controls)
     },
+    viewerSettings: () => ({ controls: shown }),
   }
 }
