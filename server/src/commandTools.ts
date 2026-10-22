@@ -127,17 +127,26 @@ export const COMMAND_TOOLS: CommandTool[] = [
     commandType: 'set_centre_line',
   },
   {
+    name: 'set_controls',
+    title: 'Show or hide the controls',
+    description: `Show or hide igv-bot's controls: the Shareable URL, in a strip with a copy button, and igv.js's navigation bar, with its locus box and its buttons. They are hidden and shown together, and start hidden; the genome browser takes the space they leave. The Session summary says whether they are showing, as controls; the user also hides and shows them by hand, with the button above the genome browser. Showing them does not change the view, and the Shareable URL is the same either way. ${REPLY}`,
+    inputSchema: {
+      show: z.boolean().describe('True to show the controls, false to hide them'),
+    },
+    commandType: 'set_controls',
+  },
+  {
     name: 'read_session_summary',
     title: 'Read the Session summary',
     description:
-      'Read what igv-bot is showing now, without changing anything: genome, loci, tracks in display order with name, type, URL and height, and whether the crosshairs and centre line are showing. The user also changes igv-bot by hand (panning, zooming, reordering, resizing or removing tracks) and you are not told when they do. Call this before describing the view or acting on a reference to it, such as "this region" or "the second track", unless a reply from another igv-bot tool has just given you the Session summary.',
+      'Read what igv-bot is showing now, without changing anything: genome, loci, tracks in display order with name, type, URL and height, and whether the crosshairs, centre line and controls are showing. The user also changes igv-bot by hand (panning, zooming, reordering, resizing or removing tracks) and you are not told when they do. Call this before describing the view or acting on a reference to it, such as "this region" or "the second track", unless a reply from another igv-bot tool has just given you the Session summary.',
     inputSchema: {},
     commandType: 'read_session_summary',
   },
   {
     name: 'get_shareable_url',
     title: 'Get the Shareable URL',
-    description: `Get a Shareable URL for what igv-bot is showing now: a link that opens the same genome, loci and tracks in igv-webapp, the IGV web application at igv.org, for anyone the user sends it to. Use this when the user asks for a link to share, send or keep. The link carries the whole Session in itself, so it is long, needs no igv-bot and no Room, and does not expire; it shows the view as it is now, so get a new one after the view changes. Give the user the link exactly as it is in the reply, whole and unshortened. It is not the Join link, which opens igv-bot itself: never give one for the other. The user can also copy the same link from igv-bot itself, where it is shown above the genome browser unless the user has hidden the controls. Nothing in igv-bot changes. The reply is the Shareable URL on a line of its own, then the Session summary of the view it opens.`,
+    description: `Get a Shareable URL for what igv-bot is showing now: a link that opens the same genome, loci and tracks in igv-webapp, the IGV web application at igv.org, for anyone the user sends it to. Use this when the user asks for a link to share, send or keep. The link carries the whole Session in itself, so it is long, needs no igv-bot and no Room, and does not expire; it shows the view as it is now, so get a new one after the view changes. Give the user the link exactly as it is in the reply, whole and unshortened. It is not the Join link, which opens igv-bot itself: never give one for the other. The user can copy the same link from igv-bot once the controls are shown. Nothing in igv-bot changes. The reply is the Shareable URL on a line of its own, then the Session summary of the view it opens.`,
     inputSchema: {},
     commandType: 'get_shareable_url',
   },

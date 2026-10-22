@@ -77,10 +77,11 @@ Each Command has one applier, and each applier calls igv.js's browser API:
 | `set_track_height` | `track.trackView.setTrackHeight(height, true)`, then a repaint |
 | `set_crosshairs` | `browser.setCursorGuideVisibility(show)` |
 | `set_centre_line` | `browser.setCenterLineVisibility(show)` |
+| `set_controls` | none of its own: the Controls' `showControls(show)`, which shows or hides the Navigation bar (section 4) |
 | `read_session_summary` | none; the reply reads the Session |
 | `get_shareable_url` | `browser.compressedSession()` |
 
-After every Command, `captureSession()` reads the Session with `browser.toJSON()`. igv.js leaves some things out of what it writes, such as default track heights and the crosshairs and centre line, so `captureSession()` adds them. `session.ts` then turns the Session into the Session summary the model receives.
+After every Command, `captureSession()` reads the Session with `browser.toJSON()`. igv.js leaves some things out of what it writes, such as default track heights and the crosshairs and centre line, so `captureSession()` adds them. `session.ts` then turns the Session, with the Viewer settings, into the Session summary the model receives.
 
 ### 3. Watching for changes: `changes.ts`
 

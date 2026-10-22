@@ -30,7 +30,7 @@ describe('changing genome, round trip', () => {
     const reply = await callTool(room, 'change_genome', { genome: 'mm10' })
 
     expect(reply.isError).toBe(false)
-    expect(reply.summary).toEqual({ genome: 'mm10', loci: ['all'], tracks: MM10_TRACKS, crosshairs: false, centreLine: false })
+    expect(reply.summary).toEqual({ genome: 'mm10', loci: ['all'], tracks: MM10_TRACKS, crosshairs: false, centreLine: false, controls: false })
     // The Viewer goes on taking commands in the new genome.
     const moved = await callTool(room, 'go_to_locus', { locus: 'chr11:101,442,001-101,444,000' })
     expect(moved.summary).toMatchObject({ genome: 'mm10', loci: ['chr11:101,442,001-101,444,000'] })
@@ -62,6 +62,7 @@ describe('changing genome, round trip', () => {
       tracks: MM10_TRACKS,
       crosshairs: false,
       centreLine: false,
+      controls: false,
     })
   })
 })

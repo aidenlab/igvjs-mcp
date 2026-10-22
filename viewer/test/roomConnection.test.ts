@@ -36,7 +36,7 @@ class FakeSocket implements RoomSocket {
   }
 }
 
-const SUMMARY: SessionSummary = { genome: 'hg38', loci: ['all'], tracks: [], crosshairs: false, centreLine: false }
+const SUMMARY: SessionSummary = { genome: 'hg38', loci: ['all'], tracks: [], crosshairs: false, centreLine: false, controls: false }
 
 function connect(onCommand: (command: Command) => Promise<CommandOutcome> = async () => ({ ok: true, summary: SUMMARY })) {
   const sockets: FakeSocket[] = []

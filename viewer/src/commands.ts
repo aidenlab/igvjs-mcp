@@ -1,5 +1,5 @@
-import type { Command, CommandAnswer, CommandOutcome, CommandType, TrackAddress, TrackHeight, TrackSelection, TrackToLoad } from './protocol.ts'
-import { displayOrder, sessionSummary, type Session } from './session.ts'
+import type { Command, CommandAnswer, CommandOutcome, CommandType, TrackAddress, TrackHeight, TrackSelection, TrackToLoad, ViewerSettings } from './protocol.ts'
+import { displayOrder, sessionLoci, sessionSummary, trackSummaries, type Session } from './session.ts'
 import { shareableUrl, type SessionCompressor } from './shareableUrl.ts'
 import { addressTrack, addressTracks } from './trackAddress.ts'
 import { changedHeight, checkHeight } from './trackHeight.ts'
@@ -32,6 +32,12 @@ export interface GenomeBrowser extends SessionCompressor {
   }
 }
 
+/** The part of the Controls the commands use. See `controls.ts`. */
+export interface ViewerControls {
+  showControls(shown: boolean): void
+  viewerSettings(): ViewerSettings
+}
+
 interface NavbarButton {
   setState(lit: boolean): void
 }
@@ -58,8 +64,12 @@ interface BrowserTrack {
   }
 }
 
-/** What a command does to igv.js. One that asks for an answer returns it. */
-type Applier<T extends CommandType> = (browser: GenomeBrowser, command: Extract<Command, { type: T }>) => Promise<CommandAnswer | void> | CommandAnswer | void
+/** What a command does to igv.js, or to the Controls around it. One that asks for an answer returns it. */
+type Applier<T extends CommandType> = (
+  browser: GenomeBrowser,
+  command: Extract<Command, { type: T }>,
+  controls: ViewerControls,
+) => Promise<CommandAnswer | void> | CommandAnswer | void
 
 /** `browser.search` reports an unknown locus by resolving false; the wording is the alert igv.js's own locus box shows. */
 async function goTo(browser: GenomeBrowser, locus: string): Promise<void> {
@@ -102,7 +112,7 @@ function summarizedTracks(browser: GenomeBrowser, session: Session): BrowserTrac
 
 function removeTrack(browser: GenomeBrowser, address: TrackAddress): void {
   const session = captureSession(browser)
-  const track = summarizedTracks(browser, session)[addressTrack(sessionSummary(session).tracks, address)]
+  const track = summarizedTracks(browser, session)[addressTrack(trackSummaries(session), address)]
   // igv.js's own menu offers no removal of the sequence track, though its API would carry one out.
   if (track.removable === false) throw new Error('The sequence track cannot be removed.')
   browser.removeTrack(track)
@@ -127,7 +137,7 @@ function setTrackHeight(browser: GenomeBrowser, { height, ...selection }: { heig
   // Before any track is looked at: a height that is an error is one whatever tracks it is for.
   checkHeight(height)
   const session = captureSession(browser)
-  const summarized = sessionSummary(session).tracks
+  const summarized = trackSummaries(session)
   // The sequence track's height is igv.js's to set: its own menu offers none. All tracks is all the others.
   const sizable = (index: number) => summarized[index].type !== 'sequence'
   const addressed = addressTracks(summarized, selection)
@@ -143,7 +153,7 @@ function setTrackHeight(browser: GenomeBrowser, { height, ...selection }: { heig
 
 /** Whether igv.js is in its whole-genome view, which the Session summary gives as the locus "all". */
 function inWholeGenomeView(browser: GenomeBrowser): boolean {
-  return sessionSummary(captureSession(browser)).loci[0] === 'all'
+  return sessionLoci(captureSession(browser))[0] === 'all'
 }
 
 /** Shows or hides the crosshairs, as igv.js's own button does. */
@@ -182,6 +192,8 @@ const APPLIERS: { [T in CommandType]: Applier<T> } = {
   set_track_height: setTrackHeight,
   set_crosshairs: (browser, { show }) => setCrosshairs(browser, show),
   set_centre_line: (browser, { show }) => setCentreLine(browser, show),
+  // The same call as the Controls' own button.
+  set_controls: (_browser, { show }, controls) => controls.showControls(show),
   // Changes nothing: the ack carries the Session summary, as every ack does.
   read_session_summary: () => {},
   // Changes nothing either.
@@ -209,15 +221,15 @@ export function captureSession(browser: GenomeBrowser): Session {
   }
 }
 
-/** Applies `command` to igv.js. An error igv.js raises applying it becomes the outcome. */
-export async function applyCommand(browser: GenomeBrowser, command: Command): Promise<CommandOutcome> {
+/** Applies `command` to igv.js, or to the `controls` around it. An error igv.js raises applying it becomes the outcome. */
+export async function applyCommand(browser: GenomeBrowser, command: Command, controls: ViewerControls): Promise<CommandOutcome> {
   let error: string | undefined
   let answer: CommandAnswer | void = undefined
   try {
-    answer = await (APPLIERS[command.type] as Applier<CommandType>)(browser, command)
+    answer = await (APPLIERS[command.type] as Applier<CommandType>)(browser, command, controls)
   } catch (raised) {
     error = raised instanceof Error ? raised.message : String(raised)
   }
-  const summary = sessionSummary(captureSession(browser))
+  const summary = sessionSummary(captureSession(browser), controls.viewerSettings())
   return error === undefined ? { ok: true, summary, ...answer } : { ok: false, error, summary }
 }

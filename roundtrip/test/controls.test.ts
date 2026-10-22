@@ -1,7 +1,8 @@
 /**
  * The Controls, round trip: in the built Viewer, one button hides and shows
- * the Shareable URL and igv.js's Navigation bar together, by hand. They start
- * hidden, and the Room keeps whether they are shown, beside the Session.
+ * the Shareable URL and igv.js's Navigation bar together, by hand, and
+ * set_controls does the same for the model. They start hidden, and the Room
+ * keeps whether they are shown, beside the Session.
  */
 import { describe, it, expect, beforeAll, beforeEach, afterAll } from 'vitest'
 import type { Browser, Page } from 'playwright'
@@ -42,6 +43,12 @@ async function controlsOn(viewer: Page) {
     hideOffered: await viewer.getByRole('button', { name: 'Hide controls' }).isVisible(),
   }
 }
+/** The Shareable URL `room`'s Viewer gives now: the link alone, without the Session summary that follows it. */
+async function shareableUrlOf(room: string): Promise<string> {
+  const { text } = await callTool(room, 'get_shareable_url')
+  return /^Shareable URL:\n(\S+)\n/.exec(text)![1]
+}
+
 const SHOWN = { shareableUrl: true, navigationBar: true, hideOffered: true }
 const HIDDEN = { shareableUrl: false, navigationBar: false, hideOffered: false }
 
@@ -196,14 +203,14 @@ describe('the Controls, round trip', () => {
   it('shown by hand, the Controls are still shown after a reload, and the Shareable URL is the same as before they were shown', async () => {
     const ownRoom = await newSession()
     const reopened = await anotherViewer(ownRoom)
-    const before = (await callTool(ownRoom, 'get_shareable_url')).text
+    const before = await shareableUrlOf(ownRoom)
 
     await showControls(reopened)
     await reopened.reload()
     await reopened.locator('.shareable-url__copy:enabled').waitFor()
 
     expect(await controlsOn(reopened)).toEqual(SHOWN)
-    expect((await callTool(ownRoom, 'get_shareable_url')).text).toBe(before)
+    expect(await shareableUrlOf(ownRoom)).toBe(before)
     await reopened.close()
   })
 
@@ -224,5 +231,69 @@ describe('the Controls, round trip', () => {
 
     expect(await controlsOn(later)).toEqual(SHOWN)
     await later.close()
+  })
+})
+
+describe('set_controls, round trip', () => {
+  it('show: true shows the Controls, the Session summary says so, a reload keeps them shown, and the Shareable URL is the same as before', async () => {
+    const ownRoom = await newSession()
+    const viewer = await anotherViewer(ownRoom)
+    const before = await shareableUrlOf(ownRoom)
+    expect((await callTool(ownRoom, 'read_session_summary')).summary.controls).toBe(false)
+
+    const shown = await callTool(ownRoom, 'set_controls', { show: true })
+
+    expect(shown.isError).toBe(false)
+    expect(shown.summary.controls).toBe(true)
+    expect(await controlsOn(viewer)).toEqual(SHOWN)
+    expect(await viewer.getByRole('button', { name: 'Hide controls' }).getAttribute('aria-expanded')).toBe('true')
+
+    await viewer.reload()
+    await viewer.locator('.shareable-url__copy:enabled').waitFor()
+
+    expect(await controlsOn(viewer)).toEqual(SHOWN)
+    expect(await shareableUrlOf(ownRoom)).toBe(before)
+    expect((await callTool(ownRoom, 'read_session_summary')).summary.controls).toBe(true)
+    await viewer.close()
+  })
+
+  it('show: false hides them, and repeating it changes nothing and is no error', async () => {
+    const ownRoom = await newSession()
+    const viewer = await anotherViewer(ownRoom)
+    await callTool(ownRoom, 'set_controls', { show: true })
+
+    const hidden = await callTool(ownRoom, 'set_controls', { show: false })
+    const again = await callTool(ownRoom, 'set_controls', { show: false })
+
+    expect(hidden.summary.controls).toBe(false)
+    expect(again.isError).toBe(false)
+    expect(again.summary).toEqual(hidden.summary)
+    expect(await controlsOn(viewer)).toEqual(HIDDEN)
+    await viewer.close()
+  })
+
+  it('reaches every Viewer in the Room, as every Command does', async () => {
+    const ownRoom = await newSession()
+    const first = await anotherViewer(ownRoom)
+    const second = await anotherViewer(ownRoom)
+
+    await callTool(ownRoom, 'set_controls', { show: true })
+
+    expect(await controlsOn(first)).toEqual(SHOWN)
+    expect(await controlsOn(second)).toEqual(SHOWN)
+    await first.close()
+    await second.close()
+  })
+
+  it('the Session summary follows the button too', async () => {
+    const ownRoom = await newSession()
+    const viewer = await anotherViewer(ownRoom)
+
+    await showControls(viewer)
+
+    expect((await callTool(ownRoom, 'read_session_summary')).summary.controls).toBe(true)
+    await viewer.getByRole('button', { name: 'Hide controls' }).click()
+    expect((await callTool(ownRoom, 'read_session_summary')).summary.controls).toBe(false)
+    await viewer.close()
   })
 })

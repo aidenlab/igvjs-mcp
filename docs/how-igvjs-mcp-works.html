@@ -601,7 +601,7 @@ td.how { white-space: nowrap; }
     <tr><td class="n">4</td><td>D</td><td>The Viewer applies the Command to igv.js, one at a time and in the order they arrive. igv.js looks MYC up and fetches what the new view needs directly from the data hosts, not through the Worker.</td></tr>
     <tr><td class="n">5</td><td>B</td><td>The Viewer acks with the request id, <code>ok</code> or igv.js’s own error, and the Session summary as it now stands. The Room keeps the summary.</td></tr>
     <tr><td class="n">6</td><td></td><td>The Room hands the outcome back to the Worker. A later ack of the same Command, from a second Viewer, finds nothing waiting and is dropped.</td></tr>
-    <tr><td class="n">7</td><td>A</td><td>The Worker replies “Done.” with the Session summary: genome, loci, the tracks in display order with their heights, and whether the crosshairs and centre line are showing. The model turns it into its answer.</td></tr>
+    <tr><td class="n">7</td><td>A</td><td>The Worker replies “Done.” with the Session summary: genome, loci, the tracks in display order with their heights, and whether the crosshairs, centre line and Controls are showing. The model turns it into its answer.</td></tr>
     <tr><td class="n">8</td><td>B</td><td>igv.js announced the move, so once it has been quiet for a quarter of a second the Viewer sends the Session and its summary. The Room keeps both, for a Viewer that opens later.</td></tr>
   </tbody>
 </table>

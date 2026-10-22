@@ -1,9 +1,10 @@
 /**
- * The Session summary, built from an igv.js Session. The Sessions here are
+ * The Session summary, built from an igv.js Session and the Viewer settings. The Sessions here are
  * shaped as igv.js 3.8 writes them (`browser.toJSON()`), cut down to a few
  * fields beyond the ones the summary reads.
  */
 import { describe, it, expect } from 'vitest'
+import { NO_VIEWER_SETTINGS } from '../src/protocol.ts'
 import { sessionSummary, type Session } from '../src/session.ts'
 
 const SEQUENCE = { type: 'sequence', order: -Number.MAX_SAFE_INTEGER, height: 25 }
@@ -28,9 +29,12 @@ function session(overrides: Partial<Session> = {}): Session {
   }
 }
 
+/** The Session summary of `session`, with the Controls hidden as a new Viewer has them. */
+const summaryOf = (session: Session) => sessionSummary(session, NO_VIEWER_SETTINGS)
+
 describe('sessionSummary', () => {
   it('gives the genome, loci, tracks and toggles of the default Viewer', () => {
-    expect(sessionSummary(session())).toEqual({
+    expect(summaryOf(session())).toEqual({
       genome: 'hg38',
       loci: ['all'],
       tracks: [
@@ -39,6 +43,7 @@ describe('sessionSummary', () => {
       ],
       crosshairs: false,
       centreLine: false,
+      controls: false,
     })
   })
 
@@ -50,7 +55,7 @@ describe('sessionSummary', () => {
       { name: 'middle', type: 'annotation', url: 'https://example.org/b.bed', order: 2, height: 40 },
     ]
 
-    expect(sessionSummary(session({ tracks })).tracks.map((track) => track.name)).toEqual(['sequence', 'top', 'middle', 'bottom'])
+    expect(summaryOf(session({ tracks })).tracks.map((track) => track.name)).toEqual(['sequence', 'top', 'middle', 'bottom'])
   })
 
   it('tracks with the same display position keep their Session order', () => {
@@ -60,13 +65,13 @@ describe('sessionSummary', () => {
       { name: 'above', type: 'wig', order: 4, height: 50 },
     ]
 
-    expect(sessionSummary(session({ tracks })).tracks.map((track) => track.name)).toEqual(['above', 'first', 'second'])
+    expect(summaryOf(session({ tracks })).tracks.map((track) => track.name)).toEqual(['above', 'first', 'second'])
   })
 
   it('carries each track\'s name, type, URL and height', () => {
     const tracks = [{ name: 'CTCF K562', type: 'wig', format: 'bigwig', url: 'https://example.org/ctcf.bigWig', order: 1, height: 120 }]
 
-    expect(sessionSummary(session({ tracks })).tracks).toEqual([
+    expect(summaryOf(session({ tracks })).tracks).toEqual([
       { name: 'CTCF K562', type: 'wig', url: 'https://example.org/ctcf.bigWig', height: 120 },
     ])
   })
@@ -77,13 +82,13 @@ describe('sessionSummary', () => {
       { name: 'half as much again as 25', type: 'wig', order: 2, height: 37.5 },
     ]
 
-    expect(sessionSummary(session({ tracks })).tracks.map((track) => track.height)).toEqual([33, 38])
+    expect(summaryOf(session({ tracks })).tracks.map((track) => track.height)).toEqual([33, 38])
   })
 
   it('lists every locus of a split view, left to right', () => {
     const locus = ['chr8:127,735,434-127,742,951', 'chr17:43,044,295-43,125,364']
 
-    expect(sessionSummary(session({ locus })).loci).toEqual(locus)
+    expect(summaryOf(session({ locus })).loci).toEqual(locus)
   })
 
   it.each([
@@ -91,10 +96,14 @@ describe('sessionSummary', () => {
     [{ showCenterGuide: true }, { crosshairs: false, centreLine: true }],
     [{ showCursorGuide: undefined, showCenterGuide: undefined }, { crosshairs: false, centreLine: false }],
   ])('a Session with %o reports %o', (toggles, expected) => {
-    expect(sessionSummary(session(toggles))).toMatchObject(expected)
+    expect(summaryOf(session(toggles))).toMatchObject(expected)
+  })
+
+  it.each([true, false])('says the Controls are showing as the Viewer settings say: %s', (controls) => {
+    expect(sessionSummary(session(), { controls }).controls).toBe(controls)
   })
 
   it('names a genome that has no id by its name', () => {
-    expect(sessionSummary(session({ reference: { name: 'My assembly' } })).genome).toBe('My assembly')
+    expect(summaryOf(session({ reference: { name: 'My assembly' } })).genome).toBe('My assembly')
   })
 })

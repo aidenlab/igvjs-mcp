@@ -38,7 +38,7 @@ beforeAll(() => {
 afterEach(closeViewers)
 
 function summaryOn(genome: string): SessionSummary {
-  return { genome, loci: ['all'], tracks: [], crosshairs: false, centreLine: false }
+  return { genome, loci: ['all'], tracks: [], crosshairs: false, centreLine: false, controls: false }
 }
 
 /** A Room whose Viewer has reported that it shows `genome`. */
