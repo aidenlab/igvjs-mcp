@@ -3,7 +3,7 @@
  * assert what the Viewer sends and the statuses it reports.
  */
 import { describe, it, expect, afterEach, vi } from 'vitest'
-import type { Command, CommandOutcome, SavedSession, SessionReport, SessionSummary } from '../src/protocol.ts'
+import type { Command, CommandOutcome, SavedSession, SessionReport, SessionSummary, ViewerSettings } from '../src/protocol.ts'
 import { connectToRoom, roomSocketUrl, statusText, type RoomSocket, type RoomStatus } from '../src/roomConnection.ts'
 
 class FakeSocket implements RoomSocket {
@@ -42,10 +42,14 @@ function connect(onCommand: (command: Command) => Promise<CommandOutcome> = asyn
   const sockets: FakeSocket[] = []
   const statuses: RoomStatus[] = []
   const restores: Array<SavedSession | undefined> = []
-  const { reportSession } = connectToRoom({
+  const restoredSettings: ViewerSettings[] = []
+  const { reportSession, reportViewerSettings } = connectToRoom({
     url: 'ws://server.test/ws?room=7ZQH4M2K9X',
     onStatus: (status) => statuses.push(status),
-    onFirstJoin: (saved) => restores.push(saved),
+    onFirstJoin: (saved, viewerSettings) => {
+      restores.push(saved)
+      restoredSettings.push(viewerSettings)
+    },
     onCommand,
     createSocket: (url) => {
       const socket = new FakeSocket(url)
@@ -53,7 +57,7 @@ function connect(onCommand: (command: Command) => Promise<CommandOutcome> = asyn
       return socket
     },
   })
-  return { sockets, statuses, restores, reportSession }
+  return { sockets, statuses, restores, restoredSettings, reportSession, reportViewerSettings }
 }
 
 afterEach(() => {
@@ -307,6 +311,97 @@ describe('the Session saved in the Room', () => {
     sockets[1].receive({ type: 'joined', room: '7ZQH4M2K9X', session: SAVED })
 
     expect(restores).toEqual([undefined])
+  })
+})
+
+describe('the Viewer settings reported after a change', () => {
+  function joined() {
+    const connection = connect()
+    connection.sockets[0].open()
+    connection.sockets[0].receive({ type: 'joined', room: '7ZQH4M2K9X' })
+    connection.sockets[0].sent.length = 0
+    return connection
+  }
+
+  it('are sent to the Room', () => {
+    const { sockets, reportViewerSettings } = joined()
+
+    reportViewerSettings({ controls: true })
+
+    expect(sockets[0].sent).toEqual([{ type: 'viewer_settings', viewerSettings: { controls: true } }])
+  })
+
+  it('are not sent again while they stay the same', () => {
+    const { sockets, reportViewerSettings } = joined()
+
+    reportViewerSettings({ controls: true })
+    reportViewerSettings({ controls: true })
+    reportViewerSettings({ controls: false })
+
+    expect(sockets[0].sent).toEqual([
+      { type: 'viewer_settings', viewerSettings: { controls: true } },
+      { type: 'viewer_settings', viewerSettings: { controls: false } },
+    ])
+  })
+
+  it('reported before the Room is joined are sent once it is, beside the Session', () => {
+    const { sockets, reportSession, reportViewerSettings } = connect()
+    const report: SessionReport = { session: { reference: { id: 'hg38' }, locus: 'all', tracks: [] }, summary: SUMMARY }
+
+    reportViewerSettings({ controls: true })
+    reportSession(report)
+    sockets[0].open()
+    sockets[0].receive({ type: 'joined', room: '7ZQH4M2K9X' })
+
+    expect(sockets[0].sent).toEqual([{ type: 'join' }, { type: 'session', ...report }, { type: 'viewer_settings', viewerSettings: { controls: true } }])
+  })
+
+  it('are sent again after a reconnect, as they were last changed', () => {
+    vi.useFakeTimers()
+    const { sockets, reportViewerSettings } = joined()
+    reportViewerSettings({ controls: true })
+
+    sockets[0].drop()
+    reportViewerSettings({ controls: false })
+    vi.advanceTimersByTime(1000)
+    sockets[1].open()
+    sockets[1].receive({ type: 'joined', room: '7ZQH4M2K9X' })
+
+    expect(sockets[1].sent).toEqual([{ type: 'join' }, { type: 'viewer_settings', viewerSettings: { controls: false } }])
+  })
+})
+
+describe('the Viewer settings saved in the Room', () => {
+  it('are handed over when the Viewer first joins', () => {
+    const { sockets, restoredSettings } = connect()
+    sockets[0].open()
+
+    sockets[0].receive({ type: 'joined', room: '7ZQH4M2K9X', viewerSettings: { controls: true } })
+
+    expect(restoredSettings).toEqual([{ controls: true }])
+  })
+
+  it('in a Room with none saved, read as the Controls hidden', () => {
+    const { sockets, restoredSettings } = connect()
+    sockets[0].open()
+
+    sockets[0].receive({ type: 'joined', room: '7ZQH4M2K9X', session: { reference: { id: 'hg19' } } })
+
+    expect(restoredSettings).toEqual([{ controls: false }])
+  })
+
+  it('are not handed over again on a reconnect', () => {
+    vi.useFakeTimers()
+    const { sockets, restoredSettings } = connect()
+    sockets[0].open()
+    sockets[0].receive({ type: 'joined', room: '7ZQH4M2K9X', viewerSettings: { controls: true } })
+
+    sockets[0].drop()
+    vi.advanceTimersByTime(1000)
+    sockets[1].open()
+    sockets[1].receive({ type: 'joined', room: '7ZQH4M2K9X', viewerSettings: { controls: false } })
+
+    expect(restoredSettings).toEqual([{ controls: true }])
   })
 })
 

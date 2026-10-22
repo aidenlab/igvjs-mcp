@@ -4,7 +4,7 @@
  */
 import { env, runDurableObjectAlarm, runInDurableObject } from 'cloudflare:test'
 import { describe, it, expect, afterEach, beforeAll, vi } from 'vitest'
-import { MessageType, type SessionSummary } from 'igvjs-mcp-viewer/protocol'
+import { MessageType, type SessionSummary, type ViewerSettings } from 'igvjs-mcp-viewer/protocol'
 import { serveGenomeList } from './genomeList.ts'
 import { callTool } from './mcp.ts'
 import { ORIGIN, upgrade, openViewer, join, closeViewers, type FakeViewer } from './viewers.ts'
@@ -74,6 +74,66 @@ describe('the saved Session', () => {
     const second = await openViewer('SESS10N003')
 
     expect(await join(second)).toEqual({ type: MessageType.JOINED, room: 'SESS10N003', session: { ...SESSION, locus: 'chr1:1-1,000' } })
+  })
+})
+
+describe('the saved Viewer settings', () => {
+  /** `viewer` saves `viewerSettings` in its Room; resolves once the Room has stored them. */
+  async function saveSettings(viewer: FakeViewer, viewerSettings: ViewerSettings) {
+    viewer.send({ type: MessageType.VIEWER_SETTINGS, viewerSettings })
+    await join(viewer) // answered after the Viewer settings were stored
+  }
+
+  it('a Room with none saved hands a joining Viewer none, so the Controls are hidden', async () => {
+    const first = await openViewer('SETT1NGS01')
+    await join(first)
+    await save(first)
+
+    const second = await openViewer('SETT1NGS01')
+
+    expect(await join(second)).toEqual({ type: MessageType.JOINED, room: 'SETT1NGS01', session: SESSION })
+  })
+
+  it('a Room opened on a genome hands its first Viewer a Session and no Viewer settings', async () => {
+    const result = await callTool('open_viewer', undefined, { genome: 'mm10' })
+    const { room } = result.structuredContent as { room: string }
+
+    const viewer = await openViewer(room)
+
+    expect(await join(viewer)).not.toHaveProperty('viewerSettings')
+  })
+
+  it('the latest Viewer settings saved are handed, beside the Session, to a Viewer that joins', async () => {
+    const first = await openViewer('SETT1NGS02')
+    await join(first)
+    await save(first)
+    await saveSettings(first, { controls: true })
+    await saveSettings(first, { controls: false })
+    await saveSettings(first, { controls: true })
+    closeViewers()
+
+    const later = await openViewer('SETT1NGS02')
+
+    expect(await join(later)).toEqual({ type: MessageType.JOINED, room: 'SETT1NGS02', session: SESSION, viewerSettings: { controls: true } })
+  })
+
+  it('Viewer settings without an explicit value are not kept', async () => {
+    const first = await openViewer('SETT1NGS04')
+    await join(first)
+    first.send({ type: MessageType.VIEWER_SETTINGS, viewerSettings: {} as ViewerSettings })
+
+    expect(await join(first)).toEqual({ type: MessageType.JOINED, room: 'SETT1NGS04' })
+  })
+
+  it('a Session saved after them leaves them as they were', async () => {
+    const first = await openViewer('SETT1NGS03')
+    await join(first)
+    await saveSettings(first, { controls: true })
+    await save(first)
+
+    const second = await openViewer('SETT1NGS03')
+
+    expect(await join(second)).toEqual({ type: MessageType.JOINED, room: 'SETT1NGS03', session: SESSION, viewerSettings: { controls: true } })
   })
 })
 

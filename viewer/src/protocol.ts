@@ -6,11 +6,12 @@
 
 export const MessageType = {
   JOIN: 'join', // Viewer → Room: {}
-  JOINED: 'joined', // Room → Viewer: {room}, and {session} when the Room has one saved
+  JOINED: 'joined', // Room → Viewer: {room}, and {session} and {viewerSettings} when the Room has them saved
   EXPIRED: 'expired', // Room → Viewer: {}, in answer to a join of a Room whose stored data was deleted; the Room then closes the socket
   COMMAND: 'command', // Room → Viewer: {id, command}
   ACK: 'ack', // Viewer → Room: {id, ok: true, summary}, with {shareableUrl} when the command asked for it, or {id, ok: false, error, summary}
   SESSION: 'session', // Viewer → Room: {session, summary}, whenever the Room's copies may be out of date
+  VIEWER_SETTINGS: 'viewer_settings', // Viewer → Room: {viewerSettings}, whenever the Room's copy may be out of date
 } as const
 
 export interface JoinMessage {
@@ -20,11 +21,26 @@ export interface JoinMessage {
 /** A Session as it travels to the Room and back: igv.js's own JSON, which the Room keeps without reading. */
 export type SavedSession = object
 
+/**
+ * What the Viewer shows around the genome browser that is no part of the
+ * Session (ADR 0004). Kept beside the Session, never in it, and always with
+ * an explicit value.
+ */
+export interface ViewerSettings {
+  /** Whether the Controls are shown. */
+  controls: boolean
+}
+
+/** The Viewer settings of a Room that has none saved: new, opened on a genome or locus, or from before they were kept. */
+export const NO_VIEWER_SETTINGS: ViewerSettings = { controls: false }
+
 export interface JoinedMessage {
   type: typeof MessageType.JOINED
   room: string
   /** The Session last saved in the Room, for the Viewer to restore. Absent when nothing is saved. */
   session?: SavedSession
+  /** The Viewer settings last saved in the Room, for the Viewer to restore. Absent when nothing is saved. */
+  viewerSettings?: ViewerSettings
 }
 
 export interface ExpiredMessage {
@@ -123,5 +139,11 @@ export interface SessionReport {
  */
 export type SessionMessage = { type: typeof MessageType.SESSION } & SessionReport
 
-export type ViewerMessage = JoinMessage | AckMessage | SessionMessage
+/** Saves the Viewer settings in the Room: sent after every change, whoever made it, and again on joining if the Room may not have them. */
+export interface ViewerSettingsMessage {
+  type: typeof MessageType.VIEWER_SETTINGS
+  viewerSettings: ViewerSettings
+}
+
+export type ViewerMessage = JoinMessage | AckMessage | SessionMessage | ViewerSettingsMessage
 export type RoomMessage = JoinedMessage | ExpiredMessage | CommandMessage

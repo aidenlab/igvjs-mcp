@@ -3,14 +3,16 @@ import './styles/viewer.scss'
 import { watchChanges, type ChangeSource } from './changes.ts'
 import { applyCommand, captureSession, type GenomeBrowser } from './commands.ts'
 import { controls as pageControls, type NavigationBarOwner } from './controls.ts'
-import type { SavedSession, SessionReport } from './protocol.ts'
+import type { SavedSession, SessionReport, ViewerSettings } from './protocol.ts'
 import { connectToRoom, roomSocketUrl, statusText, type RoomStatus } from './roomConnection.ts'
 import { sessionSummary } from './session.ts'
 import { shareableUrl } from './shareableUrl.ts'
 
 const statusElement = document.querySelector<HTMLElement>('.viewer__status')!
 const browserElement = document.querySelector<HTMLElement>('.viewer__browser')!
-const controls = pageControls()
+/** Where the Viewer settings go after every change: to the Room, once there is one. */
+let reportViewerSettings: (settings: ViewerSettings) => void = () => {}
+const controls = pageControls(document, (settings) => reportViewerSettings(settings))
 
 function showStatus(status: RoomStatus) {
   statusElement.textContent = statusText(status)
@@ -36,10 +38,11 @@ const DEFAULT_VIEWER: CreateOpt = { genome: 'hg38', locus: 'all' }
 
 // What the Viewer asks of igv.js whatever it shows. A Session does not carry
 // these, so they are given with a restored one as with the default Viewer.
-// The Navigation bar is without igv.js's Save Image button.
-const VIEWER_OPTIONS = { showSVGButton: false }
+// The Navigation bar is without igv.js's Save Image button, and is created
+// hidden, so that it never shows while igv.js loads: the Controls show it.
+const VIEWER_OPTIONS = { showSVGButton: false, showNavigation: false }
 
-/** igv.js showing `config`, as the genome browser on the page: Controls hidden while it loaded are hidden on it. */
+/** igv.js showing `config`, as the genome browser on the page: its Navigation bar is shown if the Controls are. */
 async function createBrowser(config: CreateOpt): Promise<Browser> {
   const browser = (await igv.createBrowser(browserElement, { ...config, ...VIEWER_OPTIONS })) as unknown as Browser
   // The Navigation bar is without igv.js's Select Tracks button too. igv.js 3.8.9 builds and shows
@@ -100,10 +103,13 @@ if (room) {
   const browser = new Promise<SavedSession | undefined>((resolve) => (restore = resolve)).then(openBrowser)
   /** Tells the Room the Session may have changed. Does nothing until igv.js has loaded, which a command waits for. */
   let changed = () => {}
-  const { reportSession } = connectToRoom({
+  const connection = connectToRoom({
     url: roomSocketUrl(import.meta.env.VITE_SERVER_URL, room),
     onStatus: showStatus,
-    onFirstJoin: restore,
+    onFirstJoin: (saved, viewerSettings) => {
+      controls.restoreViewerSettings(viewerSettings)
+      restore(saved)
+    },
     onCommand: async (command) => {
       const outcome = await applyCommand(await browser, command)
       // igv.js announces nothing when its crosshairs or centre line is shown or hidden, by a command as by its own button.
@@ -112,8 +118,9 @@ if (room) {
     },
   })
   // The Room hears of every change.
+  reportViewerSettings = connection.reportViewerSettings
   void browser.then((loaded) => {
-    changed = watchSession(loaded, reportSession)
+    changed = watchSession(loaded, connection.reportSession)
   })
 } else {
   statusElement.textContent = 'Not connected. Ask Claude or ChatGPT to open igv-bot.'

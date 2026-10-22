@@ -5,7 +5,7 @@
  */
 import { describe, it, expect, afterAll } from 'vitest'
 import type { Browser, Page } from 'playwright'
-import { callTool, newSession, openViewer } from '../model.ts'
+import { callTool, newSession, openViewer, showControls } from '../model.ts'
 
 const browsers: Browser[] = []
 
@@ -86,6 +86,7 @@ describe('crosshairs and centre line, round trip', () => {
     await callTool(room, 'set_crosshairs', { show: true })
     await callTool(room, 'set_centre_line', { show: true })
 
+    await showControls(page)
     await page.getByTitle('Crosshairs').click()
     await page.getByTitle('Center Line').click()
 

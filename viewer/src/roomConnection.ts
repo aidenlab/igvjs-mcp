@@ -1,4 +1,14 @@
-import { MessageType, type Command, type CommandOutcome, type RoomMessage, type SavedSession, type SessionReport, type ViewerMessage } from './protocol.ts'
+import {
+  MessageType,
+  NO_VIEWER_SETTINGS,
+  type Command,
+  type CommandOutcome,
+  type RoomMessage,
+  type SavedSession,
+  type SessionReport,
+  type ViewerMessage,
+  type ViewerSettings,
+} from './protocol.ts'
 
 /** The part of a WebSocket the connection uses; tests supply a fake. */
 export interface RoomSocket {
@@ -31,10 +41,11 @@ export interface RoomConnectionOptions {
   onStatus: (status: RoomStatus) => void
   /**
    * Called once, the first time the Room is joined, with the Session saved
-   * there for the Viewer to restore, or with nothing when the Room has none.
-   * Not called for an expired Room.
+   * there for the Viewer to restore, or with nothing when the Room has none,
+   * and with the Viewer settings saved there, or `NO_VIEWER_SETTINGS` when the
+   * Room has none. Not called for an expired Room.
    */
-  onFirstJoin: (saved: SavedSession | undefined) => void
+  onFirstJoin: (saved: SavedSession | undefined, viewerSettings: ViewerSettings) => void
   /** Applies a command from the Room; what it resolves with is sent back as the ack. */
   onCommand: (command: Command) => Promise<CommandOutcome>
   createSocket?: (url: string) => RoomSocket
@@ -47,6 +58,8 @@ export interface RoomConnection {
    * sent again, and one reported while the socket is down is sent on the next join.
    */
   reportSession: (report: SessionReport) => void
+  /** Saves the Viewer settings as they now stand in the Room, as `reportSession` saves the Session. */
+  reportViewerSettings: (settings: ViewerSettings) => void
 }
 
 /** The address of a Room's socket on the server at `serverUrl`. */
@@ -76,26 +89,18 @@ export function connectToRoom({
   let everJoined = false
   let failedAttempts = 0
   let lastCommand: Promise<unknown> = Promise.resolve()
-  /** The Session as last reported. */
-  let latestReport: SessionReport | null = null
-  /** The report the Room was last sent on the current socket, as JSON. */
-  let sentReportJson: string | null = null
-
   const send = (socket: RoomSocket, message: ViewerMessage) => socket.send(JSON.stringify(message))
 
-  function sendLatestReport(socket: RoomSocket) {
-    if (!latestReport) return
-    const reportJson = JSON.stringify(latestReport)
-    if (reportJson === sentReportJson) return
-    send(socket, { type: MessageType.SESSION, ...latestReport })
-    sentReportJson = reportJson
-  }
+  /** The Session and the Viewer settings, each as last reported, and as the Room was last sent them on the current socket. */
+  const session = keptInRoom<SessionReport>(send, (report) => ({ type: MessageType.SESSION, ...report }))
+  const viewerSettings = keptInRoom<ViewerSettings>(send, (settings) => ({ type: MessageType.VIEWER_SETTINGS, viewerSettings: settings }))
+  const kept = [session, viewerSettings]
 
   function connect() {
     const socket = createSocket(url)
     current = socket
     joined = false
-    sentReportJson = null
+    for (const each of kept) each.forgetSent()
 
     // A socket that is no longer `current` has dropped; its late events are ignored.
     socket.onopen = () => {
@@ -116,9 +121,9 @@ export function connectToRoom({
         joined = true
         onStatus({ state: 'joined', room: message.room })
         // Only a Viewer that has just been opened restores: after that its own Session is the truth.
-        if (!everJoined) onFirstJoin(message.session)
+        if (!everJoined) onFirstJoin(message.session, message.viewerSettings ?? NO_VIEWER_SETTINGS)
         everJoined = true
-        sendLatestReport(socket)
+        for (const each of kept) each.sendLatest(socket)
       } else if (message?.type === MessageType.EXPIRED) {
         // The Room closes the socket; with no `current`, nothing reconnects.
         current = null
@@ -153,8 +158,37 @@ export function connectToRoom({
 
   return {
     reportSession(report) {
-      latestReport = report
-      if (current && joined) sendLatestReport(current)
+      session.report(report)
+      if (current && joined) session.sendLatest(current)
+    },
+    reportViewerSettings(settings) {
+      viewerSettings.report(settings)
+      if (current && joined) viewerSettings.sendLatest(current)
+    },
+  }
+}
+
+/**
+ * Something the Viewer keeps the Room's copy of: the latest reported, sent to
+ * the Room unless it was already sent on the current socket.
+ */
+function keptInRoom<T>(send: (socket: RoomSocket, message: ViewerMessage) => void, message: (latest: T) => ViewerMessage) {
+  let latest: T | null = null
+  /** What the Room was last sent on the current socket, as JSON. */
+  let sentJson: string | null = null
+  return {
+    report(value: T) {
+      latest = value
+    },
+    forgetSent() {
+      sentJson = null
+    },
+    sendLatest(socket: RoomSocket) {
+      if (latest === null) return
+      const json = JSON.stringify(latest)
+      if (json === sentJson) return
+      send(socket, message(latest))
+      sentJson = json
     },
   }
 }

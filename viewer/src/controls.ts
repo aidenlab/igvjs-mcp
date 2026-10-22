@@ -1,3 +1,5 @@
+import type { ViewerSettings } from './protocol.ts'
+
 /** How long the copy button says the link was copied. */
 const COPIED_MS = 1500
 
@@ -13,8 +15,20 @@ export interface NavigationBarOwner {
 export interface Controls {
   /** Shows `url` as the Shareable URL: the link of the Session as it now stands. */
   showShareableUrl(url: string): void
-  /** Takes `browser` as the genome browser on the page: its Navigation bar is hidden if the Controls are, and from now on with them. */
+  /** Takes `browser`, created with its Navigation bar hidden, as the genome browser on the page: the bar is shown if the Controls are, and from now on with them. */
   setGenomeBrowser(browser: NavigationBarOwner): void
+  /**
+   * Shows the Controls, or hides them, and reports the Viewer settings: the
+   * one way they change, whether by the button or by a Command. Before igv.js
+   * has loaded it sets what `setGenomeBrowser` applies.
+   */
+  showControls(shown: boolean): void
+  /**
+   * Shows the Controls as the Viewer settings saved in the Room say, unless
+   * they were already shown or hidden on this page. Nothing is reported: the
+   * Room has them already.
+   */
+  restoreViewerSettings(settings: ViewerSettings): void
 }
 
 /**
@@ -46,23 +60,37 @@ async function copy(field: HTMLInputElement): Promise<boolean> {
 /**
  * The Controls of the page: the Shareable URL in a field with a copy button,
  * igv.js's Navigation bar, and the button in the Viewer's header that hides
- * the two and shows them again. Whether they are hidden is kept nowhere.
+ * the two and shows them again. They start hidden. Whether they are shown is
+ * kept in the Viewer settings, given to `reportViewerSettings` after every change.
  */
-export function controls(page: ParentNode = document): Controls {
+export function controls(page: ParentNode = document, reportViewerSettings: (settings: ViewerSettings) => void = () => {}): Controls {
   const strip = page.querySelector<HTMLElement>('.controls')!
   const toggle = page.querySelector<HTMLButtonElement>('.viewer__controls-toggle')!
   const field = page.querySelector<HTMLInputElement>('.shareable-url__field')!
   const copyButton = page.querySelector<HTMLButtonElement>('.shareable-url__copy')!
 
-  let hidden = false
+  let shown = false
+  /** Whether the Controls were shown or hidden on this page: a restore from the Room then comes too late. */
+  let changed = false
   let genomeBrowser: NavigationBarOwner | undefined
-  toggle.addEventListener('click', () => {
-    hidden = !hidden
-    strip.classList.toggle('controls--hidden', hidden)
-    if (genomeBrowser) showNavigationBar(genomeBrowser, !hidden)
-    toggle.setAttribute('aria-expanded', String(!hidden))
-    toggle.textContent = hidden ? 'Show controls' : 'Hide controls'
-  })
+
+  function show(controlsShown: boolean) {
+    shown = controlsShown
+    strip.classList.toggle('controls--hidden', !shown)
+    if (genomeBrowser) showNavigationBar(genomeBrowser, shown)
+    toggle.setAttribute('aria-expanded', String(shown))
+    toggle.textContent = shown ? 'Hide controls' : 'Show controls'
+  }
+
+  function showControls(controlsShown: boolean) {
+    changed = true
+    show(controlsShown)
+    reportViewerSettings({ controls: controlsShown })
+  }
+
+  // Hidden whatever the page was built with; nothing has changed, so nothing is reported.
+  show(false)
+  toggle.addEventListener('click', () => showControls(!shown))
 
   // The link is too long to drag across: one click takes all of it.
   field.addEventListener('focus', () => field.select())
@@ -82,7 +110,11 @@ export function controls(page: ParentNode = document): Controls {
     },
     setGenomeBrowser(browser) {
       genomeBrowser = browser
-      if (hidden) showNavigationBar(browser, false)
+      if (shown) showNavigationBar(browser, true)
+    },
+    showControls,
+    restoreViewerSettings(settings) {
+      if (!changed) show(settings.controls)
     },
   }
 }

@@ -6,7 +6,7 @@
 import { inflateRawSync } from 'node:zlib'
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import type { Browser, Page } from 'playwright'
-import { callTool, newSession, openViewer } from '../model.ts'
+import { callTool, newSession, openViewer, showControls } from '../model.ts'
 
 let browser: Browser
 let page: Page
@@ -96,6 +96,7 @@ describe('the Shareable URL, round trip', () => {
 
   it('the copy button copies the link', async () => {
     await page.context().grantPermissions(['clipboard-read', 'clipboard-write'])
+    await showControls(page)
     const link = linkIn((await callTool(room, 'get_shareable_url')).text)
     await expect.poll(() => page.locator('.shareable-url__field').inputValue()).toBe(link)
 
