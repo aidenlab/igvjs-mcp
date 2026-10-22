@@ -5,7 +5,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import type { Browser, Page } from 'playwright'
 import type { SessionSummary } from 'igvjs-mcp-viewer/protocol'
-import { callTool, newSession, openViewer } from '../model.ts'
+import { callTool, newSession, openViewer, showControls } from '../model.ts'
 
 let browser: Browser
 let page: Page
@@ -26,6 +26,7 @@ beforeAll(async () => {
   const height = page.locator('.igv-ui-generic-dialog-container input:visible')
   await height.fill('120')
   await height.press('Enter')
+  await showControls(page)
   await page.getByTitle('Crosshairs').click()
   await page.getByTitle('Center Line').click()
   await page.waitForTimeout(SAVED_MS)

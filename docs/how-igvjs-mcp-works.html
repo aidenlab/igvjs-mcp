@@ -371,7 +371,7 @@ td.how { white-space: nowrap; }
   <thead><tr><th class="n"></th><th>Between</th><th>How</th><th>What crosses it</th><th>When</th></tr></thead>
   <tbody>
     <tr><td class="n">A</td><td>Host and Worker</td><td class="how">POST <code>/mcp</code></td><td>MCP JSON-RPC. <code>initialize</code>, answered with a Room id as the <code>mcp-session-id</code> header; <code>tools/list</code> and <code>tools/call</code>; <code>resources/read</code> for the Join card. Each is answered at once, as JSON; there is no event stream. Every call except the first <code>open_viewer</code> names the Room id in its <code>room</code> argument.</td><td>Each time the model uses a tool.</td></tr>
-    <tr><td class="n igv">B</td><td>Room and Viewer</td><td class="how">WebSocket <code>/ws?room=</code></td><td>Down: <code>joined</code>, with the Session saved in the Room if there is one; <code>expired</code>; a Command. Up: <code>join</code>; an ack with igv.js’s result and the Session summary; and the Session with its summary after every change, whoever made it.</td><td>Opened by the Viewer when it loads. Stays open, and is reopened when it drops.</td></tr>
+    <tr><td class="n igv">B</td><td>Room and Viewer</td><td class="how">WebSocket <code>/ws?room=</code></td><td>Down: <code>joined</code>, with the Session and the Viewer settings saved in the Room if there are any; <code>expired</code>; a Command. Up: <code>join</code>; an ack with igv.js’s result and the Session summary; the Session with its summary after every change, whoever made it; and the Viewer settings after every change to them.</td><td>Opened by the Viewer when it loads. Stays open, and is reopened when it drops.</td></tr>
     <tr><td class="n igv">C</td><td>Viewer page site and Viewer</td><td class="how">GET</td><td>The Viewer’s HTML, scripts and styles, igv.js among them.</td><td>Once, when the Join link opens.</td></tr>
     <tr><td class="n igv">D</td><td>Data hosts and Viewer</td><td class="how">GET</td><td>Genome sequences and annotations, track files, gene lookups. igv.js fetches them itself, from any host the browser’s CORS rules allow.</td><td>Whenever igv.js needs them.</td></tr>
     <tr><td class="n">E</td><td>Data hosts and Worker</td><td class="how">GET</td><td>The igv.org genome list, and a genome’s ENCODE and 4DN Catalogue tables from igv-data. Each is kept for an hour.</td><td>When a call names a genome, or searches the Catalogues.</td></tr>
@@ -649,9 +649,9 @@ td.how { white-space: nowrap; }
     <tr><th>The model</th><td>The Room id, in the conversation</td><td>As long as the conversation</td></tr>
     <tr><th>The Host</th><td>The <code>mcp-session-id</code> from <code>initialize</code></td><td>As long as the MCP session</td></tr>
     <tr><th>Worker, at <code>/mcp</code></th><td>Nothing per request: each gets a fresh MCP server. Per Worker instance, the genome list and one genome’s Catalogue tables.</td><td>An hour each, then fetched again</td></tr>
-    <tr><th>Room</th><td>The Viewer’s socket, Commands waiting for an ack, the latest Session summary, and the last Session</td><td>Deleted 24 hours after the last message from a Viewer, unless a Viewer is still connected; the Room is then marked expired</td></tr>
+    <tr><th>Room</th><td>The Viewer’s socket, Commands waiting for an ack, the latest Session summary, the last Session, and the last Viewer settings</td><td>Deleted 24 hours after the last message from a Viewer, unless a Viewer is still connected; the Room is then marked expired</td></tr>
     <tr><th>Join card</th><td>The Join link</td><td>As long as the conversation shows it</td></tr>
-    <tr><th class="igv">Viewer</th><td>The Session: genome, loci, tracks, heights, crosshairs, centre line</td><td>Until the page closes; restored from the Room when the Join link is opened again</td></tr>
+    <tr><th class="igv">Viewer</th><td>The Session: genome, loci, tracks, heights, crosshairs, centre line. Beside it, the Viewer settings: whether the Controls are shown</td><td>Until the page closes; restored from the Room when the Join link is opened again</td></tr>
   </tbody>
 </table>
 </div>

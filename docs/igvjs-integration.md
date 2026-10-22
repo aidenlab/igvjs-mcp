@@ -58,7 +58,7 @@ All of the project's contact with igv.js is in `viewer/src/`, in the files below
 - the **default Viewer**: `{ genome: 'hg38', locus: 'all' }`, which is hg38 in whole-genome view, or
 - the **Session saved in the Room**, which igv.js takes as its configuration as it is. If the saved Session will not load, `igv.removeAllBrowsers()` clears the failed attempt and the default Viewer is shown in its place.
 
-Every browser also gets `showSVGButton: false`, which removes igv.js's Save Image button. Two more parts of igv.js's Navigation bar are hidden once it has loaded, because igv.js 3.8.9 offers no option for them:
+Every browser also gets `showSVGButton: false`, which removes igv.js's Save Image button, and `showNavigation: false`, which creates the Navigation bar hidden so that it never shows while igv.js loads; `controls.ts` shows it if the Controls are shown. Two more parts of igv.js's Navigation bar are hidden once it has loaded, because igv.js 3.8.9 offers no option for them:
 
 - the Select Tracks button, which igv.js shows whatever `showMultiSelectButton` says, and
 - the magnifying glass beside the locus box, which is found in the page and hidden.
@@ -92,7 +92,7 @@ These fire whoever made the change, whether a person or a Command. After a quart
 
 ### 4. Hiding the Navigation bar: `controls.ts`
 
-The Viewer's "Hide controls" button also hides igv.js's Navigation bar. igv.js draws itself inside a shadow root, which the Viewer's stylesheets cannot reach, and it has no public call to hide the bar once the browser exists. So `controls.ts` calls `browser.navbar.hide()` and `show()` directly, as igv.js's own `showNavigation: false` does.
+The Viewer's "Show controls" and "Hide controls" button also shows and hides igv.js's Navigation bar. igv.js draws itself inside a shadow root, which the Viewer's stylesheets cannot reach, and it has no public call to hide the bar once the browser exists. So `controls.ts` calls `browser.navbar.hide()` and `show()` directly, as igv.js's own `showNavigation: false` does.
 
 ### 5. The Shareable URL: `shareableUrl.ts`
 

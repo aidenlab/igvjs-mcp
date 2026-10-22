@@ -9,10 +9,10 @@
     <main class="viewer">
       <header class="viewer__header">
         <p class="viewer__status" role="status"></p>
-        <button class="viewer__controls-toggle" type="button" aria-controls="controls" aria-expanded="true">Hide controls</button>
+        <button class="viewer__controls-toggle" type="button" aria-controls="controls" aria-expanded="false">Show controls</button>
       </header>
       <!-- The Controls a stylesheet of this page reaches. The rest of them, the Navigation bar, is igv.js's own. -->
-      <section class="controls" id="controls" aria-label="Controls">
+      <section class="controls controls--hidden" id="controls" aria-label="Controls">
         <div class="shareable-url">
           <label class="shareable-url__label" for="shareable-url">Shareable URL</label>
           <input class="shareable-url__field" id="shareable-url" type="text" readonly spellcheck="false" />

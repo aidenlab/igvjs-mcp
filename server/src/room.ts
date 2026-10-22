@@ -8,6 +8,7 @@ import {
   type SavedSession,
   type SessionSummary,
   type ViewerMessage,
+  type ViewerSettings,
 } from 'igvjs-mcp-viewer/protocol'
 
 /** How long a command waits for the first ack. The tests shorten it with an ACK_TIMEOUT_MS binding. */
@@ -25,6 +26,9 @@ const SUMMARY_KEY = 'summary'
 /** Storage key of the last Session a Viewer saved. */
 const SESSION_KEY = 'session'
 
+/** Storage key of the last Viewer settings a Viewer saved. Only a Viewer writes them; a Room without them shows the Controls hidden. */
+const VIEWER_SETTINGS_KEY = 'viewerSettings'
+
 /** How long after the last message from a Viewer a Room with no Viewer in it has its stored data deleted. It is also how long a Join link lives. */
 const INACTIVITY_MS = 24 * 60 * 60 * 1000
 
@@ -35,9 +39,10 @@ const EXPIRED_KEY = 'expired'
  * One Room: the live channel that joins a Connector to its Viewers (ADR 0002).
  * One instance per Room id. Viewers arrive on `fetch` (the WebSocket upgrade
  * from /ws?room=) and are held with the Hibernation API, so an idle Room costs
- * nothing. The Room keeps the latest Session summary and Session its Viewers
- * send. They are mirrors: the Viewer's own answer is preferred whenever there
- * is one, and the saved Session is only for a Viewer that joins later to restore.
+ * nothing. The Room keeps the latest Session summary, Session and Viewer
+ * settings its Viewers send. They are mirrors: the Viewer's own answer is
+ * preferred whenever there is one, and the saved Session and Viewer settings
+ * are only for a Viewer that joins later to restore.
  */
 export class Room extends DurableObject<Env> {
   /** Commands waiting for their first ack, by request id. */
@@ -151,11 +156,15 @@ export class Room extends DurableObject<Env> {
     if (data?.type === MessageType.JOIN) {
       const { room } = ws.deserializeAttachment() as { room: string }
       const session = await this.ctx.storage.get<SavedSession>(SESSION_KEY)
-      send(ws, { type: MessageType.JOINED, room, ...(session ? { session } : {}) })
+      const viewerSettings = await this.ctx.storage.get<ViewerSettings>(VIEWER_SETTINGS_KEY)
+      send(ws, { type: MessageType.JOINED, room, ...(session ? { session } : {}), ...(viewerSettings ? { viewerSettings } : {}) })
     } else if (data?.type === MessageType.ACK) {
       await this.ctx.storage.put(SUMMARY_KEY, data.summary)
     } else if (data?.type === MessageType.SESSION) {
       await this.ctx.storage.put({ [SUMMARY_KEY]: data.summary, [SESSION_KEY]: data.session })
+    } else if (data?.type === MessageType.VIEWER_SETTINGS && typeof data.viewerSettings?.controls === 'boolean') {
+      // Only an explicit value is kept: a Room without one shows the Controls hidden.
+      await this.ctx.storage.put(VIEWER_SETTINGS_KEY, data.viewerSettings)
     }
   }
 

@@ -54,6 +54,11 @@ export function span(locus: string): [number, number] {
   return [start, end]
 }
 
+/** Shows the Controls by hand, as a person does to reach igv.js's Navigation bar: they start hidden. */
+export async function showControls(page: Page): Promise<void> {
+  await page.getByRole('button', { name: 'Show controls' }).click()
+}
+
 /** Opens the Join link of `room` in a headless browser and waits for the Viewer to join. */
 export async function openViewer(room: string): Promise<{ browser: Browser; page: Page }> {
   const browser = await chromium.launch()
