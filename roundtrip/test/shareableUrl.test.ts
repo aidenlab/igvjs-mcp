@@ -57,7 +57,7 @@ describe('the Shareable URL, round trip', () => {
     const session = sessionIn(link)
     expect(session.reference.id).toBe('hg38')
     expect([session.locus].flat()).toEqual([MYC])
-    expect(session.tracks.map((track) => track.url)).toContain('https://igv.org/genomes/data/hg38/ncbiRefSeq.txt.gz')
+    expect(session.tracks.map((track) => track.url)).toContain('https://hgdownload.soe.ucsc.edu/goldenPath/hg38/database/ncbiRefSeq.txt.gz')
     // Asking changes nothing.
     expect(reply.summary.loci).toEqual([MYC])
   })
