@@ -10,10 +10,10 @@ igv-bot depends on the **published `igv` package from npm**. It is not a fork an
 
 | Where | What it says |
 | --- | --- |
-| `viewer/package.json` | `"igv": "^3.8.9"`: any 3.x release from 3.8.9 on |
-| `package-lock.json` | `node_modules/igv` at version **3.8.9**: what is actually installed |
+| `viewer/package.json` | `"igv": "^3.8.10"`: any 3.x release from 3.8.10 on |
+| `package-lock.json` | `node_modules/igv` at version **3.8.10**: what is actually installed |
 
-So the version in use is **igv.js 3.8.9**. The lockfile holds it there; a later 3.x release comes in only when the lockfile is updated.
+So the version in use is **igv.js 3.8.10**. The lockfile holds it there; a later 3.x release comes in only when the lockfile is updated.
 
 The root `package.json` does not mention igv.js, because the repository is three npm workspaces and only one of them uses it:
 
@@ -39,7 +39,7 @@ server (Cloudflare Worker, /mcp)        ← no igv.js here
 Viewer page (viewer/src/main.ts)
       │  applyCommand()  (viewer/src/commands.ts)
       ▼
-igv.js 3.8.9 browser                    ← the only place igv.js runs
+igv.js 3.8.10 browser                   ← the only place igv.js runs
       │  Session summary, in the ack
       ▼
 back through the server to the model
@@ -58,7 +58,7 @@ All of the project's contact with igv.js is in `viewer/src/`, in the files below
 - the **default Viewer**: `{ genome: 'hg38', locus: 'all' }`, which is hg38 in whole-genome view, or
 - the **Session saved in the Room**, which igv.js takes as its configuration as it is. If the saved Session will not load, `igv.removeAllBrowsers()` clears the failed attempt and the default Viewer is shown in its place.
 
-Every browser also gets `showSVGButton: false`, which removes igv.js's Save Image button, and `showNavigation: false`, which creates the Navigation bar hidden so that it never shows while igv.js loads; `controls.ts` shows it if the Controls are shown. Two more parts of igv.js's Navigation bar are hidden once it has loaded, because igv.js 3.8.9 offers no option for them:
+Every browser also gets `showSVGButton: false`, which removes igv.js's Save Image button, and `showNavigation: false`, which creates the Navigation bar hidden so that it never shows while igv.js loads; `controls.ts` shows it if the Controls are shown. Two more parts of igv.js's Navigation bar are hidden once it has loaded, because igv.js 3.8.10 offers no option for them:
 
 - the Select Tracks button, which igv.js shows whatever `showMultiSelectButton` says, and
 - the magnifying glass beside the locus box, which is found in the page and hidden.
@@ -120,14 +120,14 @@ There are two reasons for this:
 
 As a result, every piece of igv.js the project relies on is listed in these interfaces, and the code can be tested with stand-ins that have the same shape. The cost is that when you read the code, igv.js shows up only as `browser`.
 
-## Behaviour that depends on igv.js 3.8.9
+## Behaviour that depends on igv.js 3.8.10
 
-Several workarounds exist because of how igv.js 3.8.9 behaves. Check each of them when upgrading igv.js:
+Several workarounds exist because of how igv.js behaves. Each was checked against 3.8.10 and is still needed. Check each of them when upgrading igv.js:
 
 | Workaround | Where | Why |
 | --- | --- | --- |
-| Select Tracks button hidden after load | `main.ts` | 3.8.9 ignores `showMultiSelectButton` |
-| Magnifying glass hidden by class name (`.igv-search-icon-container`) | `main.ts` | 3.8.9 has no option for it |
+| Select Tracks button hidden after load | `main.ts` | 3.8.10 ignores `showMultiSelectButton` |
+| Magnifying glass hidden by class name (`.igv-search-icon-container`) | `main.ts` | 3.8.10 has no option for it |
 | Navigation bar hidden through `browser.navbar` | `controls.ts` | No public call after creation; shadow root blocks stylesheets |
 | `autoHeight` cleared on the track, not its view | `commands.ts` (`resize`) | 3.8's own "Set track height" clears it where nothing reads it |
 | Height and name filled in by `captureSession()` | `commands.ts` | `toJSON()` leaves out default heights and names |

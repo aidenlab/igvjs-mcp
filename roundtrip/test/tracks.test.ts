@@ -21,7 +21,7 @@ async function roomWithViewer() {
 afterAll(() => Promise.all(browsers.map((browser) => browser.close())))
 
 const SEQUENCE = { name: 'sequence', type: 'sequence', height: 25 }
-const REFSEQ = { name: 'Refseq All', type: 'annotation', url: 'https://igv.org/genomes/data/hg38/ncbiRefSeq.txt.gz', height: 70 }
+const REFSEQ = { name: 'Refseq All', type: 'annotation', url: 'https://hgdownload.soe.ucsc.edu/goldenPath/hg38/database/ncbiRefSeq.txt.gz', height: 70 }
 
 const PHYLOP_URL = 'https://hgdownload.soe.ucsc.edu/goldenPath/hg38/phyloP100way/hg38.phyloP100way.bw'
 const PHASTCONS_URL = 'https://hgdownload.soe.ucsc.edu/goldenPath/hg38/phastCons100way/hg38.phastCons100way.bw'
@@ -71,7 +71,7 @@ describe('loading tracks, round trip', () => {
     const reply = await callTool(room, 'load_tracks', { tracks: [{ url: missing }] })
 
     expect(reply.isError).toBe(true)
-    expect(reply.text).toMatch(/^Error: Error accessing resource: /)
+    expect(reply.text).toMatch(/^Error: The track could not be reached\.\n/)
     expect(reply.text).toContain(missing)
     expect(reply.summary.tracks).toEqual([SEQUENCE, REFSEQ])
   })
@@ -83,7 +83,7 @@ describe('loading tracks, round trip', () => {
     const reply = await callTool(room, 'load_tracks', { tracks: [{ url: forbidden }, { url: PHYLOP_URL, name: 'Conservation' }] })
 
     expect(reply.isError).toBe(true)
-    expect(reply.text).toMatch(/^Error: 1 of the 2 tracks did not load:\nError accessing resource: /)
+    expect(reply.text).toMatch(/^Error: 1 of the 2 tracks did not load:\nThe track could not be reached\.\n/)
     expect(reply.text).toContain(forbidden)
     expect(reply.summary.tracks).toEqual([SEQUENCE, PHYLOP, REFSEQ])
   })

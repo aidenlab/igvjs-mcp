@@ -33,7 +33,7 @@ describe('navigation, round trip', () => {
       loci: ['chr1:1,000,001-1,002,000'],
       tracks: [
         { name: 'sequence', type: 'sequence', height: 25 },
-        { name: 'Refseq All', type: 'annotation', url: 'https://igv.org/genomes/data/hg38/ncbiRefSeq.txt.gz', height: 70 },
+        { name: 'Refseq All', type: 'annotation', url: 'https://hgdownload.soe.ucsc.edu/goldenPath/hg38/database/ncbiRefSeq.txt.gz', height: 70 },
       ],
       crosshairs: false,
       centreLine: false,

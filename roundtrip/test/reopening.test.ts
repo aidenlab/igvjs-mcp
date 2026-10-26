@@ -43,7 +43,7 @@ describe('reopening, round trip', () => {
       loci: ['chr8:127,735,434-127,742,951'],
       tracks: [
         { name: 'sequence', type: 'sequence', height: 25 },
-        { name: 'Refseq All', type: 'annotation', url: 'https://igv.org/genomes/data/hg38/ncbiRefSeq.txt.gz', height: 120 },
+        { name: 'Refseq All', type: 'annotation', url: 'https://hgdownload.soe.ucsc.edu/goldenPath/hg38/database/ncbiRefSeq.txt.gz', height: 120 },
       ],
       crosshairs: true,
       centreLine: true,
@@ -81,7 +81,7 @@ describe('reopening, round trip', () => {
         loci: ['all'],
         tracks: [
           { name: 'sequence', type: 'sequence', height: 25 },
-          { name: 'Refseq All', type: 'annotation', url: 'https://igv.org/genomes/data/hg38/ncbiRefSeq.txt.gz', height: 70 },
+          { name: 'Refseq All', type: 'annotation', url: 'https://hgdownload.soe.ucsc.edu/goldenPath/hg38/database/ncbiRefSeq.txt.gz', height: 70 },
         ],
         crosshairs: false,
         centreLine: false,

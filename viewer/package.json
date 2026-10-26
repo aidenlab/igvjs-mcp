@@ -14,7 +14,7 @@
     "typecheck": "tsc"
   },
   "dependencies": {
-    "igv": "^3.8.9"
+    "igv": "^3.8.10"
   },
   "devDependencies": {
     "happy-dom": "^21.0.4",
