@@ -14,7 +14,7 @@ The tools the Connector gives the model, and how each is used. The wording the m
 | [`remove_track`](#remove_track) | Removes one track |
 | [`set_track_height`](#set_track_height) | Sets the height of one, several or all tracks |
 | [`set_crosshairs`](#set_crosshairs-and-set_centre_line), [`set_centre_line`](#set_crosshairs-and-set_centre_line) | Shows or hides the crosshairs, or the centre line |
-| [`set_controls`](#set_controls) | Shows or hides the Controls: the Shareable URL and the Navigation bar |
+| [`set_controls`](#set_controls) | Shows or hides the Controls: the Navigation bar and, unless the Viewer is Embedded, the Shareable URL |
 | [`read_session_summary`](#read_session_summary) | Reads what igv-bot is showing, changing nothing |
 | [`get_shareable_url`](#get_shareable_url) | Gets a link that opens the current view in igv-webapp |
 
@@ -196,7 +196,7 @@ The crosshairs are a vertical and a horizontal line that follow the pointer. The
 
 ### `set_controls`
 
-The Controls are the Shareable URL, in a strip with a copy button, and igv.js's Navigation bar, with its locus box and buttons. They are hidden and shown together, and start hidden.
+The Controls are igv.js's Navigation bar, with its locus box and buttons, and, unless the Viewer is Embedded, the Shareable URL, in a strip with a copy button. They are hidden and shown together, and start hidden. An Embedded Viewer never shows the Shareable URL, so there `set_controls` shows and hides the Navigation bar alone.
 
 | Argument | |
 | --- | --- |
@@ -238,4 +238,4 @@ No arguments. Changes nothing: the reply gives the Shareable URL on a line of it
 - It is long, since it holds the whole Session, and the model gives it whole.
 - It shows the view as it was when asked for: after a change, the model gets a new one.
 - The Viewer answers it, so with no Viewer in the Room there is no link.
-- A person copies the same link by hand from the Viewer, which shows it above the genome browser and keeps it up to date as the Session changes. It is one of the Controls, so it is hidden, with the Navigation bar, until the person or the model shows the Controls.
+- A person copies the same link by hand from the Viewer, which shows it above the genome browser and keeps it up to date as the Session changes. It is one of the Controls, so it is hidden, with the Navigation bar, until the person or the model shows the Controls. An Embedded Viewer never shows it, but `get_shareable_url` still answers there.

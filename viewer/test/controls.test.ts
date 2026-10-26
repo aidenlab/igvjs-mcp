@@ -126,3 +126,43 @@ describe('the Controls', () => {
     expect(browser.navbarShown).toBe(false)
   })
 })
+
+describe('the Controls of an Embedded Viewer', () => {
+  it('never show the Shareable URL: the button and set_controls show and hide the Navigation bar alone, and each change is reported as the Viewer settings', () => {
+    const reported: ViewerSettings[] = []
+    const page = controls(document, (settings) => reported.push(settings), { embedded: true })
+    const browser = genomeBrowser(false)
+    page.setGenomeBrowser(browser)
+
+    toggle().click()
+
+    expect(stripHidden()).toBe(true)
+    expect(browser.navbarShown).toBe(true)
+    expect(toggle().textContent).toBe('Hide controls')
+    expect(toggle().getAttribute('aria-expanded')).toBe('true')
+    expect(page.viewerSettings()).toEqual({ controls: true })
+
+    page.showControls(false)
+
+    expect(stripHidden()).toBe(true)
+    expect(browser.navbarShown).toBe(false)
+    expect(toggle().textContent).toBe('Show controls')
+    expect(toggle().getAttribute('aria-expanded')).toBe('false')
+
+    page.showControls(true)
+
+    expect(stripHidden()).toBe(true)
+    expect(browser.navbarShown).toBe(true)
+    expect(reported).toEqual([{ controls: true }, { controls: false }, { controls: true }])
+  })
+
+  it('restored from the Room as shown, still never show the Shareable URL', () => {
+    const page = controls(document, () => {}, { embedded: true })
+
+    page.restoreViewerSettings({ controls: true })
+
+    expect(stripHidden()).toBe(true)
+    expect(toggle().textContent).toBe('Hide controls')
+    expect(page.viewerSettings()).toEqual({ controls: true })
+  })
+})

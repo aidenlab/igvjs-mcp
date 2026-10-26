@@ -297,3 +297,25 @@ describe('set_controls, round trip', () => {
     await viewer.close()
   })
 })
+
+describe('an Embedded Viewer, round trip', () => {
+  it('opened with embedded, shows no Shareable URL after set_controls { show: true }, while get_shareable_url still answers', async () => {
+    const ownRoom = await newSession()
+    const embedded = await browser.newPage({ viewport: { width: 1280, height: 800 } })
+    await embedded.goto(`${VIEWER_URL}/?room=${ownRoom}&embedded`)
+    await embedded.locator('.shareable-url__copy:enabled').waitFor({ state: 'attached' })
+    expect(await controlsOn(embedded)).toEqual(HIDDEN)
+
+    const shown = await callTool(ownRoom, 'set_controls', { show: true })
+
+    expect(shown.summary.controls).toBe(true)
+    expect(await controlsOn(embedded)).toEqual({ shareableUrl: false, navigationBar: true, hideOffered: true })
+    expect(await shareableUrlOf(ownRoom)).toMatch(/^https:\/\/igv\.org\/app\/\?sessionURL=blob:/)
+
+    await embedded.getByRole('button', { name: 'Hide controls' }).click()
+
+    expect(await controlsOn(embedded)).toEqual(HIDDEN)
+    expect((await callTool(ownRoom, 'read_session_summary')).summary.controls).toBe(false)
+    await embedded.close()
+  })
+})
