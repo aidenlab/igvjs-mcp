@@ -64,8 +64,14 @@ async function copy(field: HTMLInputElement): Promise<boolean> {
  * igv.js's Navigation bar, and the button in the Viewer's header that hides
  * the two and shows them again. They start hidden. Whether they are shown is
  * kept in the Viewer settings, given to `reportViewerSettings` after every change.
+ * An `embedded` Viewer never shows the Shareable URL: its Controls are the
+ * Navigation bar alone.
  */
-export function controls(page: ParentNode = document, reportViewerSettings: (settings: ViewerSettings) => void = () => {}): Controls {
+export function controls(
+  page: ParentNode = document,
+  reportViewerSettings: (settings: ViewerSettings) => void = () => {},
+  { embedded = false }: { embedded?: boolean } = {},
+): Controls {
   const strip = page.querySelector<HTMLElement>('.controls')!
   const toggle = page.querySelector<HTMLButtonElement>('.viewer__controls-toggle')!
   const field = page.querySelector<HTMLInputElement>('.shareable-url__field')!
@@ -78,7 +84,7 @@ export function controls(page: ParentNode = document, reportViewerSettings: (set
 
   function show(controlsShown: boolean) {
     shown = controlsShown
-    strip.classList.toggle('controls--hidden', !shown)
+    strip.classList.toggle('controls--hidden', embedded || !shown)
     if (genomeBrowser) showNavigationBar(genomeBrowser, shown)
     toggle.setAttribute('aria-expanded', String(shown))
     toggle.textContent = shown ? 'Hide controls' : 'Show controls'

@@ -14,11 +14,17 @@ const browserElement = document.querySelector<HTMLElement>('.viewer__browser')!
 let reportViewerSettings: (settings: ViewerSettings) => void = () => {}
 /** Tells the Room the Session summary may have changed. Does nothing until igv.js has loaded, which a command waits for. */
 let changed = () => {}
-const controls = pageControls(document, (settings) => {
-  reportViewerSettings(settings)
-  // The Session summary says whether the Controls are showing.
-  changed()
-})
+const parameters = new URLSearchParams(location.search)
+const controls = pageControls(
+  document,
+  (settings) => {
+    reportViewerSettings(settings)
+    // The Session summary says whether the Controls are showing.
+    changed()
+  },
+  // A page that shows the Viewer inside it adds `embedded` to the Join link: only its presence counts.
+  { embedded: parameters.has('embedded') },
+)
 
 function showStatus(status: RoomStatus) {
   statusElement.textContent = statusText(status)
@@ -101,7 +107,7 @@ function watchSession(loaded: Browser, reportSession: (report: SessionReport) =>
 }
 
 // A Join link carries ?room=; without it there is no Room to join.
-const room = new URLSearchParams(location.search).get('room')
+const room = parameters.get('room')
 if (room) {
   // igv.js starts once the Room has said what to restore; a command that
   // arrives while it is loading waits for it. In an expired Room it never starts.

@@ -129,7 +129,7 @@ export const COMMAND_TOOLS: CommandTool[] = [
   {
     name: 'set_controls',
     title: 'Show or hide the controls',
-    description: `Show or hide igv-bot's controls: the Shareable URL, in a strip with a copy button, and igv.js's navigation bar, with its locus box and its buttons. They are hidden and shown together, and start hidden; the genome browser takes the space they leave. The Session summary says whether they are showing, as controls; the user also hides and shows them by hand, with the button above the genome browser. Showing them does not change the view, and the Shareable URL is the same either way. ${REPLY}`,
+    description: `Show or hide igv-bot's controls: the navigation bar, and the Shareable URL where igv-bot shows one. The navigation bar is igv.js's own, with its locus box and its buttons; the Shareable URL is in a strip with a copy button. They are hidden and shown together, and start hidden; the genome browser takes the space they leave. The Session summary says whether they are showing, as controls; the user also hides and shows them by hand, with the button above the genome browser. Showing them does not change the view, and the Shareable URL is the same either way. ${REPLY}`,
     inputSchema: {
       show: z.boolean().describe('True to show the controls, false to hide them'),
     },

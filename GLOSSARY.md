@@ -21,15 +21,19 @@ The Host's own browser pane beside the Conversation, where the Viewer is shown. 
 _Avoid_: Sidebar, artifact panel, canvas
 
 **Viewer**:
-The web page, opened in the Side panel, that houses the igv.js genome browser and the Shareable URL. A person knows it as igv-bot.
+The web page, opened in the Side panel, that houses the igv.js genome browser and, unless it is Embedded, the Shareable URL. A person knows it as igv-bot.
 _Avoid_: Widget, app, embed
+
+**Embedded**:
+Said of a Viewer shown inside another page, such as geenee's Workspace, that supplies what surrounds it. An Embedded Viewer offers no Shareable URL on screen.
+_Avoid_: Framed, in geenee, hosted (a Host is something else)
 
 **Navigation bar**:
 igv.js's own bar across the top of the genome browser, holding its locus box, chromosome list, zoom and toggle buttons.
 _Avoid_: Navbar, toolbar, header
 
 **Controls**:
-The Shareable URL and the Navigation bar, hidden and shown together, by a person with one button in the Viewer or by the model. They are hidden when the Viewer first opens.
+The Navigation bar, and the Shareable URL where the Viewer offers one, hidden and shown together, by a person with one button in the Viewer or by the model. They are hidden when the Viewer first opens.
 _Avoid_: Control panel, side panel, sidebar, toolbar
 
 **Session**:
