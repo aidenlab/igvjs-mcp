@@ -27,6 +27,11 @@ describe('initialize', () => {
     expect(second.headers.get('mcp-session-id')).toMatch(ROOM_ID)
     expect(second.headers.get('mcp-session-id')).not.toBe(first.headers.get('mcp-session-id'))
   })
+
+  it('reports the build the deploy stamped as its version', async () => {
+    const body = await (await initialize()).json<{ result: { serverInfo: { version: string } } }>()
+    expect(body.result.serverInfo.version).toBe('main (d4e5f6a)')
+  })
 })
 
 /** The Room an open_viewer reply names. */

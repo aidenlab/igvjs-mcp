@@ -111,7 +111,7 @@ async function handleMcpRequest(request: Request, env: Env): Promise<Response> {
       roomId = await deriveRoomId(openaiSession, env.SESSION_HMAC_SECRET)
     }
 
-    const mcpServer = new McpServer({ name: 'igv-bot', version: '0.0.0' })
+    const mcpServer = new McpServer({ name: 'igv-bot', version: env.VERSION })
     registerTools(mcpServer, {
       roomId,
       viewerUrl: env.VIEWER_URL,
