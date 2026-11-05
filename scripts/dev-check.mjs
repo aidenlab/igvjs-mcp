@@ -5,7 +5,7 @@
 //   node scripts/dev-check.mjs SMKTEST001 read_session_summary
 //   node scripts/dev-check.mjs SMKTEST001 go_to_gene '{"gene":"BRCA1"}'
 //
-// Open the Viewer in the Room first: https://igv-bot-web-dev.pages.dev/?room=<room>. Any 10 Crockford
+// Open the Viewer in the Room first: https://igv-viewer-dev.pages.dev/?room=<room>. Any 10 Crockford
 // base32 characters make a Room id (digits and A-Z without I, L, O or U). Use a throwaway Room,
 // never one someone is working in. See docs/dev-check.md.
 //
@@ -29,7 +29,7 @@ try {
   console.error(`The arguments are not JSON: ${argsJson}`);
   process.exit(2);
 }
-const url = process.env.MCP_URL || 'https://igv-bot-mcp-dev.3dg.io/mcp';
+const url = process.env.MCP_URL || 'https://igv-mcp-dev.3dg.io/mcp';
 const headers = { 'content-type': 'application/json', accept: 'application/json, text/event-stream' };
 
 async function rpc(id, method, params, sessionId) {

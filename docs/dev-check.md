@@ -9,10 +9,10 @@ Terms in capitals are defined in `GLOSSARY.md`.
 Make up a Room id: 10 characters from `0-9` and `A-Z` without `I`, `L`, `O` or `U`. `SMKTEST001` works; `SMOKETEST1` does not (it has an `O`). Then open it in a browser:
 
 ```
-https://igv-bot-web-dev.pages.dev/?room=SMKTEST001
+https://igv-viewer-dev.pages.dev/?room=SMKTEST001
 ```
 
-This is the address dev Join links use (`VIEWER_URL` in `server/wrangler.toml`): the custom domain `igv-bot-dev.3dg.io` is not attached to the Pages project yet (#15) and answers 502.
+This is the address dev Join links use (`VIEWER_URL` in `server/wrangler.toml`).
 
 Wait for the status line to read "Connected · Room SMKTEST001". Never use a Room someone is working in.
 

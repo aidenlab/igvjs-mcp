@@ -38,20 +38,21 @@ VIEWER_ORIGINS = [
 # SESSION_HMAC_SECRET  - HMAC key deriving Room ids from x-openai-session (ChatGPT);
 #                        unset → those requests fail. There is no fallback key.
 
-# ── Development deployment: "igv-bot dev" ────────────────────────────────────
-# The dev stack carries a -dev suffix everywhere, so a production release only
-# adds the un-suffixed names: Worker igv-bot-mcp-dev at
-# https://igv-bot-mcp-dev.3dg.io (Hosts use /mcp, Viewers /ws), paired with the
-# Pages project igv-bot-web-dev at https://igv-bot-dev.3dg.io/
-# (scripts/deploy-dev.sh). Wrangler creates the DNS record for the custom
-# domain; the zone is on the same account. No *.workers.dev hostname and no
-# preview URLs, so there is one public address. Named environments do not
-# inherit `vars` or `durable_objects`, so those are repeated; migrations are
-# top-level and apply to every environment.
+# ── Development deployment: "igv dev" ────────────────────────────────────────
+# Each deployment is named igv-mcp[-dev] for the Worker and igv-viewer[-dev]
+# for the Viewer's Pages project, so a production release
+# only adds the un-suffixed names: Worker igv-mcp-dev at https://igv-mcp-dev.3dg.io
+# (Hosts use /mcp, Viewers /ws), paired with the Pages project igv-viewer-dev at
+# https://igv-viewer-dev.pages.dev/ (scripts/deploy-dev.sh). A Viewer has no
+# custom domain. Wrangler creates the DNS record for the Worker's custom domain;
+# the zone is on the same account. No *.workers.dev hostname and no preview URLs,
+# so the Worker has one public address. Named environments do not inherit `vars` or
+# `durable_objects`, so those are repeated; migrations are top-level and apply to
+# every environment.
 [env.dev]
-name = "igv-bot-mcp-dev"
+name = "igv-mcp-dev"
 routes = [
-  { pattern = "igv-bot-mcp-dev.3dg.io", custom_domain = true },
+  { pattern = "igv-mcp-dev.3dg.io", custom_domain = true },
 ]
 workers_dev = false
 preview_urls = false
@@ -66,11 +67,7 @@ class_name = "Room"
 [env.dev.vars]
 # Stamped by scripts/deploy-dev.sh; a bare `wrangler deploy --env dev` says so.
 VERSION = "unstamped"
-# Stopgap: the custom domain igv-bot-dev.3dg.io is not attached to the Pages
-# project yet (#15), so Join links use the project's pages.dev address. Once it
-# is, this goes back to "https://igv-bot-dev.3dg.io/".
-VIEWER_URL = "https://igv-bot-web-dev.pages.dev/"
+VIEWER_URL = "https://igv-viewer-dev.pages.dev/"
 VIEWER_ORIGINS = [
-  "https://igv-bot-dev.3dg.io",
-  "https://igv-bot-web-dev.pages.dev",
+  "https://igv-viewer-dev.pages.dev",
 ]

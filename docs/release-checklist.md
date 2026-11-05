@@ -1,6 +1,6 @@
 # Release checklist
 
-Done by hand in each Host before each release, against the deployed stack. For the dev stack the connector URL is `https://igv-bot-mcp-dev.3dg.io/mcp` and the Viewer is at `https://igv-bot-dev.3dg.io/`. `scripts/deploy-wizard.sh` walks through the same checks and writes the answers to a file.
+Done by hand in each Host before each release, against the deployed stack. For the dev stack the connector URL is `https://igv-mcp-dev.3dg.io/mcp` and the Viewer is at `https://igv-viewer-dev.pages.dev/`. `scripts/deploy-wizard.sh` walks through the same checks and writes the answers to a file.
 
 Terms in capitals are defined in `GLOSSARY.md`.
 
@@ -10,7 +10,7 @@ The Hosts are Claude desktop, claude.ai on the web, and ChatGPT desktop in Codex
 
 - [ ] `npm run typecheck`, `npm run test:run` and `npm run test:roundtrip` pass.
 - [ ] `scripts/deploy-dev.sh` finished without error, and printed "the live Worker reports `<branch> (<short sha>)`" for the commit deployed, with no `-dirty`.
-- [ ] `https://igv-bot-dev.3dg.io/` loads hg38 and reads "Not connected. Ask Claude or ChatGPT to open igv-bot."
+- [ ] `https://igv-viewer-dev.pages.dev/` loads hg38 and reads "Not connected. Ask Claude or ChatGPT to open igv-bot."
 - [ ] The Connector is added to Claude: Settings → Connectors → Add custom connector, with the connector URL above and the OAuth fields blank.
 - [ ] The Connector is added to ChatGPT desktop. In Codex mode: Settings → Plugins → Add → Add MCP server, with Name `igv-bot`, Type Streamable HTTP, the connector URL above, and everything else blank. Save.
 

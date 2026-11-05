@@ -184,25 +184,25 @@ finish() {
 # Replace the example below. Set TOTAL_STAGES to match the stages you write.
 # ──────────────────────────────────────────────────────────────────────────
 
-# Deploys the "igv-bot dev" stack and walks the maintainer through the steps only
-# a person can do: Cloudflare login, the HMAC secret, the Pages project and its
-# custom domain, then trying the Connector in each Host (issue #3). Run from
-# anywhere:
+# Deploys the "igv dev" deployment and walks the maintainer through the steps only
+# a person can do: Cloudflare login, the HMAC secret, the Pages project, then
+# trying the Connector in each Host (issue #3). The Viewer has no custom domain.
+# Run from anywhere:
 #   scripts/deploy-wizard.sh
 # Checks and observations are collected and written as markdown to paste into
 # the issue. Later redeploys need only scripts/deploy-dev.sh.
 
-TOTAL_STAGES=13
+TOTAL_STAGES=12
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SERVER_DIR="$REPO_ROOT/server"
 # Pages commands do not read wrangler.toml, so they are given its account here.
 export CLOUDFLARE_ACCOUNT_ID="${CLOUDFLARE_ACCOUNT_ID:-$(sed -n 's/^account_id = "\(.*\)"/\1/p' "$REPO_ROOT/server/wrangler.toml")}"
-WORKER_NAME="igv-bot-mcp-dev"
-BASE_URL="https://igv-bot-mcp-dev.3dg.io"
+WORKER_NAME="igv-mcp-dev"
+BASE_URL="https://igv-mcp-dev.3dg.io"
 MCP_URL="$BASE_URL/mcp"
-PAGES_PROJECT="igv-bot-web-dev"
-VIEWER_HOST="igv-bot-dev.3dg.io"
+PAGES_PROJECT="igv-viewer-dev"
+VIEWER_HOST="$PAGES_PROJECT.pages.dev"
 VIEWER_URL="https://$VIEWER_HOST/"
 RESULTS_FILE="${RESULTS_FILE:-${TMPDIR:-/tmp}/igv-bot-deploy-results.md}"
 RESULTS=()
@@ -358,24 +358,7 @@ if confirm "Build and upload now?"; then
 else
   say "Stopped before uploading."; exit 0
 fi
-code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 15 "https://$PAGES_PROJECT.pages.dev/" || true)
-if [[ "$code" == 200 ]]; then auto "The Viewer answers on $PAGES_PROJECT.pages.dev" ok; else auto "The Viewer answers on $PAGES_PROJECT.pages.dev" "got $code"; fi
-pause
-
-# ──────────────────────────────────────────────────────────────────────────
-stage "Custom domain: $VIEWER_HOST"
-say "Join links point at $VIEWER_URL, so the Pages project needs that hostname."
 code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 15 "$VIEWER_URL" || true)
-if [[ "$code" == 200 ]]; then
-  note "$VIEWER_URL already answers; nothing to do."
-else
-  open_url "https://dash.cloudflare.com/?to=/:account/workers-and-pages"
-  step "Workers & Pages → $PAGES_PROJECT → Custom domains → Set up a custom domain."
-  step "Enter $VIEWER_HOST and confirm; Cloudflare adds the DNS record because the zone is on this account."
-  note "The dashboard's wording may differ slightly; the aim is $VIEWER_HOST listed as Active."
-  pause "Press Enter once the domain shows as Active (it can take a few minutes)"
-  code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 15 "$VIEWER_URL" || true)
-fi
 if [[ "$code" == 200 ]]; then auto "The Viewer answers on $VIEWER_HOST" ok; else auto "The Viewer answers on $VIEWER_HOST" "got $code"; fi
 open_url "$VIEWER_URL"
 step "The page should show hg38 with the status line \"Not connected. Ask Claude or ChatGPT to open igv-bot.\""
