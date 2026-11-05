@@ -267,7 +267,7 @@ td.how { white-space: nowrap; }
     <!-- The Worker -->
     <rect class="bx-g" x="290" y="60" width="210" height="190"/>
     <text class="t-h" x="395" y="85" text-anchor="middle">igv-bot Worker</text>
-    <text class="t-s t-m" x="395" y="102" text-anchor="middle">igv-bot-mcp-dev.3dg.io</text>
+    <text class="t-s t-m" x="395" y="102" text-anchor="middle">igv-mcp-dev.3dg.io</text>
     <text class="t-m" x="306" y="132" style="font-size:10.5px">/mcp</text>
     <text class="t-s" x="346" y="132">14 tools, for the Host</text>
     <text class="t-m" x="306" y="152" style="font-size:10.5px">/ws</text>
@@ -304,7 +304,7 @@ td.how { white-space: nowrap; }
 
     <rect class="bx-i" x="306" y="432" width="656" height="184"/>
     <text class="t-h ci" x="322" y="456">Viewer</text>
-    <text class="t-s t-m" x="322" y="473">igv-bot-web-dev.pages.dev/?room=7KQ2M9XA4T</text>
+    <text class="t-s t-m" x="322" y="473">igv-viewer-dev.pages.dev/?room=7KQ2M9XA4T</text>
     <text class="t-s" x="322" y="500">status line:</text>
     <text class="t-s" x="322" y="515" style="fill: var(--fg)">Connected · Room 7KQ2M9XA4T</text>
     <text class="t-s" x="322" y="545">Controls: the Shareable URL,</text>
@@ -510,7 +510,7 @@ td.how { white-space: nowrap; }
   <thead><tr><th class="n"></th><th>Wire</th><th>What happens</th></tr></thead>
   <tbody>
     <tr><td class="n">1</td><td>A</td><td>The Host posts <code>initialize</code>. The Worker answers with a freshly minted Room id as the <code>mcp-session-id</code> header, which the Host sends back on later requests. That Room is only a fallback; no Join link ever names it.</td></tr>
-    <tr><td class="n">2</td><td>A</td><td>The model calls <code>open_viewer</code>. The Worker mints a new Room id and replies with it and the Join link, <code>https://igv-bot-web-dev.pages.dev/?room=7KQ2M9XA4T</code>. The Viewer is not contacted, and nothing is stored in the Room. The reply tells the model to open the link in the Side panel if it has one, to pass the Room id on every later call, and to repeat neither to the person.</td></tr>
+    <tr><td class="n">2</td><td>A</td><td>The model calls <code>open_viewer</code>. The Worker mints a new Room id and replies with it and the Join link, <code>https://igv-viewer-dev.pages.dev/?room=7KQ2M9XA4T</code>. The Viewer is not contacted, and nothing is stored in the Room. The reply tells the model to open the link in the Side panel if it has one, to pass the Room id on every later call, and to repeat neither to the person.</td></tr>
     <tr><td class="n">3</td><td>A, F</td><td>A Host that renders MCP Apps reads the Join card from the Worker and hands it the result. The card shows one line of status and an Open igv-bot button. Other Hosts show the text link.</td></tr>
     <tr><td class="n">4</td><td></td><td>The model opens the Join link in Claude desktop’s Side panel. Where it cannot, the person presses Open igv-bot, and the card asks the Host to open the link; ChatGPT desktop in Codex mode reaches its Side panel this way. Where a Host has no Side panel, the link opens in a browser tab, and everything after works unchanged.</td></tr>
     <tr><td class="n">5</td><td>C</td><td>The Side panel fetches the Viewer page from its static site.</td></tr>
@@ -688,8 +688,8 @@ td.how { white-space: nowrap; }
 <table>
   <thead><tr><th>Part</th><th>Address</th><th>Endpoints</th></tr></thead>
   <tbody>
-    <tr><th>Worker</th><td><code>https://igv-bot-mcp-dev.3dg.io</code></td><td><code>/mcp</code> for Hosts, <code>/ws</code> for Viewers</td></tr>
-    <tr><th class="igv">Viewer page</th><td><code>https://igv-bot-web-dev.pages.dev</code></td><td>static files; the custom domain <code>igv-bot-dev.3dg.io</code> is not attached yet</td></tr>
+    <tr><th>Worker</th><td><code>https://igv-mcp-dev.3dg.io</code></td><td><code>/mcp</code> for Hosts, <code>/ws</code> for Viewers</td></tr>
+    <tr><th class="igv">Viewer page</th><td><code>https://igv-viewer-dev.pages.dev</code></td><td>static files; a Viewer has no custom domain</td></tr>
     <tr><th>Genome list</th><td><code>https://igv.org/genomes/genomes3.json</code></td><td>with a backup in <code>igvteam/igv-data</code> on GitHub</td></tr>
     <tr><th>Catalogue tables</th><td><code>raw.githubusercontent.com/igvteam/igv-data</code></td><td><code>data/encode/</code> and <code>data/4dn/</code></td></tr>
     <tr><th>Shareable URL</th><td><code>https://igv.org/app/</code></td><td>igv-webapp, with the whole Session in the link; no Room</td></tr>
