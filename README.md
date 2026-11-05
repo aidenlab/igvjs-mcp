@@ -99,7 +99,16 @@ There are two deployments, dev and prod, at fixed addresses. Nothing deploys fro
 | dev        | `igv-mcp-dev` | `https://igv-mcp-dev.3dg.io` | `igv-viewer-dev`       | `https://igv-viewer-dev.pages.dev/` |
 | prod       | `igv-mcp`     | `https://igv-mcp.3dg.io`     | `igv-viewer`           | `https://igv-viewer.pages.dev/`     |
 
-Hosts use `/mcp` on the Worker, Viewers `/ws`.
+Hosts use `/mcp` on the Worker, Viewers `/ws`. `GET /version` on the Worker shows what a deployment runs, the Worker's version and the Viewer page's, each `<tag or branch> (<short sha>)`:
+
+```json
+{
+  "worker": "main (83f47ca)",
+  "viewer": { "url": "https://igv-viewer-dev.pages.dev/version.json", "version": "main (9e1d2b7)" }
+}
+```
+
+The Viewer page's version is its `version.json`, which the deploy writes into the built page and the Worker reads from the page each time. If it cannot be read, `viewer` carries an `error` in place of `version`. After deploying, both scripts check that `/version` reports what they deployed.
 
 ```sh
 scripts/deploy-wizard.sh                   # dev, first time: login, the secret, the Pages project, then each Host
@@ -107,7 +116,7 @@ scripts/deploy-dev.sh                      # dev, afterwards: run the tests, dep
 scripts/deploy-prod.sh prod-YYYY-MM-DD[.N] # prod: release a pushed tag
 ```
 
-The dev deployment is deployed from the working tree. The prod deployment is released only from a `prod-` tag pushed to origin: the script checks the tag out into a throwaway worktree, runs the tests there, deploys the Worker and the Viewer, and checks that the live Worker reports `prod-… (<short sha>)` as its version. Rolling back is releasing an earlier tag. The first release creates the Pages project and `SESSION_HMAC_SECRET`.
+The dev deployment is deployed from the working tree. The prod deployment is released only from a `prod-` tag pushed to origin: the script checks the tag out into a throwaway worktree, runs the tests there, deploys the Worker and the Viewer, and checks that the live Worker's `/version` reports `prod-… (<short sha>)` for both. Rolling back is releasing an earlier tag. The first release creates the Pages project and `SESSION_HMAC_SECRET`.
 
 ```sh
 git tag -a prod-2026-11-05 -m "release" main && git push origin prod-2026-11-05

@@ -12,9 +12,11 @@
 # sets the SESSION_HMAC_SECRET secret and creates the Pages project, calling this
 # script along the way.
 #
-# The Worker reports what it runs as its MCP serverInfo.version, "<branch> (<short
-# sha>)" or "<tag> (<short sha>)" from scripts/version.mjs. It is stamped with --var
-# at deploy, and after deploying this script checks the live Worker reports it.
+# What is deployed is reported at the Worker's GET /version as "<branch> (<short sha>)"
+# or "<tag> (<short sha>)" from scripts/version.mjs: the Worker's own version (also its
+# MCP serverInfo.version), stamped with --var at deploy, and the Viewer page's, written
+# into the built page as version.json. After deploying, this script checks that /version
+# reports what it just deployed.
 #
 # What it shares with scripts/deploy-prod.sh is in scripts/deploy-common.sh.
 set -euo pipefail
@@ -28,15 +30,15 @@ cd "$REPO_DIR"
 # shellcheck source=scripts/deploy-common.sh
 source "$REPO_DIR/scripts/deploy-common.sh"
 
-deploy_and_check_worker() {
-  local version
-  version="$(node scripts/version.mjs)"
-  deploy_worker "$version"
-  check_worker_version "$version"
-}
-
 [[ "$TARGET" =~ ^(worker|viewer|all)$ ]] || { echo "usage: scripts/deploy-dev.sh [worker|viewer|all]" >&2; exit 2; }
 npm run test:run
-[[ "$TARGET" == viewer ]] || deploy_and_check_worker
-[[ "$TARGET" == worker ]] || deploy_viewer "$VITE_SERVER_URL"
+VERSION="$(node scripts/version.mjs)"
+if [[ "$TARGET" != viewer ]]; then
+  deploy_worker "$VERSION"
+  check_worker_version "$VERSION"
+fi
+if [[ "$TARGET" != worker ]]; then
+  deploy_viewer "$VITE_SERVER_URL" "$VERSION"
+  check_viewer_version "$VERSION"
+fi
 echo "MCP server URL: $WORKER_URL/mcp"

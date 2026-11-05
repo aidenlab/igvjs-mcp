@@ -3,7 +3,8 @@
 // "<branch> (<short sha>)", e.g. "prod-2026-11-12 (a1b2c3d)" or "main (d4e5f6a)". The
 // sha carries "-dirty" when tracked files differ from HEAD, so a build of uncommitted
 // work does not claim a commit it does not run. scripts/deploy-dev.sh stamps this into
-// the Worker as its VERSION var, which the MCP initialize answers as serverInfo.version.
+// the Worker as its VERSION var, which the MCP initialize answers as serverInfo.version,
+// and into the Viewer page as version.json; the Worker's GET /version reports both.
 //
 //   node scripts/version.mjs
 import { execFileSync } from 'node:child_process'

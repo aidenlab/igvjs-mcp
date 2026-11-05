@@ -18,12 +18,13 @@ tag = "v1"
 new_sqlite_classes = ["Room"]
 
 [vars]
-# What this Worker runs, reported as the MCP serverInfo.version: "<tag> (<short
-# sha>)" or "<branch> (<short sha>)". A deploy stamps it from git with --var
+# What this Worker runs, reported as the MCP serverInfo.version and as "worker" at
+# GET /version: "<tag> (<short sha>)" or "<branch> (<short sha>)". A deploy stamps it from git with --var
 # (scripts/deploy-dev.sh, scripts/version.mjs); this value is what anything else runs.
 VERSION = "local"
 # The Viewer's address: a Join link is this URL carrying ?room=. The Viewer is
-# hosted on its own origin, not by this Worker (ADR 0001).
+# hosted on its own origin, not by this Worker (ADR 0001). GET /version reads the
+# page's version.json at this URL's root.
 VIEWER_URL = "http://localhost:5173/"
 # Pages that may open /ws (exact Origin match). WebSockets are not covered by CORS.
 # The last is the round trip's Viewer (roundtrip/addresses.ts).

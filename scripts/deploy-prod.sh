@@ -10,8 +10,9 @@
 # tag, run this. The tag is checked out into a throwaway worktree, the tests run there,
 # and the Worker and the Viewer are deployed from there with the tag's own
 # scripts/deploy-common.sh. So uncommitted changes never ship, and rolling back is
-# deploying an earlier tag. Afterwards the live Worker must report "<tag> (<short sha>)"
-# as its MCP serverInfo.version and list the igv tools, and the Viewer must load.
+# deploying an earlier tag. Afterwards the live Worker's /version must report "<tag>
+# (<short sha>)" for both the Worker and the Viewer page, the Worker must list the igv
+# tools, and the Viewer must load.
 #
 # The first release creates the Worker, the Pages project and SESSION_HMAC_SECRET.
 # Later releases leave the secret as it is. The secret can only be put once the Worker
@@ -62,6 +63,7 @@ ensure_secret
 check_worker_version "$VERSION"
 check_worker_tools
 ensure_pages_project
-deploy_viewer "$WORKER_URL"
+deploy_viewer "$WORKER_URL" "$VERSION"
 check_viewer
+check_viewer_version "$VERSION"
 echo "released $VERSION: Viewer https://$PAGES_PROJECT.pages.dev/, MCP server URL $WORKER_URL/mcp"
