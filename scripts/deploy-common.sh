@@ -29,24 +29,35 @@ _mcp() {
     -d "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"$1\",\"params\":$2}" || true
 }
 
-# The version the live Worker answers an MCP initialize with.
-live_version() {
-  _mcp initialize '{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"deploy","version":"0"}}' \
-    | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{console.log(JSON.parse(s).result.serverInfo.version)}catch{}})'
+# _live_version FIELD: what the live Worker's GET /version gives for FIELD, "worker" or
+# "viewer.version"; nothing when it does not answer.
+_live_version() {
+  curl -s --max-time 15 "$WORKER_URL/version" \
+    | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{const v=process.argv[1].split(".").reduce((o,k)=>o[k],JSON.parse(s));if(typeof v==="string")console.log(v)}catch{}})' "$1" \
+    || true
 }
 
+# _check_live_version WHAT FIELD EXPECTED: waits for GET /version to give EXPECTED for FIELD.
 # A new version can take a few seconds to reach every Cloudflare location, and a new
 # custom domain needs a certificate, so this asks for up to two minutes before failing.
-check_worker_version() {
-  local expected="$1" live="" _
+_check_live_version() {
+  local what="$1" field="$2" expected="$3" live="" _
   for _ in $(seq 24); do
-    live="$(live_version)"
-    [[ "$live" == "$expected" ]] && { echo "the live Worker reports $live"; return 0; }
+    live="$(_live_version "$field")"
+    [[ "$live" == "$expected" ]] && { echo "$WORKER_URL/version reports the $what as $live"; return 0; }
     sleep 5
   done
-  echo "the live Worker reports '${live:-nothing}', not the deployed $expected" >&2
+  echo "$WORKER_URL/version reports the $what as '${live:-nothing}', not the deployed $expected" >&2
   return 1
 }
+
+# The live Worker's /version reports the Worker as EXPECTED (its VERSION, also its MCP
+# serverInfo.version).
+check_worker_version() { _check_live_version Worker worker "$1"; }
+
+# The live Worker's /version reports the Viewer page as EXPECTED (the page's version.json,
+# which the Worker reads from VIEWER_URL).
+check_viewer_version() { _check_live_version 'Viewer page' viewer.version "$1"; }
 
 # The live Worker lists the igv tools, open_viewer among them.
 check_worker_tools() {
@@ -86,15 +97,19 @@ ensure_pages_project() {
   fi
 }
 
-# deploy_viewer SERVER_URL
+# deploy_viewer SERVER_URL VERSION
 # Vite inlines VITE_* variables at build time and a direct upload never sees the Pages
-# project's variables, so the server address is passed to the build here.
+# project's variables, so the server address is passed to the build here. VERSION is
+# written into the built page as version.json, { "version": VERSION }, which the Worker's
+# /version reads.
 deploy_viewer() {
-  local server_url="$1"
-  echo "building the Viewer with VITE_SERVER_URL=$server_url"
+  local server_url="$1" version="$2"
+  echo "building the Viewer as $version with VITE_SERVER_URL=$server_url"
   (cd "$REPO_DIR" && VITE_SERVER_URL="$server_url" npm run build)
   grep -q "${server_url#https://}" "$REPO_DIR"/viewer/dist/assets/*.js \
     || { echo "built assets do not contain $server_url; nothing was uploaded" >&2; return 1; }
+  node -e 'process.stdout.write(JSON.stringify({ version: process.argv[1] }) + "\n")' "$version" \
+    > "$REPO_DIR/viewer/dist/version.json"
   wrangler pages deploy "$REPO_DIR/viewer/dist" --project-name "$PAGES_PROJECT" --branch main --commit-dirty=true
   echo "uploaded to https://$PAGES_PROJECT.pages.dev/"
 }
