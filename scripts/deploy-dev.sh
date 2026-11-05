@@ -12,6 +12,10 @@
 # sets the SESSION_HMAC_SECRET secret, creates the Pages project and attaches
 # its custom domain, calling this script along the way.
 #
+# The Worker reports what it runs as its MCP serverInfo.version, "<branch> (<short
+# sha>)" or "<tag> (<short sha>)" from scripts/version.mjs. It is stamped with --var
+# at deploy, and after deploying this script checks the live Worker reports it.
+#
 # Vite inlines VITE_* variables at build time and a direct upload never sees the
 # Pages project's variables, so the server address is passed to the build here.
 set -euo pipefail
@@ -25,7 +29,33 @@ cd "$REPO_ROOT"
 export CLOUDFLARE_ACCOUNT_ID="${CLOUDFLARE_ACCOUNT_ID:-$(sed -n 's/^account_id = "\(.*\)"/\1/p' "$REPO_ROOT/server/wrangler.toml")}"
 
 deploy_worker() {
-  npm run deploy:dev --workspace server
+  local version
+  version="$(node scripts/version.mjs)"
+  echo "deploying the Worker as $version"
+  npm run deploy:dev --workspace server -- --var "VERSION:$version"
+  check_worker_version "$version"
+}
+
+# The version the live Worker answers an MCP initialize with.
+live_version() {
+  curl -s --max-time 15 -X POST "$WORKER_URL/mcp" \
+    -H 'Content-Type: application/json' -H 'Accept: application/json, text/event-stream' \
+    -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"deploy-dev","version":"0"}}}' \
+    | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{console.log(JSON.parse(s).result.serverInfo.version)}catch{}})' \
+    || true
+}
+
+# A new version can take a few seconds to reach every Cloudflare location, so this
+# asks for up to a minute before failing.
+check_worker_version() {
+  local expected="$1" live="" _
+  for _ in $(seq 12); do
+    live="$(live_version)"
+    [[ "$live" == "$expected" ]] && { echo "the live Worker reports $live"; return 0; }
+    sleep 5
+  done
+  echo "the live Worker reports '${live:-nothing}', not the deployed $expected" >&2
+  exit 1
 }
 
 deploy_viewer() {

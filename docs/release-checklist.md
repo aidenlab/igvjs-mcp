@@ -9,7 +9,7 @@ The Hosts are Claude desktop, claude.ai on the web, and ChatGPT desktop in Codex
 ## Before trying the Hosts
 
 - [ ] `npm run typecheck`, `npm run test:run` and `npm run test:roundtrip` pass.
-- [ ] `scripts/deploy-dev.sh` finished without error.
+- [ ] `scripts/deploy-dev.sh` finished without error, and printed "the live Worker reports `<branch> (<short sha>)`" for the commit deployed, with no `-dirty`.
 - [ ] `https://igv-bot-dev.3dg.io/` loads hg38 and reads "Not connected. Ask Claude or ChatGPT to open igv-bot."
 - [ ] The Connector is added to Claude: Settings → Connectors → Add custom connector, with the connector URL above and the OAuth fields blank.
 - [ ] The Connector is added to ChatGPT desktop. In Codex mode: Settings → Plugins → Add → Add MCP server, with Name `igv-bot`, Type Streamable HTTP, the connector URL above, and everything else blank. Save.
