@@ -115,6 +115,14 @@ Once in each Host, after going to a locus, giving a track a new height and turni
 - [ ] Reloading the Viewer brings back the same locus, tracks and heights, and the crosshairs.
 - [ ] Closing the Viewer and opening it again from the Join card brings back the same view.
 
+## Releasing to prod
+
+Once every check above passes on dev, release the same commit. Its tag is `prod-YYYY-MM-DD`, with `.2`, `.3` for a later release the same day.
+
+- [ ] `git tag -a prod-YYYY-MM-DD -m "release" <commit>` and `git push origin prod-YYYY-MM-DD`.
+- [ ] `scripts/deploy-prod.sh prod-YYYY-MM-DD` finished without error, and printed "the live Worker reports `prod-YYYY-MM-DD (<short sha>)`" and the igv tools.
+- [ ] In one Host, with the connector URL `https://igv-mcp.3dg.io/mcp`, "show igv-bot" opens the Viewer on `https://igv-viewer.pages.dev/` and the status line reads "Connected · Room …".
+
 ## Afterwards
 
 - [ ] Anything that differs from the findings in `docs/v1-design.md` is written there.
