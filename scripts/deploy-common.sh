@@ -80,7 +80,9 @@ ensure_pages_project() {
   if [[ "$out" == *"\"$PAGES_PROJECT\""* ]]; then
     echo "the Pages project $PAGES_PROJECT exists"
   else
-    wrangler pages project create "$PAGES_PROJECT" --production-branch main
+    # --force: run by an agent, wrangler otherwise hands this to Workers, which deploys
+    # server/wrangler.toml as a Worker named $PAGES_PROJECT and creates no Pages project.
+    wrangler pages project create "$PAGES_PROJECT" --production-branch main --force
   fi
 }
 
