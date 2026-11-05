@@ -92,21 +92,31 @@ The round trip is kept out of `test:run` because it is not hermetic: igv.js fetc
 
 ## Deploying
 
-There is one deployed stack, for development. Nothing deploys from CI.
+There are two deployments, dev and prod, at fixed addresses. Nothing deploys from CI.
 
-| Part   | Cloudflare name                | Address                                                            |
-| ------ | ------------------------------ | ------------------------------------------------------------------ |
-| Worker | `igv-mcp-dev`                  | `https://igv-mcp-dev.3dg.io` (`/mcp` for Hosts, `/ws` for Viewers) |
-| Viewer | Pages project `igv-viewer-dev` | `https://igv-viewer-dev.pages.dev/`                                |
+| Deployment | Worker        | Worker address               | Viewer (Pages project) | Viewer address                       |
+| ---------- | ------------- | ---------------------------- | ---------------------- | ------------------------------------ |
+| dev        | `igv-mcp-dev` | `https://igv-mcp-dev.3dg.io` | `igv-viewer-dev`       | `https://igv-viewer-dev.pages.dev/` |
+| prod       | `igv-mcp`     | `https://igv-mcp.3dg.io`     | `igv-viewer`           | `https://igv-viewer.pages.dev/`     |
+
+Hosts use `/mcp` on the Worker, Viewers `/ws`.
 
 ```sh
-scripts/deploy-wizard.sh   # first time: login, the secret, the Pages project, then each Host
-scripts/deploy-dev.sh      # afterwards: run the tests, deploy the Worker, build and upload the Viewer
+scripts/deploy-wizard.sh                   # dev, first time: login, the secret, the Pages project, then each Host
+scripts/deploy-dev.sh                      # dev, afterwards: run the tests, deploy the Worker, build and upload the Viewer
+scripts/deploy-prod.sh prod-YYYY-MM-DD[.N] # prod: release a pushed tag
 ```
 
-The Viewer has no custom domain: Join links point at its `pages.dev` address.
+The dev deployment is deployed from the working tree. The prod deployment is released only from a `prod-` tag pushed to origin: the script checks the tag out into a throwaway worktree, runs the tests there, deploys the Worker and the Viewer, and checks that the live Worker reports `prod-… (<short sha>)` as its version. Rolling back is releasing an earlier tag. The first release creates the Pages project and `SESSION_HMAC_SECRET`.
 
-Both need a Cloudflare account that owns the `3dg.io` zone. The connector URL to give Claude or ChatGPT is `https://igv-mcp-dev.3dg.io/mcp`. Before a release, go through [`docs/release-checklist.md`](docs/release-checklist.md) in both Hosts.
+```sh
+git tag -a prod-2026-11-05 -m "release" main && git push origin prod-2026-11-05
+scripts/deploy-prod.sh prod-2026-11-05
+```
+
+The Viewers have no custom domain: Join links point at their `pages.dev` addresses.
+
+Both need a Cloudflare account that owns the `3dg.io` zone. The connector URL to give Claude or ChatGPT is `https://igv-mcp.3dg.io/mcp`, or `https://igv-mcp-dev.3dg.io/mcp` for dev. Before a release, go through [`docs/release-checklist.md`](docs/release-checklist.md) in both Hosts.
 
 ## Scripts
 
@@ -148,6 +158,8 @@ viewer/                  The Viewer web page
   test/                  Tests
 scripts/
   deploy-dev.sh          Deploy the dev Worker and Viewer
+  deploy-prod.sh         Release a prod- tag to the prod Worker and Viewer
+  deploy-common.sh       What the two deploy scripts share
   deploy-wizard.sh       First-time deployment and the checks in each Host, step by step
 ```
 
@@ -159,7 +171,7 @@ scripts/
 - `viewer/.env`, `VITE_SERVER_URL`: the server the Viewer connects to. Locally it is the Viewer's own dev server, which passes `/ws` on to the Worker.
 - `viewer/vite.config.ts`: the dev server's port and its `/ws` pass-through to the local Worker.
 
-The checked-in values are for local development. The dev deployment's values are in `[env.dev]` of `server/wrangler.toml` and in `scripts/deploy-dev.sh`.
+The checked-in values are for local development. The deployments' values are in `[env.dev]` and `[env.prod]` of `server/wrangler.toml` and in `scripts/deploy-dev.sh` and `scripts/deploy-prod.sh`.
 
 ## License
 
