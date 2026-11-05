@@ -6,7 +6,7 @@
  *   POST /mcp      - MCP protocol (stateless Streamable HTTP, JSON responses)
  *   GET  /mcp      - 405 (no SSE stream)
  *   OPTIONS /mcp   - CORS preflight
- *   GET  /version  - the Worker's version and the Viewer page's (version.ts)
+ *   GET  /version  - the Worker's version and the Viewer page's (version.ts): JSON, or a page (versionPage.ts) when the request asks for HTML
  *   GET  /*        - 404 (the Viewer is hosted on its own origin, not by this Worker)
  */
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
@@ -16,6 +16,7 @@ import { genomeListSource } from './genomes.ts'
 import { deriveRoomId, isRoomId, mintRoomId } from './roomId.ts'
 import { registerTools } from './tools.ts'
 import { versionReport } from './version.ts'
+import { versionPage } from './versionPage.ts'
 
 // Re-exported so Cloudflare can find the Durable Object class.
 export { Room } from './room.ts'
@@ -64,7 +65,14 @@ export default {
     }
 
     if (url.pathname === '/version' && request.method === 'GET') {
-      return Response.json(await versionReport(env.VERSION, env.VIEWER_URL))
+      const report = await versionReport(env.VERSION, env.VIEWER_URL)
+      // A browser opening the address asks for HTML and gets a page; scripts (scripts/deploy-common.sh, curl) get the JSON.
+      if (request.headers.get('Accept')?.includes('text/html')) {
+        return new Response(versionPage(url.origin, report), {
+          headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' },
+        })
+      }
+      return Response.json(report)
     }
 
     return new Response('Not Found', { status: 404 })
