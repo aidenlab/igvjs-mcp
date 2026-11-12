@@ -65,17 +65,50 @@ function trackType(type: string): string {
  * track carries only the ones set on it. Grows as each track tool lands; height is not here,
  * as every track summary gives it.
  */
-const TOOL_TRACK_OPTIONS: readonly string[] = ['color', 'altColor', 'min', 'max', 'autoscale', 'logScale', 'graphType', 'windowFunction', 'flipAxis', 'colorScale', 'displayMode']
+const TOOL_TRACK_OPTIONS: readonly string[] = ['color', 'altColor', 'min', 'max', 'autoscale', 'logScale', 'graphType', 'windowFunction', 'flipAxis', 'colorScale', 'displayMode', 'colorBy', 'groupBy']
 
-/** A Track option as the Session summary gives it: a display mode in lower case, as set_display_mode takes it, not as igv.js saves it. */
-function optionValue(option: string, value: unknown): unknown {
-  return option === 'displayMode' && typeof value === 'string' ? value.toLowerCase() : value
+/**
+ * A color-by or grouping as set_color_by and group_reads take it, `option` naming it: igv.js
+ * saves "tag:HP" for a read tag, and a variant track's INFO field bare. Any other value, such
+ * as a grouping made by hand at a base, is given as igv.js saves it.
+ */
+function byOption(option: 'colorBy' | 'groupBy', value: string, type: string): TrackOptions {
+  if (value.startsWith('tag:')) return { [option]: 'tag', [`${option}Tag`]: value.slice(4) }
+  if (option === 'colorBy' && type === 'variant' && value !== 'none') return { colorBy: 'info', colorByTag: value }
+  return { [option]: value }
 }
 
-/** The Track options of `track` that a track tool controls, or none when it records none. */
-function trackOptions(track: SessionTrack): TrackOptions | undefined {
-  const recorded = TOOL_TRACK_OPTIONS.filter((option) => track[option] !== undefined)
-  return recorded.length > 0 ? Object.fromEntries(recorded.map((option) => [option, optionValue(option, track[option])])) : undefined
+/**
+ * A Track option as the Session summary gives it, as an object of one or two fields: a display
+ * mode in lower case, as set_display_mode takes it, not as igv.js saves it; a color-by or grouping
+ * as `byOption` gives it.
+ */
+function optionFields(option: string, value: unknown, type: string): TrackOptions {
+  if (typeof value !== 'string') return { [option]: value }
+  if (option === 'displayMode') return { displayMode: value.toLowerCase() }
+  if (option === 'colorBy' || option === 'groupBy') return byOption(option, value, type)
+  return { [option]: value }
+}
+
+/**
+ * The igv.js Track types, before aliases are folded, whose colorBy and groupBy are set_color_by's
+ * and group_reads': a plain annotation track's colorBy names a feature attribute, a seg track's
+ * groupBy a sample attribute, and no tool sets those.
+ */
+const SET_BY_TOOL: Readonly<Record<string, readonly string[]>> = {
+  colorBy: ['alignment', 'variant', 'snp'],
+  groupBy: ['alignment'],
+}
+
+/** Whether `option` of a track of igv.js's Track type `igvType` is one a track tool sets. */
+function toolSets(option: string, igvType: string | undefined): boolean {
+  return !Object.hasOwn(SET_BY_TOOL, option) || (igvType !== undefined && SET_BY_TOOL[option].includes(igvType))
+}
+
+/** The Track options of `track`, of Track type `type`, that a track tool controls, or none when it records none. */
+function trackOptions(track: SessionTrack, type: string): TrackOptions | undefined {
+  const recorded = TOOL_TRACK_OPTIONS.filter((option) => track[option] !== undefined && toolSets(option, track.type))
+  return recorded.length > 0 ? Object.assign({}, ...recorded.map((option) => optionFields(option, track[option], type))) : undefined
 }
 
 /** The tracks of the Session summary for `session`, in display order. */
@@ -83,7 +116,7 @@ export function trackSummaries(session: Session): TrackSummary[] {
   return displayOrder(session.tracks).map((index): TrackSummary => {
     const track = session.tracks[index]
     const type = track.type ? trackType(track.type) : 'unknown'
-    const options = trackOptions(track)
+    const options = trackOptions(track, type)
     return {
       name: track.name || type,
       type,

@@ -139,6 +139,35 @@ describe('sessionSummary', () => {
     expect(summaryOf(session({ tracks })).tracks.map((track) => track.options)).toEqual([{ displayMode: 'squished' }, { displayMode: 'full' }])
   })
 
+  it('gives color-by and grouping as set_color_by and group_reads take them, a tag as its own field', () => {
+    const tracks = [
+      // As igv.js saves an alignment track loaded with colorBy "tag" and colorByTag "HP": its config's colorByTag beside.
+      { name: 'reads', type: 'alignment', colorBy: 'tag:HP', colorByTag: 'HP', groupBy: 'tag:RG', order: 1, height: 300 },
+      { name: 'paired', type: 'alignment', colorBy: 'unexpectedPair', groupBy: 'base:chr8:127,736,231', order: 2, height: 300 },
+      { name: 'calls', type: 'variant', colorBy: 'AF', order: 3, height: 50 },
+      { name: 'plain calls', type: 'variant', colorBy: 'none', order: 4, height: 50 },
+      { name: 'snps', type: 'snp', colorBy: 'class', order: 5, height: 30 },
+    ]
+
+    expect(summaryOf(session({ tracks })).tracks.map((track) => track.options)).toEqual([
+      { colorBy: 'tag', colorByTag: 'HP', groupBy: 'tag', groupByTag: 'RG' },
+      // A grouping made by hand at a base keeps igv.js's own spelling: group_reads offers none.
+      { colorBy: 'unexpectedPair', groupBy: 'base:chr8:127,736,231' },
+      { colorBy: 'info', colorByTag: 'AF' },
+      { colorBy: 'none' },
+      { colorBy: 'class' },
+    ])
+  })
+
+  it('gives no color-by or grouping a track tool does not set: a feature attribute, a seg track\'s sample grouping', () => {
+    const tracks = [
+      { name: 'peaks', type: 'annotation', colorBy: 'score', order: 1, height: 50 },
+      { name: 'copy number', type: 'seg', groupBy: 'Subtype', order: 2, height: 50 },
+    ]
+
+    expect(summaryOf(session({ tracks })).tracks.map((track) => track.options)).toEqual([undefined, undefined])
+  })
+
   it('gives a height in whole pixels: "shorter" leaves a track a part of a pixel', () => {
     const tracks = [
       { name: 'two thirds of 50', type: 'wig', order: 1, height: 33.333333333333336 },
