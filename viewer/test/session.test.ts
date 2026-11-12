@@ -114,6 +114,15 @@ describe('sessionSummary', () => {
     expect(summaryOf(session({ tracks })).tracks.map((track) => track.options)).toEqual([{ color: 'rgb(31, 119, 180)', altColor: 'rgb(255,0,0)' }, undefined])
   })
 
+  it("gives the data range, autoscale and log scale a track's saved state records, as igv.js saves them", () => {
+    const tracks = [
+      { name: 'fixed', type: 'wig', min: 0, max: 10, autoscale: false, logScale: true, order: 1, height: 50 },
+      { name: 'autoscaled', type: 'alignment', autoscale: true, order: 2, height: 300 },
+    ]
+
+    expect(summaryOf(session({ tracks })).tracks.map((track) => track.options)).toEqual([{ min: 0, max: 10, autoscale: false, logScale: true }, { autoscale: true }])
+  })
+
   it('gives a height in whole pixels: "shorter" leaves a track a part of a pixel', () => {
     const tracks = [
       { name: 'two thirds of 50', type: 'wig', order: 1, height: 33.333333333333336 },

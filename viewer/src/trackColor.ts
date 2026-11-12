@@ -1,4 +1,4 @@
-import { listed, type TrackTool } from './trackTools.ts'
+import { aTrack, listed, type TrackTool } from './trackTools.ts'
 
 /** What igv.js's "Unset track color" and "Unset alt color" give a track: the color it was loaded with. */
 export const UNSET = 'unset'
@@ -73,11 +73,6 @@ const COLORED_TYPES: ReadonlySet<string> = new Set(['annotation', 'alignment', '
 const ALT_COLORED_TYPES: ReadonlySet<string> = new Set(['wig', 'annotation'])
 
 const ONLY_ALT_COLORED = 'only wig and annotation tracks have one.'
-
-/** "a seg track", "an alignment track". */
-function aTrack(type: string): string {
-  return `${/^[aeiou]/.test(type) ? 'an' : 'a'} ${type} track`
-}
 
 /**
  * set_track_color as a track tool: the tracks that take every color of `colors`, as

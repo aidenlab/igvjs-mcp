@@ -3,6 +3,7 @@ import { displayOrder, sessionLoci, sessionSummary, trackSummaries, type Session
 import { shareableUrl, type SessionCompressor } from './shareableUrl.ts'
 import { addressTrack } from './trackAddress.ts'
 import { colorNote, colorsAsked, colorTool, sameColor, UNSET, type ColorChange, type TrackColors } from './trackColor.ts'
+import { dataRangeAsked, dataRangeNote, dataRangeTool, fixedRange, type DataRange, type DataRangeAsk, type DataRangeChange } from './trackDataRange.ts'
 import { changedHeight, checkHeight, heightNote, type HeightChange } from './trackHeight.ts'
 import { checkRenamable, newTrackName, renameNote } from './trackName.ts'
 import { joinedNotes, passedOverNote, trackTargets, type TrackTool } from './trackTools.ts'
@@ -28,6 +29,8 @@ export interface GenomeBrowser extends SessionCompressor {
   doShowCenterLine?: boolean
   setCursorGuideVisibility(show: boolean): void
   setCenterLineVisibility(show: boolean): void
+  /** Fetches and draws every track again: what autoscales a track. */
+  updateViews(): Promise<void> | void
   /** Tells igv.js's listeners, the Viewer's among them, of a change. */
   fireEvent(event: string, args: unknown[]): void
   /** igv.js's own buttons, each lit while what it toggles is showing. */
@@ -71,6 +74,18 @@ interface BrowserTrack {
   /** The colors the track was loaded with: what igv.js's "Unset track color" and "Unset alt color" give back. */
   _initialColor?: unknown
   _initialAltColor?: unknown
+  /** The range a numeric track is drawn over: an alignment track's is its coverage's. Undefined until first autoscaled. */
+  dataRange?: Partial<DataRange>
+  /** True while igv.js sets the range from what is in view. */
+  autoscale?: boolean
+  /** The autoscale group a person made by hand, its tracks autoscaled together. */
+  autoscaleGroup?: string
+  /** Defined on the Track types that offer igv.js's "Log scale". */
+  logScale?: boolean
+  /** How an interact track draws its arcs: nested, proportional, inView or partialInView. */
+  arcType?: string
+  /** As igv.js's own "Set data range" dialog does: a fixed range, out of autoscale and any group. */
+  setDataRange?(range: DataRange): void
   /** What the track was loaded with, much of which a Session saves. */
   config?: { [field: string]: unknown }
   getState?: () => object
@@ -232,6 +247,81 @@ function setTrackColor(browser: GenomeBrowser, { color, altColor, ...selection }
   if (note) return { note }
 }
 
+/** The arc types igv.js's menu offers "Set data range" on: the proportional ones. */
+const PROPORTIONAL_ARCS: ReadonlySet<string> = new Set(['proportional', 'inView', 'partialInView'])
+
+/** The range `track` is drawn over, or none when igv.js has not set one yet. */
+function currentRange({ dataRange }: BrowserTrack): DataRange | undefined {
+  const { min, max } = dataRange ?? {}
+  return typeof min === 'number' && typeof max === 'number' ? { min, max } : undefined
+}
+
+/**
+ * Writes `fields` into the config of `track`, which igv.js's Session saves over the track's
+ * own state where its getState does not update it: without this, a reload would bring back
+ * the range, autoscale or group the track was loaded with. `undefined` leaves a field out.
+ */
+function keepInSession(track: BrowserTrack, fields: { [field: string]: unknown }): void {
+  if (track.config) Object.assign(track.config, fields)
+}
+
+/** The bounds a track may be loaded with, a qtl track's under their own names. */
+const NO_BOUNDS = { min: undefined, max: undefined, minLogP: undefined, maxLogP: undefined }
+
+/**
+ * Gives `track` what `asked` asks for, as igv.js's own menu items do, with `range` the fixed
+ * range it is to have, if any. Says whether the track's autoscale is now to be worked out.
+ */
+function setRange(track: BrowserTrack, name: string, asked: DataRangeAsk, range: DataRange | undefined, group: DataRangeChange['group']): DataRangeChange & { autoscaled: boolean } {
+  const { min, max } = track.dataRange ?? {}
+  const unchanged =
+    (range === undefined || (!track.autoscale && !track.autoscaleGroup && min === range.min && max === range.max)) &&
+    // A track in a group is autoscaled with it.
+    (asked.autoscale !== true || track.autoscale === true || Boolean(track.autoscaleGroup)) &&
+    (asked.logScale === undefined || track.logScale === asked.logScale)
+
+  let autoscaled = false
+  if (range) {
+    track.setDataRange!(range)
+    keepInSession(track, { ...NO_BOUNDS, ...range, autoscale: false, autoscaleGroup: undefined })
+  } else if (asked.autoscale === true && !track.autoscale && !track.autoscaleGroup) {
+    track.autoscale = true
+    keepInSession(track, { ...NO_BOUNDS, autoscale: true })
+    autoscaled = true
+  }
+  if (asked.logScale !== undefined) track.logScale = asked.logScale
+  track.trackView.repaintViews()
+  return { name, unchanged, autoscaled, ...(group ? { group } : {}) }
+}
+
+async function setDataRange(browser: GenomeBrowser, { min, max, autoscale, logScale, ...selection }: DataRangeAsk & TrackSelection): Promise<CommandAnswer | void> {
+  // Before any track is looked at: a range that is an error is one whatever tracks it is for.
+  const asked = dataRangeAsked({ min, max, autoscale, logScale })
+  const session = captureSession(browser)
+  const summarized = trackSummaries(session)
+  const tracks = summarizedTracks(browser, session)
+  const drawing = (index: number) => ({
+    heatmap: tracks[index].graphType === 'heatmap',
+    nestedArcs: summarized[index].type === 'interact' && !PROPORTIONAL_ARCS.has(tracks[index].arcType ?? ''),
+  })
+  const { targets, passedOver } = trackTargets(summarized, selection, dataRangeTool(asked, drawing))
+  // Every track's range before any is given: a call is all or nothing.
+  const ranges = targets.map((index) => fixedRange(asked, summarized[index].name, currentRange(tracks[index])))
+
+  // A fixed range takes a track out of the autoscale group a person made, as igv.js's own does.
+  const leaving = new Set(targets.filter((index, at) => ranges[at] !== undefined && tracks[index].autoscaleGroup))
+  const stillIn = (id: string) => tracks.flatMap((track, index) => (track.autoscaleGroup === id && !leaving.has(index) ? [summarized[index].name] : []))
+  const changes = targets.map((index, at) => {
+    const id = tracks[index].autoscaleGroup
+    const group = leaving.has(index) && id ? { id, stillIn: stillIn(id) } : undefined
+    return setRange(tracks[index], summarized[index].name, asked, ranges[at], group)
+  })
+  if (changes.some(({ autoscaled }) => autoscaled)) await browser.updateViews()
+
+  const note = joinedNotes(dataRangeNote(asked, changes), passedOverNote(passedOver))
+  if (note) return { note }
+}
+
 /** Whether igv.js is in its whole-genome view, which the Session summary gives as the locus "all". */
 function inWholeGenomeView(browser: GenomeBrowser): boolean {
   return sessionLoci(captureSession(browser))[0] === 'all'
@@ -273,6 +363,7 @@ const APPLIERS: { [T in CommandType]: Applier<T> } = {
   set_track_height: setTrackHeight,
   rename_track: renameTrack,
   set_track_color: setTrackColor,
+  set_data_range: setDataRange,
   set_crosshairs: (browser, { show }) => setCrosshairs(browser, show),
   set_centre_line: (browser, { show }) => setCentreLine(browser, show),
   // The same call as the Controls' own button.

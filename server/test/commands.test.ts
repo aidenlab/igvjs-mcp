@@ -76,6 +76,10 @@ describe('a command tool with a Viewer in the Room', () => {
     ['set_track_color', { color: 'unset', altColor: 'unset', all: true }, { type: 'set_track_color', color: 'unset', altColor: 'unset', all: true }],
     // A color that is no color still reaches the Viewer, whose error gives the forms one takes.
     ['set_track_color', { color: 'red', all: true }, { type: 'set_track_color', color: 'red', all: true }],
+    ['set_data_range', { min: 0, max: 10, names: ['Conservation'] }, { type: 'set_data_range', min: 0, max: 10, names: ['Conservation'] }],
+    ['set_data_range', { autoscale: true, logScale: false, all: true }, { type: 'set_data_range', autoscale: true, logScale: false, all: true }],
+    // A min not below the max still reaches the Viewer, which knows each track's range.
+    ['set_data_range', { min: 10, max: 1, positions: [2] }, { type: 'set_data_range', min: 10, max: 1, positions: [2] }],
     ['set_crosshairs', { show: true }, { type: 'set_crosshairs', show: true }],
     ['set_crosshairs', { show: false }, { type: 'set_crosshairs', show: false }],
     ['set_centre_line', { show: true }, { type: 'set_centre_line', show: true }],

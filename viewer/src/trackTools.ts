@@ -7,6 +7,11 @@ export function listed(names: string[]): string {
   return quoted.length === 1 ? quoted[0] : `${quoted.slice(0, -1).join(', ')} and ${quoted[quoted.length - 1]}`
 }
 
+/** "a seg track", "an alignment track". */
+export function aTrack(type: string): string {
+  return `${/^[aeiou]/.test(type) ? 'an' : 'a'} ${type} track`
+}
+
 /** The Track types a track tool applies to, as two answers about a track of the Session summary. */
 export interface TrackTool {
   /** Why the tool does not apply to `track`, as the error the model is given; undefined when it does. */

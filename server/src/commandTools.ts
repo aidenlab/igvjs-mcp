@@ -146,6 +146,23 @@ export const COMMAND_TOOLS: CommandTool[] = [
     commandType: 'set_track_color',
   },
   {
+    name: 'set_data_range',
+    title: 'Set data range',
+    description: `Set the data range of one, several or all signal tracks of igv-bot, as igv.js's own "Set data range", "Autoscale" and "Log scale" do: the values the track's height spans. Give a fixed min and max, or one of them to keep the other as the track has it; or autoscale true for a range that follows what is in view, or false to fix the range the track has now; and logScale, on or off. Give several of these at once, but not a fixed range with autoscale true. Wig (signal), alignment (its coverage), qtl, gwas and gcnv tracks, and interact tracks drawn with proportional arcs, have a data range; only wig and interact tracks have a log scale. Address the tracks by their names, by their positions in the tracks of the Session summary, counted from 1 at the top, or pass all for every track that takes what is given. Change every track a request means in one call. The user also reorders and changes tracks by hand, so take positions from the Session summary of the reply just before, or call read_session_summary first. A call is all or nothing: a track named or placed that has no data range, or no log scale when logScale is given, is an error saying why, and so is a wig track drawn as a heatmap, whose range is set_signal_style's colorScale; a min not below the max is an error too; either way nothing is changed. A fixed range, or autoscale turned off, takes a track out of an autoscale group the user made by hand. The Session summary gives a track's range as its options' min, max, autoscale and logScale. A reply begins with a note when tracks were taken out of an autoscale group, when all passed over tracks that do not take what is given, or when every track already had it, so nothing changed. ${REPLY} ${NOTE_LINE}`,
+    inputSchema: {
+      // Any numbers: a min not below the max is answered by the Viewer, which knows each track's range.
+      min: z.number().optional().describe('The value at the bottom of the tracks'),
+      max: z.number().optional().describe('The value at the top of the tracks'),
+      autoscale: z.boolean().optional().describe('True for a range that follows what is in view; false to fix the range each track has now'),
+      logScale: z.boolean().optional().describe('True to draw the values on a log scale, false for a linear one'),
+      names: z.array(z.string()).optional().describe('The names of the tracks as the Session summary gives them. Case does not matter.'),
+      // Any numbers: one that is no position is answered by the Viewer, which can list the tracks.
+      positions: z.array(z.number()).optional().describe('The positions of the tracks in the tracks of the Session summary: 1 is the top track'),
+      all: z.boolean().optional().describe('True for every track that takes what is given, in place of names and positions'),
+    },
+    commandType: 'set_data_range',
+  },
+  {
     name: 'set_crosshairs',
     title: 'Show or hide the crosshairs',
     description: `Show or hide igv-bot's crosshairs: a vertical and a horizontal line that follow the pointer across the tracks. The Session summary says whether they are showing, as crosshairs; the user also turns them on and off by hand. The whole-genome view has no crosshairs: showing them there is an error, so go to a locus or gene first, and going to the whole-genome view hides them. ${REPLY}`,
