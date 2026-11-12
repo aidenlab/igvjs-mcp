@@ -53,7 +53,7 @@ describe('setting signal styles, round trip', () => {
     expect(optionsIn(await callTool(room, 'read_session_summary'))[1]).toMatchObject({ graphType: 'line', windowFunction: 'max', flipAxis: true })
   })
 
-  it("a heatmap takes a color scale, kept on a reload; its color and data range are errors pointing to set_signal_style's colorScale", async () => {
+  it("a heatmap takes a color scale, kept on a reload; its color and data range are errors pointing to set_signal_style's colorScale, and it has no axis to flip", async () => {
     const { room, page } = await roomWithViewer()
 
     const reply = await callTool(room, 'set_signal_style', { graphType: 'heatmap', colorScale: { min: 0, max: 5, minColor: '#ffffff', maxColor: '#000000' }, positions: [2] })
@@ -68,6 +68,10 @@ describe('setting signal styles, round trip', () => {
     const range = await callTool(room, 'set_data_range', { max: 10, positions: [2] })
     expect(range.isError).toBe(true)
     expect(range.text).toMatch(/^Error: "Conservation" is drawn as a heatmap, whose range is set by set_signal_style's colorScale\.\n/)
+
+    const flip = await callTool(room, 'set_signal_style', { flipAxis: true, positions: [2] })
+    expect(flip.isError).toBe(true)
+    expect(flip.text).toMatch(/^Error: "Conservation" is drawn as a heatmap, which has no axis to flip: give another graphType with it to draw it with one\.\n/)
 
     // Only what changes: a mid makes the scale diverging, white at the mid.
     const diverging = await callTool(room, 'set_signal_style', { colorScale: { mid: 1 }, positions: [2] })

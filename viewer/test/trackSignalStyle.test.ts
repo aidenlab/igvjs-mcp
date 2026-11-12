@@ -38,6 +38,12 @@ describe('the signal style of one call', () => {
     expect(() => signalStyleAsked({ colorScale: { maxColor: 'red' } })).toThrow('"red" is not a color igv-bot takes.')
   })
 
+  it('bounds given out of order are an error whatever tracks the call is for', () => {
+    expect(() => signalStyleAsked({ colorScale: { min: 5, max: 1 } })).toThrow('The colorScale min must be below its max: 5 is not below 1.')
+    expect(() => signalStyleAsked({ colorScale: { min: 0, mid: 9, max: 5 } })).toThrow('The colorScale mid must lie between its min and max: 9 is outside 0 to 5.')
+    expect(() => signalStyleAsked({ colorScale: { mid: 0, max: 0 } })).toThrow('The colorScale mid must lie between its min and max: 0 is not below 0.')
+  })
+
   it("spells a color scale's colors as igv.js's color picker does", () => {
     expect(signalStyleAsked({ colorScale: { minColor: '#fff', maxColor: 'rgb(255,0,0)' } })).toEqual({
       colorScale: { minColor: 'rgb(255, 255, 255)', maxColor: 'rgb(255, 0, 0)' },
@@ -69,6 +75,14 @@ describe('the tracks that have a signal style', () => {
       '"T" is drawn as line, not as a heatmap, so it has no colorScale: give graphType heatmap with it to draw it as one.',
     )
     expect(signalStyleTool({ graphType: 'heatmap', colorScale: { max: 5 } }, heatmap).refuse(track('wig'), 0)).toBeUndefined()
+  })
+
+  it("a heatmap has no axis to flip, as igv.js's menu offers none, unless the call draws it another way", () => {
+    const heatmap = () => ({ graphType: 'heatmap', windowFunctions: [] })
+
+    expect(signalStyleTool({ flipAxis: true }, heatmap).refuse(track('wig'), 0)).toBe('"T" is drawn as a heatmap, which has no axis to flip: give another graphType with it to draw it with one.')
+    expect(signalStyleTool({ flipAxis: true, graphType: 'line' }, heatmap).refuse(track('wig'), 0)).toBeUndefined()
+    expect(() => signalStyleAsked({ graphType: 'heatmap', flipAxis: true })).toThrow('A heatmap has no axis to flip: leave flipAxis out, or give another graphType.')
   })
 
   it("a window function is one the track's file offers", () => {

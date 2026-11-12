@@ -6,7 +6,7 @@ import { colorNote, colorsAsked, colorTool, sameColor, UNSET, type ColorChange, 
 import { dataRangeAsked, dataRangeNote, dataRangeTool, fixedRange, nestedArcs, type DataRange, type DataRangeAsk, type DataRangeChange } from './trackDataRange.ts'
 import { changedHeight, checkHeight, heightNote, type HeightChange } from './trackHeight.ts'
 import { checkRenamable, newTrackName, renameNote } from './trackName.ts'
-import { colorScaleFor, sameColorScale, signalStyleAsked, signalStyleNote, signalStyleTool, type ColorScale, type SignalStyleAsk, type SignalStyleChange } from './trackSignalStyle.ts'
+import { colorScaleFor, DEFAULT_GRAPH_TYPE, sameColorScale, signalStyleAsked, signalStyleNote, signalStyleTool, type ColorScale, type SignalStyleAsk, type SignalStyleChange } from './trackSignalStyle.ts'
 import { joinedNotes, passedOverNote, trackTargets, type TrackTool } from './trackTools.ts'
 
 /**
@@ -353,7 +353,7 @@ function igvColorScale(track: BrowserTrack, scale: ColorScale): BrowserTrack['_c
 /** Gives `track` what `asked` asks for, as igv.js's own menu items do, with `scale` the color scale it is to have, if any. */
 async function restyle(track: BrowserTrack, name: string, { graphType, windowFunction, flipAxis }: SignalStyleAsk, scale: ColorScale | undefined): Promise<SignalStyleChange> {
   const unchanged =
-    (graphType === undefined || (track.graphType ?? 'bar') === graphType) &&
+    (graphType === undefined || (track.graphType ?? DEFAULT_GRAPH_TYPE) === graphType) &&
     (windowFunction === undefined || track.windowFunction === windowFunction) &&
     (flipAxis === undefined || Boolean(track.flipAxis) === flipAxis) &&
     (scale === undefined || sameColorScale(track._colorScale?.toJson(), scale))

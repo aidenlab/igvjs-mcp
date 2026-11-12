@@ -2,6 +2,9 @@ import { COLOR_SCALE_TYPES, GRAPH_TYPES, WINDOW_FUNCTIONS, type ColorScaleAsk } 
 import { sameColor, trackColor, UNSET } from './trackColor.ts'
 import { aTrack, listed, type TrackTool } from './trackTools.ts'
 
+/** The graph type igv.js draws a wig track with when it is given none. */
+export const DEFAULT_GRAPH_TYPE = 'bar'
+
 /** What one set_signal_style call asks for. */
 export interface SignalStyleAsk {
   graphType?: string
@@ -35,6 +38,13 @@ function colorScaleAsked(asked: ColorScaleAsk): ColorScaleAsk {
     if (!Number.isFinite(value)) throw new Error(`The colorScale ${bound} must be a number, not ${value}.`)
     checked[bound] = value
   }
+  const { min, mid, max } = checked
+  if (min !== undefined && max !== undefined && !(min < max)) throw new Error(`The colorScale min must be below its max: ${min} is not below ${max}.`)
+  if (mid !== undefined && min !== undefined && max !== undefined && !(min < mid && mid < max)) {
+    throw new Error(`The colorScale mid must lie between its min and max: ${mid} is outside ${min} to ${max}.`)
+  }
+  if (mid !== undefined && min !== undefined && !(min < mid)) throw new Error(`The colorScale mid must lie between its min and max: ${min} is not below ${mid}.`)
+  if (mid !== undefined && max !== undefined && !(mid < max)) throw new Error(`The colorScale mid must lie between its min and max: ${mid} is not below ${max}.`)
   for (const option of COLORS) {
     const color = asked[option]
     if (color === undefined) continue
@@ -54,6 +64,7 @@ export function signalStyleAsked({ graphType, windowFunction, flipAxis, colorSca
   }
   checkOneOf('graph type', graphType, GRAPH_TYPES)
   checkOneOf('window function', windowFunction, WINDOW_FUNCTIONS)
+  if (graphType === 'heatmap' && flipAxis !== undefined) throw new Error('A heatmap has no axis to flip: leave flipAxis out, or give another graphType.')
   if (colorScale !== undefined && graphType !== undefined && graphType !== 'heatmap') {
     throw new Error('A colorScale is for tracks drawn as a heatmap: give graphType heatmap with it, or leave graphType out.')
   }
@@ -85,7 +96,10 @@ export function signalStyleTool(asked: SignalStyleAsk, live: (index: number) => 
     refuse: ({ name, type }, index) => {
       if (type === 'sequence') return 'The sequence track has no signal style.'
       if (type !== 'wig') return `"${name}" is ${aTrack(type)}, which has no signal style: ${ONLY_WIG}`
-      const { graphType = 'bar', windowFunctions = [] } = live(index)
+      const { graphType = DEFAULT_GRAPH_TYPE, windowFunctions = [] } = live(index)
+      if (asked.flipAxis !== undefined && asked.graphType === undefined && graphType === 'heatmap') {
+        return `"${name}" is drawn as a heatmap, which has no axis to flip: give another graphType with it to draw it with one.`
+      }
       if (asked.colorScale !== undefined && asked.graphType === undefined && graphType !== 'heatmap') {
         return `"${name}" is drawn as ${graphType}, not as a heatmap, so it has no colorScale: give graphType heatmap with it to draw it as one.`
       }
