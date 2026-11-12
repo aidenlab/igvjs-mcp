@@ -14,7 +14,7 @@ import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/
 import { catalogueSource } from './catalogues.ts'
 import { genomeListSource } from './genomes.ts'
 import { deriveRoomId, isRoomId, mintRoomId } from './roomId.ts'
-import { registerTools } from './tools.ts'
+import { registerTools, SERVER_INSTRUCTIONS } from './tools.ts'
 import { versionReport } from './version.ts'
 import { versionPage } from './versionPage.ts'
 
@@ -125,7 +125,7 @@ async function handleMcpRequest(request: Request, env: Env): Promise<Response> {
       roomId = await deriveRoomId(openaiSession, env.SESSION_HMAC_SECRET)
     }
 
-    const mcpServer = new McpServer({ name: 'igv-bot', version: env.VERSION })
+    const mcpServer = new McpServer({ name: 'igv-bot', version: env.VERSION }, { instructions: SERVER_INSTRUCTIONS })
     registerTools(mcpServer, {
       roomId,
       viewerUrl: env.VIEWER_URL,

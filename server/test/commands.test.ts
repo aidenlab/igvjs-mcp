@@ -115,6 +115,20 @@ describe('a command tool with a Viewer in the Room', () => {
     expect(summaryIn(result.content[0].text!)).toEqual(SUMMARY)
   })
 
+  it("a note the Viewer's ack carries begins the reply, ahead of the Session summary", async () => {
+    const viewer = await joinedViewer('C0MMAND007')
+    const note = '"Refseq Genes" stopped at 1000 pixels: no track is made taller than that.'
+
+    const reply = callTool('set_track_height', { 'mcp-session-id': 'C0MMAND007' }, { height: 'taller', all: true })
+    const { id } = await nextCommand(viewer)
+    viewer.send({ type: MessageType.ACK, id, ok: true, summary: SUMMARY, note })
+
+    const result = await reply
+    expect(result.isError).toBeFalsy()
+    expect(result.content[0].text).toMatch(/^Note: "Refseq Genes" stopped at 1000 pixels: no track is made taller than that\.\n\nSession summary:\n/)
+    expect(summaryIn(result.content[0].text!)).toEqual(SUMMARY)
+  })
+
   it('every Viewer in the Room receives the command, and the first ack is the reply', async () => {
     const first = await joinedViewer('C0MMAND004')
     const second = await joinedViewer('C0MMAND004')

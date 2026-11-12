@@ -29,7 +29,53 @@ export function checkHeight(asked: TrackHeight): void {
 export function changedHeight(current: number, asked: TrackHeight): number {
   checkHeight(asked)
   // A track a person set beyond a limit is not brought back to it by a change the other way.
-  if (asked === 'taller') return Math.max(current, Math.min(MAX_HEIGHT, wholePixelIfWithinRounding(current * 1.5)))
-  if (asked === 'shorter') return Math.min(current, Math.max(MIN_HEIGHT, wholePixelIfWithinRounding((current * 2) / 3)))
+  if (asked === 'taller') return Math.max(current, Math.min(MAX_HEIGHT, scaled(current, asked)))
+  if (asked === 'shorter') return Math.min(current, Math.max(MIN_HEIGHT, scaled(current, asked)))
   return asked
+}
+
+/** "taller" or "shorter" of a track `current` pixels high, before the limits. */
+function scaled(current: number, asked: 'taller' | 'shorter'): number {
+  return wholePixelIfWithinRounding(asked === 'taller' ? current * 1.5 : (current * 2) / 3)
+}
+
+/** What a height change did to one track, named as the Session summary names it. */
+export interface HeightChange {
+  name: string
+  from: number
+  to: number
+}
+
+/** "A", "A" and "B", "A", "B" and "C". */
+function listed(names: string[]): string {
+  const quoted = names.map((name) => `"${name}"`)
+  return quoted.length === 1 ? quoted[0] : `${quoted.slice(0, -1).join(', ')} and ${quoted[quoted.length - 1]}`
+}
+
+function pixels(height: number): string {
+  return `${height} pixel${height === 1 ? '' : 's'}`
+}
+
+/**
+ * The note for a reply when the height `asked` was carried out other than as
+ * asked (ADR 0006): "taller" or "shorter" stopped at a limit, or every track
+ * already had the height, so nothing changed. Pure. Undefined when every track
+ * got the height asked for.
+ */
+export function heightNote(asked: TrackHeight, changes: HeightChange[]): string | undefined {
+  if (typeof asked === 'number') {
+    if (changes.length === 0 || changes.some(({ from, to }) => from !== to)) return undefined
+    const were = changes.length === 1 ? 'was' : 'were'
+    return `${listed(changes.map(({ name }) => name))} ${were} already ${pixels(asked)} high, so nothing changed.`
+  }
+  const limit = asked === 'taller' ? MAX_HEIGHT : MIN_HEIGHT
+  const limited = changes.filter(({ from, to }) => to !== scaled(from, asked))
+  // A track that moved stopped at the limit; one already at it, or beyond it as a person may set one, did not move.
+  const stopped = limited.filter(({ from, to }) => to !== from)
+  const left = limited.filter(({ from, to }) => to === from)
+  const notes = [
+    ...(stopped.length > 0 ? [`${listed(stopped.map(({ name }) => name))} stopped at ${pixels(limit)}: no track is made ${asked} than that.`] : []),
+    ...left.map(({ name, from }) => `"${name}" was left at ${pixels(from)}: no track is made ${asked} than ${limit}.`),
+  ]
+  return notes.length > 0 ? notes.join(' ') : undefined
 }

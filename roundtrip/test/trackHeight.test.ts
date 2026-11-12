@@ -77,6 +77,23 @@ describe('setting track height, round trip', () => {
     expect(heights(byPosition)).toEqual([25, 50, 70])
   })
 
+  it('"taller" that stops at the limit, and a height already set, reply with a note before the Session summary', async () => {
+    const { room } = await roomWithViewer()
+
+    await callTool(room, 'set_track_height', { height: 900, names: ['Conservation'] })
+    const taller = await callTool(room, 'set_track_height', { height: 'taller', positions: [2, 3] })
+    expect(taller.isError).toBe(false)
+    expect(taller.text).toMatch(/^Note: "Conservation" stopped at 1000 pixels: no track is made taller than that\.\n\nSession summary:\n/)
+    expect(heights(taller)).toEqual([25, 1000, 105])
+
+    const again = await callTool(room, 'set_track_height', { height: 105, names: ['Refseq All'] })
+    expect(again.isError).toBe(false)
+    expect(again.text).toMatch(/^Note: "Refseq All" was already 105 pixels high, so nothing changed\.\n\nSession summary:\n/)
+
+    const asAsked = await callTool(room, 'set_track_height', { height: 60, all: true })
+    expect(asAsked.text).toMatch(/^Done\.\n\nSession summary:\n/)
+  })
+
   it('a height outside the limits, and the sequence track addressed, are errors that change no height', async () => {
     const { room } = await roomWithViewer()
 
