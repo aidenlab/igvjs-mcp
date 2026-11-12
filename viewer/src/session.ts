@@ -65,7 +65,7 @@ function trackType(type: string): string {
  * track carries only the ones set on it. Grows as each track tool lands; height is not here,
  * as every track summary gives it.
  */
-const TOOL_TRACK_OPTIONS: readonly string[] = ['color', 'altColor', 'min', 'max', 'autoscale', 'logScale', 'graphType', 'windowFunction', 'flipAxis', 'colorScale', 'displayMode', 'colorBy', 'groupBy', ...TRACK_PARTS]
+const TOOL_TRACK_OPTIONS: readonly string[] = ['color', 'altColor', 'min', 'max', 'autoscale', 'logScale', 'graphType', 'windowFunction', 'flipAxis', 'colorScale', 'displayMode', 'colorBy', 'groupBy', ...TRACK_PARTS, 'visibilityWindow']
 
 /**
  * A color-by or grouping as set_color_by and group_reads take it, `option` naming it: igv.js
@@ -94,13 +94,16 @@ function optionFields(option: string, value: unknown, type: string): TrackOption
  * The igv.js Track types, before aliases are folded, whose colorBy and groupBy are set_color_by's
  * and group_reads': a plain annotation track's colorBy names a feature attribute, a seg track's
  * groupBy a sample attribute, and no tool sets those. The parts show_track_parts shows or hides
- * are those of alignment and variant tracks only, whatever else a track was loaded with.
+ * are those of alignment and variant tracks only, whatever else a track was loaded with. A
+ * visibility window is set_visibility_window's on annotation, variant and alignment tracks: igv.js
+ * saves one for a wig track too, which no tool sets.
  */
 const SET_BY_TOOL: Readonly<Record<string, readonly string[]>> = {
   colorBy: ['alignment', 'variant', 'snp'],
   groupBy: ['alignment'],
   ...Object.fromEntries(ALIGNMENT_PARTS.map((part) => [part, ['alignment']])),
   ...Object.fromEntries(VARIANT_PARTS.map((part) => [part, ['variant']])),
+  visibilityWindow: ['annotation', 'feature', 'genes', 'snp', 'fusionjuncspan', 'variant', 'alignment'],
 }
 
 /** Whether `option` of a track of igv.js's Track type `igvType` is one a track tool sets. */

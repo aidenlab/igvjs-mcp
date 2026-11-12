@@ -252,6 +252,19 @@ export const COMMAND_TOOLS: CommandTool[] = [
     commandType: 'show_track_parts',
   },
   {
+    name: 'set_visibility_window',
+    title: 'Set visibility window',
+    description: `Set the visibility window of one, several or all tracks of igv-bot, as igv.js's own "Set visibility window" does: the widest view, in base pairs, in which a track's features are loaded and drawn. In a wider view the track shows nothing until the view is zoomed in. A larger window shows features further out but loads more; 0 is no window: an annotation or variant track loads its whole chromosome, an alignment track every read in view however wide, either of which can be slow. Annotation, variant and alignment tracks have one; other tracks are an error. Address the tracks by their names, by their positions in the tracks of the Session summary, counted from 1 at the top, or pass all for every annotation, variant and alignment track. Change every track a request means in one call. The user also reorders and changes tracks by hand, so take positions from the Session summary of the reply just before, or call read_session_summary first. A call is all or nothing: a track named or placed that has no visibility window is an error, and nothing is changed. The Session summary gives a track's window as its options' visibilityWindow, where igv.js saves one, 0 or less meaning no window; an alignment track without one has igv.js's default, 30,000 bp. A reply begins with a note when the window is smaller than the view, so the track shows nothing until it is zoomed in, when all passed over tracks that have no window, or when every track already had it, so nothing changed. ${REPLY} ${NOTE_LINE}`,
+    inputSchema: {
+      window: z.number().describe('The widest view, in base pairs, in which the tracks show their features: a whole number, or 0 for no window'),
+      names: z.array(z.string()).optional().describe('The names of the tracks as the Session summary gives them. Case does not matter.'),
+      // Any numbers: one that is no position is answered by the Viewer, which can list the tracks.
+      positions: z.array(z.number()).optional().describe('The positions of the tracks in the tracks of the Session summary: 1 is the top track'),
+      all: z.boolean().optional().describe('True for every annotation, variant and alignment track, in place of names and positions'),
+    },
+    commandType: 'set_visibility_window',
+  },
+  {
     name: 'set_crosshairs',
     title: 'Show or hide the crosshairs',
     description: `Show or hide igv-bot's crosshairs: a vertical and a horizontal line that follow the pointer across the tracks. The Session summary says whether they are showing, as crosshairs; the user also turns them on and off by hand. The whole-genome view has no crosshairs: showing them there is an error, so go to a locus or gene first, and going to the whole-genome view hides them. ${REPLY}`,

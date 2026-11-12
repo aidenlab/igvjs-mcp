@@ -21,6 +21,7 @@ The tools the Connector gives the model, and how each is used. The wording the m
 | [`set_color_by`](#set_color_by) | Sets what one, several or all alignment, variant and SNP annotation tracks are colored by |
 | [`group_reads`](#group_reads) | Groups the reads of one, several or all alignment tracks |
 | [`show_track_parts`](#show_track_parts) | Shows or hides the coverage, alignments and read drawing of alignment tracks, and the genotypes of variant tracks |
+| [`set_visibility_window`](#set_visibility_window) | Sets the widest view in which one, several or all annotation, variant and alignment tracks show their features |
 | [`set_crosshairs`](#set_crosshairs-and-set_centre_line), [`set_centre_line`](#set_crosshairs-and-set_centre_line) | Shows or hides the crosshairs, or the centre line |
 | [`set_controls`](#set_controls) | Shows or hides the Controls: the Navigation bar and, unless the Viewer is Embedded, the Shareable URL |
 | [`read_session_summary`](#read_session_summary) | Reads what igv-bot is showing, changing nothing |
@@ -424,6 +425,31 @@ The alignment track is the one to address for its coverage: the coverage is no t
 - Showing or hiding the coverage or alignments changes the track's height to what it then draws, as igv.js's menu does, unless igv.js is fitting the track's height to what it holds.
 - The coverage's data range is set by [`set_data_range`](#set_data_range), addressed to the alignment track.
 - Notes: `all` passed over tracks that do not have the parts, each with why; every track already had them as asked, so nothing changed (`"HG00103" already had its coverage hidden, so nothing changed.`).
+
+### `set_visibility_window`
+
+As igv.js's own "Set visibility window": the widest view, in base pairs, in which a track's features are loaded and drawn. In a wider view the track shows nothing until the view is zoomed in.
+
+| Argument | |
+| --- | --- |
+| `window` | A whole number of base pairs, or `0` for no window |
+| `names` | The names of the tracks, each as in [Addressing a track](#what-every-tool-shares) |
+| `positions` | And or instead their positions, counted from 1 at the top |
+| `all` | `true` for every annotation, variant and alignment track, in place of `names` and `positions` |
+
+The Session summary gives it in the track's `options` as `visibilityWindow`, as igv.js saves it, on annotation, variant and alignment tracks only: 0 or less is no window (igv.js's own dialog saves `-1` for an empty answer). igv.js picks a window for many files as it loads them, and saves it, so a track may have one no tool set. An alignment track without one has igv.js's default, 30,000 bp; an annotation or variant track without one has no window.
+
+```text
+"show the genes further out"                set_visibility_window { window: 1000000, names: ["Refseq All"] }
+"load reads only below 10 kb"               set_visibility_window { window: 10000, names: ["HG00103"] }
+"load the whole chromosome of variants"     set_visibility_window { window: 0, positions: [4] }
+```
+
+- Annotation, variant and alignment tracks have one. Every other Track type is an error naming those three. igv.js's own menu also offers a window on wig, qtl and shoebox tracks, where it matters little: the tool leaves them out.
+- A window that is not a whole number of 0 or more is an error whatever the tracks.
+- A larger window loads more. `0` is no window: an annotation or variant track loads its whole chromosome, and an alignment track every read in view, however wide, which igv.js allows and which can be slow.
+- In the whole-genome view no window applies: whether a track shows there is igv.js's to decide. igv.js draws an annotation track from a file with no index there only while it has no window at all: giving it one, even `0`, stops that, as igv.js's own dialog does.
+- Notes: the window is smaller than the view, so the track shows nothing until it is zoomed in (`"Refseq All" shows its features only in a view of 10,000 bp or less: the view is 52,000 bp wide, so until it is zoomed in that far it shows none.`); `all` passed over tracks that have no window, each with why (`Passed over by all: "Conservation" is a wig track: set_visibility_window sets the visibility window of annotation, variant and alignment tracks only.`); every track already had it, so nothing changed (`"Refseq All" already had visibility window 100,000 bp, so nothing changed.`).
 
 ## Crosshairs and centre line
 
