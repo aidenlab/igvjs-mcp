@@ -1,5 +1,5 @@
 import { ALIGNMENT_PARTS, TRACK_PARTS, VARIANT_PARTS, type PartsAsk } from './protocol.ts'
-import { aTrack, either, listed, type ByChange, type TrackTool } from './trackTools.ts'
+import { aTrack, byWithTag, either, listed, type ByChange, type TrackTool } from './trackTools.ts'
 
 export type { PartsAsk }
 
@@ -40,7 +40,10 @@ export interface LiveParts {
   samples?: number
 }
 
-/** The one grouping igv.js views as pairs (`pairCompatibleGroupOptions`). */
+/**
+ * The one grouping igv.js means to view as pairs (`pairCompatibleGroupOptions`). Its own menu
+ * looks for the grouping on the track, not its reads, so never finds one to refuse.
+ */
 const PAIR_GROUPING = 'firstOfPairStrand'
 
 /** The other of coverage and alignments, and what each is called in an error. */
@@ -65,7 +68,7 @@ function noPairs(asked: PartsAsk, name: string, { pairs, groupBy }: LiveParts): 
   if (asked.viewAsPairs !== true) return undefined
   if (pairs === false) return `"${name}" has no paired reads to view as pairs.`
   if (groupBy !== undefined && groupBy !== PAIR_GROUPING) {
-    const grouping = groupBy.startsWith('tag:') ? `tag ${groupBy.slice(4)}` : groupBy
+    const grouping = groupBy.startsWith('tag:') ? byWithTag({ by: 'tag', tag: groupBy.slice(4) }) : groupBy
     return `"${name}" has its reads grouped by ${grouping}, which igv.js cannot view as pairs: only reads grouped by ${PAIR_GROUPING}, or not grouped, can be. Ungroup them with group_reads first.`
   }
   return undefined

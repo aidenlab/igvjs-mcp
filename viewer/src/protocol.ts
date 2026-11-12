@@ -100,7 +100,8 @@ export const GROUP_BY = ['none', 'strand', 'firstOfPairStrand', 'pairOrientation
  * ("View as pairs", "Show mismatches", "Show soft clips", "Show insertions"); a variant track's
  * genotypes ("Show Genotypes").
  */
-export const ALIGNMENT_PARTS = ['showCoverage', 'showAlignments', 'viewAsPairs', 'showMismatches', 'showSoftClips', 'showInsertions'] as const
+export const READS_PARTS = ['viewAsPairs', 'showMismatches', 'showSoftClips', 'showInsertions'] as const
+export const ALIGNMENT_PARTS = ['showCoverage', 'showAlignments', ...READS_PARTS] as const
 export const VARIANT_PARTS = ['showGenotypes'] as const
 export const TRACK_PARTS = [...ALIGNMENT_PARTS, ...VARIANT_PARTS] as const
 

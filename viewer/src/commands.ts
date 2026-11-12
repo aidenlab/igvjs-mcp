@@ -1,4 +1,4 @@
-import type { Command, CommandAnswer, CommandOutcome, CommandType, TrackAddress, TrackHeight, TrackSelection, TrackToLoad, ViewerSettings } from './protocol.ts'
+import { READS_PARTS, type Command, type CommandAnswer, type CommandOutcome, type CommandType, type TrackAddress, type TrackHeight, type TrackSelection, type TrackToLoad, type ViewerSettings } from './protocol.ts'
 import { displayOrder, sessionLoci, sessionSummary, trackSummaries, type Session } from './session.ts'
 import { shareableUrl, type SessionCompressor } from './shareableUrl.ts'
 import { addressTrack } from './trackAddress.ts'
@@ -588,8 +588,13 @@ function liveParts(track: BrowserTrack): LiveParts {
   return track.header && track.getSampleCount ? { samples: track.getSampleCount() } : {}
 }
 
-/** The parts of an alignment track that are its reads': the track itself has its coverage and alignments. */
-const READS_PARTS = ['viewAsPairs', 'showMismatches', 'showSoftClips', 'showInsertions'] as const
+/** What igv.js draws the reads with until told otherwise (AlignmentTrack.defaults). */
+const READS_PARTS_SHOWN: Readonly<Record<(typeof READS_PARTS)[number], boolean>> = {
+  viewAsPairs: false,
+  showMismatches: true,
+  showSoftClips: false,
+  showInsertions: true,
+}
 
 /** Shows and hides the parts of `track` as `asked`, as igv.js's own menu items do. */
 function reshowParts(browser: GenomeBrowser, track: BrowserTrack, name: string, asked: PartsAsk): ByChange {
@@ -607,7 +612,7 @@ function reshowParts(browser: GenomeBrowser, track: BrowserTrack, name: string, 
     for (const part of READS_PARTS) {
       const shown = asked[part]
       if (shown === undefined) continue
-      unchanged &&= (reads[part] ?? false) === shown
+      unchanged &&= (reads[part] ?? READS_PARTS_SHOWN[part]) === shown
       reads[part] = shown
     }
     // As igv.js's "Show Coverage" and "Show Alignments": the track keeps to what it draws, unless it fits what it holds.

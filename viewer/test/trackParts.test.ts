@@ -61,7 +61,7 @@ describe('the tracks whose parts can be shown or hidden', () => {
     expect(refusal({ viewAsPairs: false }, 'alignment', { pairs: false })).toBeUndefined()
   })
 
-  it('viewing reads as pairs is an error while they are grouped other than by firstOfPairStrand, as in igv.js', () => {
+  it('viewing reads as pairs is an error while they are grouped other than by firstOfPairStrand, as igv.js means it to be', () => {
     expect(refusal({ viewAsPairs: true }, 'alignment', { pairs: true, groupBy: 'tag:RG' })).toBe(
       '"T" has its reads grouped by tag RG, which igv.js cannot view as pairs: only reads grouped by firstOfPairStrand, or not grouped, can be. Ungroup them with group_reads first.',
     )
