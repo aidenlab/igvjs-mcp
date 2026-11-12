@@ -123,6 +123,13 @@ describe('sessionSummary', () => {
     expect(summaryOf(session({ tracks })).tracks.map((track) => track.options)).toEqual([{ min: 0, max: 10, autoscale: false, logScale: true }, { autoscale: true }])
   })
 
+  it("gives the graph type, window function, flipped axis and color scale a track's saved state records, as igv.js saves them", () => {
+    const colorScale = { type: 'gradient', min: 0, max: 5, minColor: 'rgb(46,56,183)', maxColor: 'rgb(164,0,30)' }
+    const tracks = [{ name: 'heatmap', type: 'wig', graphType: 'heatmap', windowFunction: 'max', flipAxis: true, colorScale, order: 1, height: 20 }]
+
+    expect(summaryOf(session({ tracks })).tracks[0].options).toEqual({ graphType: 'heatmap', windowFunction: 'max', flipAxis: true, colorScale })
+  })
+
   it('gives a height in whole pixels: "shorter" leaves a track a part of a pixel', () => {
     const tracks = [
       { name: 'two thirds of 50', type: 'wig', order: 1, height: 33.333333333333336 },

@@ -16,6 +16,7 @@ The tools the Connector gives the model, and how each is used. The wording the m
 | [`rename_track`](#rename_track) | Gives one track a new name |
 | [`set_track_color`](#set_track_color) | Sets the color, and alt color, of one, several or all tracks |
 | [`set_data_range`](#set_data_range) | Sets the data range, autoscale and log scale of one, several or all tracks |
+| [`set_signal_style`](#set_signal_style) | Sets the graph type, window function, flipped axis and heatmap color scale of one, several or all wig tracks |
 | [`set_crosshairs`](#set_crosshairs-and-set_centre_line), [`set_centre_line`](#set_crosshairs-and-set_centre_line) | Shows or hides the crosshairs, or the centre line |
 | [`set_controls`](#set_controls) | Shows or hides the Controls: the Navigation bar and, unless the Viewer is Embedded, the Shareable URL |
 | [`read_session_summary`](#read_session_summary) | Reads what igv-bot is showing, changing nothing |
@@ -253,6 +254,40 @@ Any of `min` and `max`, `autoscale` and `logScale` together, but not a fixed ran
 - No autoscale groups (ADR 0005). A fixed range, or autoscale turned off, on a track a person grouped by hand takes it out of its group, as igv.js does. `autoscale: true` leaves a grouped track in its group, autoscaled with it.
 - The range, autoscale and group are kept in the Session as asked, also where igv.js would bring back on a reload the ones the track was loaded with.
 - Notes: tracks taken out of an autoscale group, naming those still in it (`"Conservation" was taken out of its autoscale group; "H3K27ac" is still in it.`); `all` passed over tracks that do not take what is given, each with why (`Passed over by all: "Refseq All" is an annotation track, which has no data range.`); every track already had it, so nothing changed (`"Conservation" already had a data range of 0 to 10, so nothing changed.`).
+
+### `set_signal_style`
+
+As igv.js's own "Graph type", "Windowing function", "Flip y-axis" and, on a heatmap, "Set color scale".
+
+| Argument | |
+| --- | --- |
+| `graphType` | `bar`, `line`, `points`, `heatmap` or `dynseq` |
+| `windowFunction` | How the values under one pixel are summed up: `mean`, `min`, `max`, or `none` to draw every value |
+| `flipAxis` | `true` to draw the tracks upside down, `false` the right way up |
+| `colorScale` | A heatmap's colors: `min`, `max`, `minColor` and `maxColor`, and for a diverging scale `mid` and `midColor`; `type` is `gradient` or `diverging`. Only what changes is given |
+| `names` | The names of the tracks, each as in [Addressing a track](#what-every-tool-shares) |
+| `positions` | And or instead their positions, counted from 1 at the top |
+| `all` | `true` for every track that takes what is given, in place of `names` and `positions` |
+
+Any of them together. The Session summary gives them in the track's `options`, as igv.js saves them: `graphType`, `windowFunction` and `flipAxis` where they are not igv.js's defaults (`bar`, `mean`, `false`), and `colorScale` once a heatmap has one.
+
+```text
+"show the conservation as a line"          set_signal_style { graphType: "line", names: ["Conservation"] }
+"draw all the signal as heatmaps"          set_signal_style { graphType: "heatmap", all: true }
+"heatmap from 0 to 5, white to black"      set_signal_style { colorScale: { min: 0, max: 5, minColor: "#ffffff", maxColor: "#000000" }, positions: [2] }
+"flip the second track"                    set_signal_style { flipAxis: true, positions: [2] }
+"show the peaks, not the average"          set_signal_style { windowFunction: "max", names: ["K562 CTCF"] }
+```
+
+- Wig tracks only: the others are errors. The legal values are those of igv.js's wig track menu.
+- A `windowFunction` is one the track's file offers, as igv.js's menu lists them: most offer all four. One the file does not offer is an error naming those it does.
+- `colorScale` is only for a track drawn as a heatmap, or made one in the same call with `graphType: "heatmap"`; on another it is an error. A `colorScale` with any other `graphType` is an error whatever the tracks.
+- A color scale keeps what is not given as the track has it. A `mid` or `midColor` makes it diverging, with `white` at the mid unless a `midColor` is given; `type: "gradient"` drops the mid. A track with no color scale yet takes igv.js's default colors and, failing a `min` and `max`, a gradient over its data range (where igv.js, left to itself, would draw a range spanning 0 diverging). A `min` not below the `max`, or a `mid` not between them, is an error. Colors are given as for [`set_track_color`](#set_track_color), but not `unset`.
+- A heatmap's color and data range are its `colorScale`: [`set_track_color`](#set_track_color) and [`set_data_range`](#set_data_range) on one are errors pointing here.
+- A heatmap has no axis to flip, as igv.js's menu offers none: `flipAxis` on one is an error, unless the same call gives it another `graphType`, and `flipAxis` with `graphType: "heatmap"` is an error whatever the tracks.
+- A points track keeps its window function in the Session, as asked: igv.js would load one with no window function in its config with `none`.
+- `dynseq` draws the bases of the sequence at the height of the values, and only below 2 bp per pixel; further out igv.js draws bars.
+- Notes: `dynseq` set while the view is zoomed out further than 2 bp per pixel (`"Conservation" is drawn as dynseq, which shows bases only below 2 bp per pixel: until the view is zoomed in that far it is drawn as bars.`); `all` passed over tracks that do not take what is given, each with why (`Passed over by all: "Refseq All" is an annotation track, which has no signal style: only wig tracks have one.`); every track already had it, so nothing changed (`"Conservation" already had graph type line, so nothing changed.`).
 
 ## Crosshairs and centre line
 

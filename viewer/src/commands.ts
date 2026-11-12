@@ -6,6 +6,7 @@ import { colorNote, colorsAsked, colorTool, sameColor, UNSET, type ColorChange, 
 import { dataRangeAsked, dataRangeNote, dataRangeTool, fixedRange, nestedArcs, type DataRange, type DataRangeAsk, type DataRangeChange } from './trackDataRange.ts'
 import { changedHeight, checkHeight, heightNote, type HeightChange } from './trackHeight.ts'
 import { checkRenamable, newTrackName, renameNote } from './trackName.ts'
+import { colorScaleFor, DEFAULT_GRAPH_TYPE, sameColorScale, signalStyleAsked, signalStyleNote, signalStyleTool, type ColorScale, type SignalStyleAsk, type SignalStyleChange } from './trackSignalStyle.ts'
 import { joinedNotes, passedOverNote, trackTargets, type TrackTool } from './trackTools.ts'
 
 /**
@@ -31,6 +32,8 @@ export interface GenomeBrowser extends SessionCompressor {
   setCenterLineVisibility(show: boolean): void
   /** Fetches and draws every track again: what autoscales a track. */
   updateViews(): Promise<void> | void
+  /** One per locus in view, side by side. */
+  referenceFrameList: Array<{ bpPerPixel: number }>
   /** Tells igv.js's listeners, the Viewer's among them, of a change. */
   fireEvent(event: string, args: unknown[]): void
   /** igv.js's own buttons, each lit while what it toggles is showing. */
@@ -65,6 +68,18 @@ interface BrowserTrack {
   type?: string
   /** How a wig track is drawn, such as "heatmap". */
   graphType?: string
+  /** How a wig track sums the values under one pixel, such as "mean". */
+  windowFunction?: string
+  /** True while a wig track is drawn upside down. */
+  flipAxis?: boolean
+  /** A wig heatmap's color scale, which igv.js makes when it first draws one. */
+  _colorScale?: { toJson(): Partial<ColorScale> }
+  /** Where a wig track's values come from: its file offers the window functions listed. */
+  featureSource?: { windowFunctions?: readonly string[] }
+  /** The igv.js browser the track is in. */
+  browser?: unknown
+  /** Drops the features igv.js holds for the track, so the next draw fetches them again. */
+  clearCachedFeatures?(): void
   /** A CSS color, or a function igv.js calls for each feature. */
   color?: unknown
   /** The color of a wig track's negative values and an annotation track's minus-strand features. */
@@ -95,6 +110,8 @@ interface BrowserTrack {
     setTrackHeight(height: number, force?: boolean): void
     checkContentHeight(): void
     repaintViews(): void
+    /** Fetches what is in view, if need be, and draws the track again. */
+    updateViews(): Promise<void> | void
   }
 }
 
@@ -319,6 +336,64 @@ async function setDataRange(browser: GenomeBrowser, { min, max, autoscale, logSc
   if (note) return { note }
 }
 
+/** The color scale `track` is drawn with, or, before igv.js has made one, the range it would make it over. */
+function currentColorScale(track: BrowserTrack): Partial<ColorScale> | undefined {
+  return track._colorScale?.toJson() ?? currentRange(track)
+}
+
+/**
+ * igv.js's own color scale for `scale`, as a track loaded with it gets one. igv.js exports no
+ * way to make one, so a wig track of the same class is made, never shown or loaded, to make it.
+ */
+function igvColorScale(track: BrowserTrack, scale: ColorScale): BrowserTrack['_colorScale'] {
+  const WigTrack = track.constructor as new (config: object, browser: unknown) => BrowserTrack
+  return new WigTrack({ colorScale: scale, featureSource: {} }, track.browser)._colorScale
+}
+
+/** Gives `track` what `asked` asks for, as igv.js's own menu items do, with `scale` the color scale it is to have, if any. */
+async function restyle(track: BrowserTrack, name: string, { graphType, windowFunction, flipAxis }: SignalStyleAsk, scale: ColorScale | undefined): Promise<SignalStyleChange> {
+  const unchanged =
+    (graphType === undefined || (track.graphType ?? DEFAULT_GRAPH_TYPE) === graphType) &&
+    (windowFunction === undefined || track.windowFunction === windowFunction) &&
+    (flipAxis === undefined || Boolean(track.flipAxis) === flipAxis) &&
+    (scale === undefined || sameColorScale(track._colorScale?.toJson(), scale))
+
+  // dynseq draws the bases fetched with the features, which features fetched for another graph type lack.
+  const refetch = (windowFunction !== undefined && track.windowFunction !== windowFunction) || (graphType === 'dynseq' && track.graphType !== 'dynseq')
+  if (graphType !== undefined) track.graphType = graphType
+  if (windowFunction !== undefined) track.windowFunction = windowFunction
+  // igv.js loads a points track with no window function in its config with none, not the one it had.
+  if (track.graphType === 'points') keepInSession(track, { windowFunction: track.windowFunction })
+  if (flipAxis !== undefined) track.flipAxis = flipAxis
+  if (scale !== undefined) track._colorScale = igvColorScale(track, scale)
+  if (refetch) {
+    track.clearCachedFeatures?.()
+    await track.trackView.updateViews()
+  } else {
+    track.trackView.repaintViews()
+  }
+  return { name, unchanged }
+}
+
+async function setSignalStyle(browser: GenomeBrowser, { graphType, windowFunction, flipAxis, colorScale, ...selection }: SignalStyleAsk & TrackSelection): Promise<CommandAnswer | void> {
+  // Before any track is looked at: a style that is an error is one whatever tracks it is for.
+  const asked = signalStyleAsked({ graphType, windowFunction, flipAxis, colorScale })
+  const session = captureSession(browser)
+  const summarized = trackSummaries(session)
+  const tracks = summarizedTracks(browser, session)
+  const live = (index: number) => ({ graphType: tracks[index].graphType, windowFunctions: tracks[index].featureSource?.windowFunctions })
+  const { targets, passedOver } = trackTargets(summarized, selection, signalStyleTool(asked, live))
+  // Every track's color scale before any is given: a call is all or nothing.
+  const scales = targets.map((index) => (asked.colorScale ? colorScaleFor(asked.colorScale, summarized[index].name, currentColorScale(tracks[index])) : undefined))
+
+  const changes: SignalStyleChange[] = []
+  for (const [at, index] of targets.entries()) changes.push(await restyle(tracks[index], summarized[index].name, asked, scales[at]))
+
+  const finest = Math.min(...browser.referenceFrameList.map(({ bpPerPixel }) => bpPerPixel))
+  const note = joinedNotes(signalStyleNote(asked, changes, finest), passedOverNote(passedOver))
+  if (note) return { note }
+}
+
 /** Whether igv.js is in its whole-genome view, which the Session summary gives as the locus "all". */
 function inWholeGenomeView(browser: GenomeBrowser): boolean {
   return sessionLoci(captureSession(browser))[0] === 'all'
@@ -361,6 +436,7 @@ const APPLIERS: { [T in CommandType]: Applier<T> } = {
   rename_track: renameTrack,
   set_track_color: setTrackColor,
   set_data_range: setDataRange,
+  set_signal_style: setSignalStyle,
   set_crosshairs: (browser, { show }) => setCrosshairs(browser, show),
   set_centre_line: (browser, { show }) => setCentreLine(browser, show),
   // The same call as the Controls' own button.

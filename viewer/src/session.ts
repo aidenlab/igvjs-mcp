@@ -65,7 +65,7 @@ function trackType(type: string): string {
  * track carries only the ones set on it. Grows as each track tool lands; height is not here,
  * as every track summary gives it.
  */
-const TOOL_TRACK_OPTIONS: readonly string[] = ['color', 'altColor', 'min', 'max', 'autoscale', 'logScale']
+const TOOL_TRACK_OPTIONS: readonly string[] = ['color', 'altColor', 'min', 'max', 'autoscale', 'logScale', 'graphType', 'windowFunction', 'flipAxis', 'colorScale']
 
 /** The Track options of `track` that a track tool controls, or none when it records none. */
 function trackOptions(track: SessionTrack): TrackOptions | undefined {
