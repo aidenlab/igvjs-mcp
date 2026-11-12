@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>igv.js Track Formats, Types and Menus</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+/* Layout: one reading column (~70ch) for prose, tables allowed to run wider and scroll on their own. */
+:root {
+  --bg: #f6f7f9;
+  --surface: #ffffff;
+  --ink: #1b2330;
+  --muted: #5a6577;
+  --rule: #d9dee6;
+  --accent: #1f5fae;
+  --accent-soft: #e6eef9;
+  --warn: #9a5b00;
+  --warn-soft: #fbf1e1;
+  --font-display: "IBM Plex Sans Condensed", "Arial Narrow", system-ui, sans-serif;
+  --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #12161d;
+    --surface: #1a2029;
+    --ink: #e3e8ef;
+    --muted: #98a3b4;
+    --rule: #2d3644;
+    --accent: #7fb0f0;
+    --accent-soft: #1d2b40;
+    --warn: #f0b764;
+    --warn-soft: #2e2416;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #12161d;
+  --surface: #1a2029;
+  --ink: #e3e8ef;
+  --muted: #98a3b4;
+  --rule: #2d3644;
+  --accent: #7fb0f0;
+  --accent-soft: #1d2b40;
+  --warn: #f0b764;
+  --warn-soft: #2e2416;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.6;
+}
+main {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 48px 24px 96px;
+  display: grid;
+  gap: 56px;
+}
+.prose { max-width: 70ch; }
+.prose > * + * { margin-top: 0.9em; }
+h1, h2, h3 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  line-height: 1.2;
+  text-wrap: balance;
+  margin: 0;
+}
+h1 { font-size: 2.4rem; letter-spacing: -0.01em; }
+h2 { font-size: 1.65rem; padding-bottom: 8px; border-bottom: 2px solid var(--ink); }
+h3 { font-size: 1.2rem; }
+p { margin: 0; }
+section { display: grid; gap: 20px; }
+.lede { font-size: 1.15rem; color: var(--muted); max-width: 66ch; }
+.meta { font-size: 0.85rem; color: var(--muted); font-family: var(--font-mono); }
+code {
+  font-family: var(--font-mono);
+  font-size: 0.86em;
+  background: var(--accent-soft);
+  color: var(--ink);
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+a { color: var(--accent); }
+a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* Two-axis explainer */
+.axes { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+.axis {
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-top: 4px solid var(--accent);
+  padding: 20px 22px;
+  display: grid;
+  gap: 10px;
+  align-content: start;
+}
+.axis .q { font-family: var(--font-display); font-size: 1.05rem; color: var(--accent); font-weight: 600; }
+.axis ul { margin: 0; padding-left: 1.1em; }
+.axis li + li { margin-top: 4px; }
+
+/* Pipeline */
+ol.pipeline { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; counter-reset: step; max-width: 900px; }
+ol.pipeline > li {
+  counter-increment: step;
+  display: grid;
+  grid-template-columns: 44px 1fr;
+  gap: 16px;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--rule);
+}
+ol.pipeline > li::before {
+  content: counter(step);
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.4rem;
+  color: var(--accent);
+  line-height: 1.2;
+}
+ol.pipeline .step-title { font-weight: 600; }
+ol.pipeline .step-body { color: var(--ink); }
+ol.pipeline .step-body > * + * { margin-top: 6px; }
+ol.pipeline ul { margin: 6px 0 0; padding-left: 1.1em; }
+.src { font-family: var(--font-mono); font-size: 0.8rem; color: var(--muted); }
+
+/* Tables */
+.table-wrap { overflow-x: auto; background: var(--surface); border: 1px solid var(--rule); }
+table { border-collapse: collapse; width: 100%; font-size: 0.92rem; }
+th, td { text-align: left; vertical-align: top; padding: 10px 14px; border-bottom: 1px solid var(--rule); }
+thead th {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  background: var(--bg);
+  position: sticky;
+  top: 0;
+  white-space: nowrap;
+}
+tbody tr:last-child td { border-bottom: none; }
+td.k { font-family: var(--font-mono); font-size: 0.85rem; white-space: nowrap; }
+td.k b { font-weight: 500; color: var(--accent); }
+td .alias { display: block; color: var(--muted); font-size: 0.78rem; white-space: normal; }
+td.cls { font-family: var(--font-mono); font-size: 0.82rem; white-space: nowrap; }
+td.cls span { display: block; color: var(--muted); font-size: 0.74rem; }
+tr.group td {
+  background: var(--accent-soft);
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.85rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--accent);
+  padding: 6px 14px;
+}
+
+/* Menu chips */
+.chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.chip {
+  display: inline-block;
+  font-size: 0.8rem;
+  line-height: 1.35;
+  padding: 2px 8px;
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  background: var(--surface);
+  white-space: nowrap;
+}
+.chip.cond { border-style: dashed; color: var(--muted); }
+.chip.common { background: var(--accent-soft); border-color: transparent; }
+.chip.none { border: none; color: var(--muted); font-style: italic; padding-left: 0; }
+.yes { color: var(--accent); font-weight: 600; }
+.no { color: var(--muted); }
+.legend { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; font-size: 0.85rem; color: var(--muted); }
+
+/* Callouts */
+.quirks { display: grid; gap: 12px; max-width: 900px; }
+.quirk {
+  border-left: 4px solid var(--warn);
+  background: var(--warn-soft);
+  padding: 12px 16px;
+}
+.quirk strong { color: var(--warn); }
+.note {
+  border-left: 4px solid var(--accent);
+  background: var(--accent-soft);
+  padding: 12px 16px;
+  max-width: 900px;
+}
+
+.example-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+pre {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  line-height: 1.5;
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  padding: 14px 16px;
+  overflow-x: auto;
+}
+.example h3 { font-size: 1rem; margin-bottom: 8px; }
+.example p { font-size: 0.9rem; color: var(--muted); margin-top: 8px; }
+
+@media (max-width: 480px) {
+  main { padding: 32px 16px 64px; gap: 44px; }
+  h1 { font-size: 1.9rem; }
+  ol.pipeline > li { grid-template-columns: 28px 1fr; gap: 10px; }
+}
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto; } }
+</style>
+</head>
+<body>
+<main>
+
+<header class="prose">
+  <p class="meta">igv.js · master @ b5d64807 · read from source, Nov 2026</p>
+  <h1 style="margin-top:10px">igv.js Track Formats, Types and Menus</h1>
+  <p class="lede" style="margin-top:14px">How a loaded file becomes a track, what separates a <em>format</em> from a <em>type</em>, and which gear-menu items each kind of track offers.</p>
+</header>
+
+<!-- 1 -->
+<section>
+  <h2>Format and type are two different questions</h2>
+  <div class="prose">
+    <p>Every track config ends up with two strings, <code>format</code> and <code>type</code>. They are easy to blur together because a file's extension usually decides both, but they control separate halves of the system and can vary independently.</p>
+  </div>
+  <div class="axes">
+    <div class="axis">
+      <div class="q">format: how are the bytes read?</div>
+      <p>Picks the <strong>data source, reader and parser</strong>. It answers what the file looks like on disk: binary or text, indexed or not, which columns mean what.</p>
+      <ul>
+        <li>Consumed by <code>FeatureSource()</code> in <span class="src">js/feature/featureSource.js</span>, by the BAM/CRAM loaders, and by <code>FeatureParser.setDecoder()</code>, which has one decoder per text format.</li>
+        <li>Examples: <code>bed</code>, <code>narrowpeak</code>, <code>gff3</code>, <code>bigwig</code>, <code>tdf</code>, <code>vcf</code>, <code>bam</code>, <code>bedpe</code>.</li>
+        <li>About 45 recognized values.</li>
+      </ul>
+    </div>
+    <div class="axis">
+      <div class="q">type: how is it drawn and operated?</div>
+      <p>Picks the <strong>Track subclass</strong>, which owns drawing, popups, session state and the gear-menu items. It answers what the data means visually.</p>
+      <ul>
+        <li>Consumed by <code>getTrack()</code> in <span class="src">js/trackFactory.js</span>, and by the menu builder in <span class="src">js/ui/menuUtils.js</span>, which keys several decisions on the type string itself.</li>
+        <li>Examples: <code>annotation</code>, <code>wig</code>, <code>alignment</code>, <code>variant</code>, <code>interact</code>, <code>seg</code>.</li>
+        <li>About 20 Track classes, with roughly 35 accepted type strings once aliases are counted.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="prose">
+    <p>The relationship is many-to-many in both directions:</p>
+    <ul>
+      <li><strong>Many formats, one type.</strong> <code>bigwig</code>, <code>wig</code>, <code>bedgraph</code> and <code>tdf</code> all become a <code>wig</code> track. A dozen text formats (<code>bed</code>, <code>gff3</code>, <code>gtf</code>, <code>refgene</code>, <code>narrowpeak</code>, <code>rmsk</code>…) all become an <code>annotation</code> track.</li>
+      <li><strong>One format, several types.</strong> A <code>bigbed</code> file becomes <code>annotation</code> or <code>interact</code> depending on its autoSql table name. A <code>.bed</code> file becomes <code>interact</code> or <code>gcnv</code> if its <code>track</code> line says <code>type=interact</code> or <code>type=gcnv</code>. A <code>hic</code> file is drawn as an <code>interact</code> track.</li>
+      <li><strong>Type usually follows from format</strong>, which is why most configs only need a <code>url</code>. Setting <code>type</code> explicitly overrides inference, and that is the only way to reach some Track classes (<code>junction</code>, <code>shoebox</code>, <code>merged</code>, <code>image</code>, <code>blat</code>).</li>
+    </ul>
+  </div>
+</section>
+
+<!-- 2 -->
+<section>
+  <h2>How a config is resolved into a track</h2>
+  <div class="prose">
+    <p>All of this happens in <code>Browser.createTrack()</code> (<span class="src">js/browser.js</span>, around line 1234). Format is settled first, then type.</p>
+  </div>
+  <ol class="pipeline">
+    <li>
+      <div class="step-body">
+        <div class="step-title">Settle the format</div>
+        <p>First match wins:</p>
+        <ul>
+          <li><code>config.format</code>, lowercased.</li>
+          <li><code>fasta</code> if the config has a <code>fastaURL</code>.</li>
+          <li>The <strong>file name</strong> (<code>config.filename</code> or the URL). <code>.gz</code>/<code>.bgz</code> and then <code>.txt</code>/<code>.tab</code>/<code>.tsv</code> are stripped before the extension is read; <code>bw</code> becomes <code>bigwig</code>, <code>bb</code> becomes <code>bigbed</code>, <code>fa</code>/<code>fna</code> become <code>fasta</code>; <code>*refGene.txt(.gz)</code> is special-cased to <code>refgene</code>. Unknown extensions give nothing.</li>
+          <li>The <strong>file contents</strong>: the first 1000 bytes are fetched (gunzipped if needed) and tested for magic numbers (BAM, CRAM, bigWig, bigBed, TDF), then header lines (<code>##fileformat=VCF</code>, <code>##gff-version</code>, any <code>##fileformat=X</code>), then QTL, GWAS and HiCCUPS column signatures.</li>
+          <li>For <code>sourceType: "htsget"</code>, the htsget reader is asked.</li>
+        </ul>
+        <p class="src">js/util/fileFormatUtils.js · inferFileFormat</p>
+      </div>
+    </li>
+    <li>
+      <div class="step-body">
+        <div class="step-title">Translate legacy type names</div>
+        <p>Old-style types that were really formats are split into a type plus a format: <code>bed</code> → annotation + bed, <code>bam</code> → alignment + bam, <code>vcf</code>/<code>vcftabix</code> → variant + vcf, <code>aed</code> → annotation + aed. Also <code>annotations</code> → annotation, <code>alignments</code> → alignment, <code>junctions</code> → junction, <code>t2d</code> → gwas, and the old <code>featureType</code> key becomes <code>type</code>.</p>
+        <p class="src">js/util/trackUtils.js · translateDeprecatedTypes</p>
+      </div>
+    </li>
+    <li>
+      <div class="step-body">
+        <div class="step-title">Infer the type from the format, if no type was given</div>
+        <p><code>inferTrackType(format)</code> is a fixed table (next section). Anything it doesn't list falls through to <code>annotation</code>. If neither a type nor a format could be found, the load fails with "Unrecognized track".</p>
+        <p class="src">js/util/trackUtils.js · inferTrackType</p>
+      </div>
+    </li>
+    <li>
+      <div class="step-body">
+        <div class="step-title">Open the file for BED-like formats</div>
+        <p>For <code>bed</code>, <code>bigbed</code>, <code>biggenepred</code> and <code>bignarrowpeak</code> the table returns a placeholder, <code>bedtype</code>, meaning "read the header before deciding". A feature source is built early and asked for <code>trackType()</code>:</p>
+        <ul>
+          <li>bigBed / bigWig: <code>wig</code> for bigWig; <code>interact</code> if the autoSql table is <code>interact</code> or <code>chromatinInteract</code>; otherwise <code>annotation</code>.</li>
+          <li>Text BED: the <code>track</code> line's <code>type=</code> (<code>interact</code>, <code>gcnv</code>), which also overrides the format.</li>
+          <li>Anything unknown: <code>annotation</code>. The source is kept on the config so the file isn't opened twice.</li>
+        </ul>
+      </div>
+    </li>
+    <li>
+      <div class="step-body">
+        <div class="step-title">Record the type and apply defaults</div>
+        <p>The inferred type is written back to <code>config.type</code>, so a saved session carries it. Then <code>browser.trackDefaults[type]</code> fills any unset config properties.</p>
+      </div>
+    </li>
+    <li>
+      <div class="step-body">
+        <div class="step-title">Construct the Track</div>
+        <p><code>getTrack(type)</code> maps aliases onto a constructor: <code>annotation</code>, <code>genes</code>, <code>snp</code>, <code>fusionjuncspan</code> → <code>feature</code>; <code>maf</code>, <code>mut</code> → <code>seg</code>; <code>junctions</code>, <code>splicejunctions</code> → <code>junction</code>; and <code>eqtl</code> and <code>interaction</code> are registered as extra keys for QTLTrack and InteractionTrack. The track's own <code>this.type</code> keeps the <em>original</em> string (for example <code>genes</code>), which matters for menus; see the pitfalls below.</p>
+        <p class="src">js/trackFactory.js · getTrack</p>
+      </div>
+    </li>
+  </ol>
+</section>
+
+<!-- 3 -->
+<section>
+  <h2>Format → type → class</h2>
+  <div class="prose">
+    <p>Every format igv.js recognizes, the type it becomes when no type is given, and the code that reads and draws it.</p>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Format</th><th>Inferred type</th><th>Track class</th><th>Data source / reader</th><th>Notes</th></tr>
+      </thead>
+      <tbody>
+        <tr class="group"><td colspan="5">Annotations and intervals</td></tr>
+        <tr><td class="k"><b>bed</b></td><td class="k">annotation*</td><td class="cls">FeatureTrack</td><td>TextFeatureSource · decodeBed</td><td>* via <code>bedtype</code>: track line may make it <code>interact</code> or <code>gcnv</code>. Also the fallback decoder for unknown text formats.</td></tr>
+        <tr><td class="k"><b>bigbed</b><span class="alias">bb</span></td><td class="k">annotation*</td><td class="cls">FeatureTrack</td><td>BWSource · BWReader</td><td>* <code>interact</code> if autoSql table is interact / chromatinInteract.</td></tr>
+        <tr><td class="k"><b>biggenepred</b>, <b>bignarrowpeak</b></td><td class="k">annotation*</td><td class="cls">FeatureTrack</td><td>BWSource</td><td>bigBed variants with known autoSql.</td></tr>
+        <tr><td class="k"><b>gff3</b>, <b>gff</b>, <b>gtf</b></td><td class="k">annotation</td><td class="cls">FeatureTrack</td><td>TextFeatureSource · decodeGFF3 / decodeGTF</td><td>Transcripts assembled by GFFHelper unless <code>assembleGFF: false</code>.</td></tr>
+        <tr><td class="k"><b>refgene</b>, <b>genepred</b>, <b>genepredext</b>, <b>refflat</b>, <b>ensgene</b></td><td class="k">annotation</td><td class="cls">FeatureTrack</td><td>TextFeatureSource · decodeGenePred(Ext) / decodeReflat</td><td>UCSC gene tables.</td></tr>
+        <tr><td class="k"><b>narrowpeak</b>, <b>broadpeak</b>, <b>regionpeak</b>, <b>peaks</b>, <b>gappedpeak</b></td><td class="k">annotation</td><td class="cls">FeatureTrack</td><td>TextFeatureSource · decodePeak / decodeNarrowPeak / decodeGappedPeak</td><td>ENCODE peak formats.</td></tr>
+        <tr><td class="k"><b>bedmethyl</b></td><td class="k">annotation</td><td class="cls">FeatureTrack</td><td>decodeBedmethyl</td><td></td></tr>
+        <tr><td class="k"><b>rmsk</b></td><td class="k">annotation</td><td class="cls">FeatureTrack</td><td>decodeRepeatMasker</td><td></td></tr>
+        <tr><td class="k"><b>snp</b></td><td class="k">annotation</td><td class="cls">FeatureTrack</td><td>decodeSNP</td><td>Drawn with the SNP renderer, which adds "Color by function / class".</td></tr>
+        <tr><td class="k"><b>aed</b></td><td class="k">annotation</td><td class="cls">FeatureTrack</td><td>AEDParser</td><td></td></tr>
+        <tr><td class="k"><b>fusionjuncspan</b></td><td class="k">annotation</td><td class="cls">FeatureTrack</td><td>decodeFusionJuncSpan</td><td>FusionInspector.</td></tr>
+        <tr><td class="k"><b>gbk</b></td><td class="k">annotation</td><td class="cls">FeatureTrack</td><td>GenbankFeatureSource</td><td>Must be set explicitly; not inferred from the extension.</td></tr>
+        <tr><td class="k"><i>custom</i></td><td class="k">annotation</td><td class="cls">FeatureTrack</td><td>decodeCustom</td><td>Formats registered with <code>igv.registerFileFormats</code>.</td></tr>
+
+        <tr class="group"><td colspan="5">Quantitative signal</td></tr>
+        <tr><td class="k"><b>bigwig</b><span class="alias">bw</span></td><td class="k">wig</td><td class="cls">WigTrack</td><td>BWSource · BWReader</td><td>Only source with precomputed whole-genome view.</td></tr>
+        <tr><td class="k"><b>wig</b></td><td class="k">wig</td><td class="cls">WigTrack</td><td>TextFeatureSource · decodeWig</td><td></td></tr>
+        <tr><td class="k"><b>bedgraph</b></td><td class="k">wig</td><td class="cls">WigTrack</td><td>TextFeatureSource · decodeBedGraph</td><td></td></tr>
+        <tr><td class="k"><b>tdf</b></td><td class="k">wig</td><td class="cls">WigTrack</td><td>TDFSource · TDFReader</td><td>Window functions come from the file.</td></tr>
+
+        <tr class="group"><td colspan="5">Reads</td></tr>
+        <tr><td class="k"><b>bam</b>, <b>cram</b></td><td class="k">alignment</td><td class="cls">BAMTrack<span>+ CoverageTrack, AlignmentTrack</span></td><td>BamSource · BamReader / CramReader / htsget</td><td>BAMTrack composites a coverage and an alignment sub-track and merges their menus.</td></tr>
+
+        <tr class="group"><td colspan="5">Variants and samples</td></tr>
+        <tr><td class="k"><b>vcf</b><span class="alias">vcftabix</span></td><td class="k">variant</td><td class="cls">VariantTrack</td><td>TextFeatureSource · VcfParser</td><td></td></tr>
+        <tr><td class="k"><b>vcf.list</b></td><td class="k">variant</td><td class="cls">VariantTrack</td><td>ListFeatureSource</td><td>Two-column file: chromosome → VCF URL.</td></tr>
+        <tr><td class="k"><b>seg</b></td><td class="k">seg</td><td class="cls">SegTrack</td><td>SegParser</td><td>Multi-sample copy number.</td></tr>
+        <tr><td class="k"><b>maf</b>, <b>mut</b></td><td class="k">mut</td><td class="cls">SegTrack</td><td>SegParser</td><td>Mutations; same class as seg, fewer display modes.</td></tr>
+        <tr><td class="k"><b>gcnv</b></td><td class="k">gcnv*</td><td class="cls">GCNVTrack</td><td>decodeGcnv</td><td>* Not in the inference table; reached via a BED track line <code>type=gcnv</code> or an explicit type.</td></tr>
+        <tr><td class="k"><b>pytor</b></td><td class="k">cnvpytor</td><td class="cls">CNVPytorTrack</td><td>HDF5 reader</td><td>Experimental.</td></tr>
+        <tr><td class="k"><b>shoebox</b></td><td class="k">annotation**</td><td class="cls">ShoeboxTrack</td><td>decodeShoebox</td><td>** Needs explicit <code>type: "shoebox"</code>.</td></tr>
+
+        <tr class="group"><td colspan="5">Interactions and structure</td></tr>
+        <tr><td class="k"><b>bedpe</b>, <b>bedpe-loop</b>, <b>hiccups</b></td><td class="k">interact</td><td class="cls">InteractionTrack</td><td>decodeBedpe</td><td><code>hiccups</code> also sniffed from column names.</td></tr>
+        <tr><td class="k"><b>interact</b>, <b>biginteract</b>, <b>longrange</b></td><td class="k">interact</td><td class="cls">InteractionTrack</td><td>decodeInteract / BWSource / decodeLongrange</td><td></td></tr>
+        <tr><td class="k"><b>hic</b></td><td class="k">interact</td><td class="cls">InteractionTrack</td><td>HicSource</td><td>Adds normalization options to the menu.</td></tr>
+        <tr><td class="k"><b>bedpe-domain</b></td><td class="k">annotation**</td><td class="cls">FeatureTrack</td><td>decodeBedpeDomain</td><td>** Not in the inference table.</td></tr>
+        <tr><td class="k"><b>bp</b></td><td class="k">arc</td><td class="cls">RnaStructTrack</td><td>RnaStructTrack (built-in parser)</td><td>RNA secondary structure arcs.</td></tr>
+
+        <tr class="group"><td colspan="5">Association studies</td></tr>
+        <tr><td class="k"><b>gwas</b></td><td class="k">gwas</td><td class="cls">GWASTrack</td><td>GWASParser</td><td>Also sniffed from header columns.</td></tr>
+        <tr><td class="k"><b>qtl</b></td><td class="k">qtl</td><td class="cls">QTLTrack</td><td>QTLParser</td><td>Sniffed before GWAS, since GWAS headers also pass the QTL test.</td></tr>
+        <tr><td class="k"><b>gtexgwas</b></td><td class="k">annotation**</td><td class="cls">FeatureTrack</td><td>decodeGtexGWAS</td><td>** Set <code>type: "gwas"</code> to get the GWAS plot.</td></tr>
+
+        <tr class="group"><td colspan="5">Reference</td></tr>
+        <tr><td class="k"><b>fasta</b><span class="alias">fa, fna</span></td><td class="k">sequence</td><td class="cls">SequenceTrack</td><td>Indexed FASTA / 2bit</td><td>Usually created by the genome, not loaded as a track.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="meta">* resolved by reading the file header &nbsp;·&nbsp; ** falls through to <code>annotation</code>; set <code>type</code> explicitly for the dedicated track</p>
+</section>
+
+<!-- 4 -->
+<section>
+  <h2>Gear-menu items by track type</h2>
+  <div class="prose">
+    <p>The gear menu is assembled in <code>MenuUtils.trackMenuItemList()</code> (<span class="src">js/ui/menuUtils.js</span>). It wraps the track's own <code>menuItemList()</code> in a frame of common items, in this order:</p>
+    <ol>
+      <li><strong>Set track height</strong> (all but sequence)</li>
+      <li><strong>Set track name</strong> (all but sequence)</li>
+      <li><strong>Set / Unset track color</strong> if the type is in the color-picker set (<code>annotation</code>, <code>wig</code>, <code>alignment</code>, <code>variant</code>, <code>interact</code>, <code>shoebox</code>) and the graph isn't a heatmap; plus <strong>Set / Unset alt color</strong> for <code>wig</code> and <code>annotation</code></li>
+      <li>The track's own items (the last column below)</li>
+      <li><strong>Set visibility window</strong> if the type is <code>alignment</code>, <code>annotation</code>, <code>variant</code>, <code>qtl</code>, <code>eqtl</code>, <code>snp</code>, <code>shoebox</code> or <code>wig</code>, or the config sets <code>visibilityWindow</code></li>
+      <li><strong>Remove track</strong> unless <code>removable: false</code></li>
+    </ol>
+    <p>When several tracks are selected, the menu applies to all of them. If they share a type you get that type's full menu, and <code>wig</code> tracks also get <strong>Group autoscale</strong>. Mixed types get only height, color and remove. The ruler and ideogram have no gear menu.</p>
+  </div>
+
+  <div class="legend">
+    <span><span class="chip">Item</span> always shown</span>
+    <span><span class="chip cond">Item</span> shown only under the stated condition</span>
+    <span><span class="chip common">Data range group</span> = Set data range, Log scale (if supported), Autoscale; hidden for heatmaps</span>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Type string</th><th>Class</th><th>Color</th><th>Vis. window</th><th>Track-specific gear items</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="k"><b>annotation</b><span class="alias">feature, genes, snp, fusionjuncspan</span></td>
+          <td class="cls">FeatureTrack</td>
+          <td><span class="yes">color + alt</span><br><span class="no">only as "annotation"</span></td>
+          <td><span class="yes">yes</span></td>
+          <td><div class="chips">
+            <span class="chip">Collapse</span><span class="chip">Squish</span><span class="chip">Expand</span>
+            <span class="chip cond">Color by function / class (SNP renderer)</span>
+          </div></td>
+        </tr>
+        <tr>
+          <td class="k"><b>wig</b></td>
+          <td class="cls">WigTrack</td>
+          <td><span class="yes">color + alt</span><br><span class="no">not for heatmap</span></td>
+          <td><span class="yes">yes</span><br><span class="no">−1 = whole genome</span></td>
+          <td><div class="chips">
+            <span class="chip">Flip y-axis</span>
+            <span class="chip cond">Set color scale (heatmap)</span>
+            <span class="chip">Graph type: bar · line · points · heatmap · dynseq</span>
+            <span class="chip">Windowing function: mean · min · max · none</span>
+            <span class="chip common">Data range group</span>
+            <span class="chip cond">Group autoscale (multi-select)</span>
+          </div></td>
+        </tr>
+        <tr>
+          <td class="k"><b>alignment</b></td>
+          <td class="cls">BAMTrack</td>
+          <td><span class="yes">color</span></td>
+          <td><span class="yes">yes</span></td>
+          <td><div class="chips">
+            <span class="chip common">Data range group (coverage)</span>
+            <span class="chip">Color by: none · read strand · tag…</span>
+            <span class="chip cond">Color by: first-of-pair strand · pair orientation · insert size · pair orientation &amp; insert size (paired)</span>
+            <span class="chip cond">Color by: base modification (+ 2-color, per mod type) (MM/ML tags present)</span>
+            <span class="chip">Group by: none · strand · chimeric · supplementary flag · read order · tag…</span>
+            <span class="chip cond">Group by: first-of-pair strand · pair orientation · chromosome of mate (paired)</span>
+            <span class="chip">Show all bases</span><span class="chip">Show mismatches</span><span class="chip">Show insertions</span><span class="chip">Show soft clips</span>
+            <span class="chip cond">View as pairs (paired)</span>
+            <span class="chip cond">Add discordant pairs / split reads to circular view</span>
+            <span class="chip">Display mode: expanded · squished · full</span>
+            <span class="chip">Show Coverage</span><span class="chip">Show Alignments</span>
+          </div></td>
+        </tr>
+        <tr>
+          <td class="k"><b>variant</b></td>
+          <td class="cls">VariantTrack</td>
+          <td><span class="yes">color</span></td>
+          <td><span class="yes">yes</span></td>
+          <td><div class="chips">
+            <span class="chip cond">Color by: None · Allele frequency · Variant Type · SV Type · Info field… (INFO fields present)</span>
+            <span class="chip cond">Sort by attribute (sample info loaded)</span>
+            <span class="chip cond">Show Genotypes (has samples)</span>
+            <span class="chip">Collapse</span><span class="chip">Squish</span><span class="chip">Expand</span>
+            <span class="chip cond">Add SVs to circular view</span>
+            <span class="chip cond">Convert to CNVpytor track</span>
+          </div></td>
+        </tr>
+        <tr>
+          <td class="k"><b>seg</b></td>
+          <td class="cls">SegTrack</td>
+          <td><span class="no">no</span></td>
+          <td><span class="no">no</span></td>
+          <td><div class="chips">
+            <span class="chip cond">Sort by attribute (sample info loaded)</span>
+            <span class="chip">Group by attribute</span>
+            <span class="chip">Squish</span><span class="chip">Expand</span><span class="chip">Fill</span>
+          </div></td>
+        </tr>
+        <tr>
+          <td class="k"><b>mut</b><span class="alias">maf</span></td>
+          <td class="cls">SegTrack</td>
+          <td><span class="no">no</span></td>
+          <td><span class="no">no</span></td>
+          <td><div class="chips">
+            <span class="chip cond">Sort by attribute</span>
+            <span class="chip">Group by attribute</span>
+            <span class="chip">Squish</span><span class="chip">Expand</span>
+          </div></td>
+        </tr>
+        <tr>
+          <td class="k"><b>interact</b><span class="alias">interaction</span></td>
+          <td class="cls">InteractionTrack</td>
+          <td><span class="yes">color</span><br><span class="no">only as "interact"</span></td>
+          <td><span class="no">no</span></td>
+          <td><div class="chips">
+            <span class="chip cond">Arc type: Nested · Proportional (All / Both Ends in View / One End in View) (has values, not .hic)</span>
+            <span class="chip">Toggle arc direction</span>
+            <span class="chip">Show / Hide Blocks</span>
+            <span class="chip">Set line thickness</span>
+            <span class="chip">Set alpha</span>
+            <span class="chip cond">Use score (has values)</span>
+            <span class="chip cond">Normalization (.hic)</span>
+            <span class="chip cond">Data range group (proportional arcs)</span>
+            <span class="chip cond">Add interactions to circular view</span>
+          </div></td>
+        </tr>
+        <tr>
+          <td class="k"><b>qtl</b><span class="alias">eqtl</span></td>
+          <td class="cls">QTLTrack</td>
+          <td><span class="no">no</span></td>
+          <td><span class="yes">yes</span></td>
+          <td><div class="chips">
+            <span class="chip common">Data range group</span>
+            <span class="chip">Search for… (SNP or phenotype)</span>
+          </div></td>
+        </tr>
+        <tr>
+          <td class="k"><b>gwas</b></td>
+          <td class="cls">GWASTrack</td>
+          <td><span class="no">no</span></td>
+          <td><span class="no">no</span></td>
+          <td><div class="chips"><span class="chip common">Data range group</span></div></td>
+        </tr>
+        <tr>
+          <td class="k"><b>gcnv</b></td>
+          <td class="cls">GCNVTrack</td>
+          <td><span class="no">no</span></td>
+          <td><span class="no">no</span></td>
+          <td><div class="chips"><span class="chip common">Data range group</span></div></td>
+        </tr>
+        <tr>
+          <td class="k"><b>cnvpytor</b></td>
+          <td class="cls">CNVPytorTrack</td>
+          <td><span class="no">no</span></td>
+          <td><span class="no">no</span></td>
+          <td><div class="chips">
+            <span class="chip">Flip y-axis</span>
+            <span class="chip common">Data range group</span>
+            <span class="chip">Bin sizes</span><span class="chip">Signal type</span><span class="chip">CNV caller</span>
+            <span class="chip cond">Convert to variant track</span>
+          </div></td>
+        </tr>
+        <tr>
+          <td class="k"><b>shoebox</b></td>
+          <td class="cls">ShoeboxTrack</td>
+          <td><span class="yes">color</span></td>
+          <td><span class="yes">yes</span></td>
+          <td><div class="chips"><span class="chip">Set row height</span><span class="chip">Set data range</span></div></td>
+        </tr>
+        <tr>
+          <td class="k"><b>merged</b></td>
+          <td class="cls">MergedTrack</td>
+          <td><span class="no">no</span></td>
+          <td><span class="no">no</span></td>
+          <td><div class="chips">
+            <span class="chip cond">Flip y-axis · Data range group (has numeric sub-tracks)</span>
+            <span class="chip">Set transparency</span>
+            <span class="chip">Separate tracks</span>
+          </div></td>
+        </tr>
+        <tr>
+          <td class="k"><b>junction</b><span class="alias">junctions, splicejunctions</span></td>
+          <td class="cls">SpliceJunctionTrack</td>
+          <td><span class="no">no</span></td>
+          <td><span class="no">no</span></td>
+          <td><div class="chips"><span class="chip none">none: height, name and remove only</span></div></td>
+        </tr>
+        <tr>
+          <td class="k"><b>arc</b></td>
+          <td class="cls">RnaStructTrack</td>
+          <td><span class="no">no</span></td>
+          <td><span class="no">no</span></td>
+          <td><div class="chips"><span class="chip">Toggle arc direction</span></div></td>
+        </tr>
+        <tr>
+          <td class="k"><b>blat</b></td>
+          <td class="cls">BlatTrack<span>extends FeatureTrack</span></td>
+          <td><span class="no">no</span></td>
+          <td><span class="no">no</span></td>
+          <td><div class="chips">
+            <span class="chip">Collapse</span><span class="chip">Squish</span><span class="chip">Expand</span>
+            <span class="chip">Open table view</span>
+          </div></td>
+        </tr>
+        <tr>
+          <td class="k"><b>sequence</b></td>
+          <td class="cls">SequenceTrack</td>
+          <td><span class="no">no</span></td>
+          <td><span class="no">no</span></td>
+          <td><div class="chips">
+            <span class="chip">Forward / Reverse</span>
+            <span class="chip">Three-frame Translate / Close Translation</span>
+          </div><span class="no" style="font-size:0.8rem">No height or rename items.</span></td>
+        </tr>
+        <tr>
+          <td class="k"><b>image</b></td>
+          <td class="cls">ImageTrack</td>
+          <td><span class="no">no</span></td>
+          <td><span class="no">no</span></td>
+          <td><div class="chips"><span class="chip none">none</span></div></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="note prose">
+    <p><strong>Right-click menus are separate.</strong> Several tracks also implement <code>contextMenuItemList(clickState)</code>, shown on right-click over data rather than from the gear: annotation (View / Copy feature sequence), alignment (Group / Sort by base, View / Copy / BLAT read and soft-clipped sequence, View mate in split screen), variant (Sort by genotype), seg (Sort by value / count), interact and qtl (circular view, Highlight associated features), and sequence.</p>
+  </div>
+</section>
+
+<!-- 5 -->
+<section>
+  <h2>Pitfalls in how the two interact</h2>
+  <div class="prose">
+    <p>The factory maps aliases to classes, but the menu builder tests the raw <code>track.type</code> string. So two configs that produce the same class can produce different menus. These came out of reading the code for this document and are worth checking against intent.</p>
+  </div>
+  <div class="quirks">
+    <div class="quirk"><strong>Annotation aliases lose the color picker.</strong> <code>type: "annotation"</code> gets Set track color and Set alt color. <code>type: "feature"</code>, <code>"genes"</code> or <code>"snp"</code> build the same FeatureTrack with neither, because only <code>annotation</code> is in <code>colorPickerTrackTypeSet</code>. Inferred types are always <code>annotation</code>, so this only bites hand-written configs and sessions.</div>
+    <div class="quirk"><strong>Same for interactions.</strong> <code>interact</code> gets a color picker, <code>interaction</code> does not.</div>
+    <div class="quirk"><strong>maf/mut lose Fill.</strong> SegTrack offers Fill only when <code>this.type === "seg"</code>.</div>
+    <div class="quirk"><strong>The visibility-window list names types that are aliases.</strong> <code>snp</code> and <code>eqtl</code> get the item, but <code>genes</code>, <code>feature</code> and <code>interact</code> do not unless the config sets <code>visibilityWindow</code>.</div>
+    <div class="quirk"><strong><code>bedtype</code> in the color-picker set is dead.</strong> It is a placeholder that <code>createTrack</code> always resolves before a track exists, so no track ever has it.</div>
+    <div class="quirk"><strong>Some formats parse fine but never reach their dedicated track by inference.</strong> <code>shoebox</code>, <code>gtexgwas</code>, <code>bedpe-domain</code> and <code>gcnv</code> (without a <code>type=gcnv</code> track line) are not inferred from their extension, so they need an explicit <code>format</code>. Even then <code>inferTrackType</code> sends them to <code>annotation</code>, so the user must also set <code>type</code>.</div>
+    <div class="quirk"><strong>An explicit type is trusted.</strong> <code>config.type</code> skips inference entirely, so a mismatched pair (say, <code>type: "wig"</code> on a VCF) builds the wrong class with no check at load time that the class can draw that data.</div>
+  </div>
+</section>
+
+<!-- 6 -->
+<section>
+  <h2>Three configs, side by side</h2>
+  <div class="example-grid">
+    <div class="example">
+      <h3>Format and type both inferred</h3>
+<pre>{
+  url: "https://…/H3K27ac.bigWig"
+}</pre>
+      <p>Extension → <code>bigwig</code> → <code>wig</code> → WigTrack read by BWSource. Session saves <code>type: "wig"</code>.</p>
+    </div>
+    <div class="example">
+      <h3>Type decided by the file</h3>
+<pre>{
+  url: "https://…/loops.bb"
+}</pre>
+      <p><code>bigbed</code> → <code>bedtype</code> → header read; autoSql table <code>interact</code> → InteractionTrack, not FeatureTrack.</p>
+    </div>
+    <div class="example">
+      <h3>Format given, type overridden</h3>
+<pre>{
+  url: "https://…/sj.bed.gz",
+  indexURL: "https://…/sj.bed.gz.tbi",
+  format: "bed",
+  type: "junction"
+}</pre>
+      <p>Parsed with the BED decoder but drawn as splice-junction arcs. Inference alone would have produced an annotation track.</p>
+    </div>
+  </div>
+</section>
+
+<footer class="prose">
+  <p class="meta">Sources: js/browser.js (createTrack) · js/util/fileFormatUtils.js · js/util/trackUtils.js · js/trackFactory.js · js/feature/featureSource.js · js/feature/featureParser.js · js/ui/menuUtils.js · js/trackBase.js (numericDataMenuItems) · each track class's menuItemList()</p>
+</footer>
+
+</main>
+</body>
+</html>
