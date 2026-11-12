@@ -18,6 +18,8 @@ The tools the Connector gives the model, and how each is used. The wording the m
 | [`set_data_range`](#set_data_range) | Sets the data range, autoscale and log scale of one, several or all tracks |
 | [`set_signal_style`](#set_signal_style) | Sets the graph type, window function, flipped axis and heatmap color scale of one, several or all wig tracks |
 | [`set_display_mode`](#set_display_mode) | Sets how the rows of one, several or all annotation, variant, alignment and seg tracks are laid out |
+| [`set_color_by`](#set_color_by) | Sets what one, several or all alignment, variant and SNP annotation tracks are colored by |
+| [`group_reads`](#group_reads) | Groups the reads of one, several or all alignment tracks |
 | [`set_crosshairs`](#set_crosshairs-and-set_centre_line), [`set_centre_line`](#set_crosshairs-and-set_centre_line) | Shows or hides the crosshairs, or the centre line |
 | [`set_controls`](#set_controls) | Shows or hides the Controls: the Navigation bar and, unless the Viewer is Embedded, the Shareable URL |
 | [`read_session_summary`](#read_session_summary) | Reads what igv-bot is showing, changing nothing |
@@ -29,7 +31,7 @@ The tools the Connector gives the model, and how each is used. The wording the m
 
 **The reply.** Every tool but `open_viewer` replies with the Session summary: the genome, the loci, the tracks in display order (name, Track type, URL, height in whole pixels and `options`), whether the crosshairs and centre line are showing, and whether the controls are. A person also changes the Viewer by hand, and the model is not told when they do: the Session summary of the latest reply is how it learns.
 
-A track's type is igv.js's canonical name for its Track type, with igv.js's aliases folded in: genes, feature, snp and fusionjuncspan read `annotation`; interaction reads `interact`; maf and mut read `seg`; eqtl reads `qtl`; junctions and splicejunctions read `junction`. A track's `options` holds the Track options a track tool sets, each as igv.js saves it (but a display mode in lower case, as `set_display_mode` takes it), and only those set on the track in the Session; it is left out when there are none. The tools that add to it say so.
+A track's type is igv.js's canonical name for its Track type, with igv.js's aliases folded in: genes, feature, snp and fusionjuncspan read `annotation`; interaction reads `interact`; maf and mut read `seg`; eqtl reads `qtl`; junctions and splicejunctions read `junction`. A track's `options` holds the Track options a track tool sets, each as igv.js saves it (but a display mode in lower case, as `set_display_mode` takes it, and a color-by or grouping as `set_color_by` and `group_reads` take it), and only those set on the track in the Session; it is left out when there are none. The tools that add to it say so.
 
 **Notes.** When a Command was carried out other than as asked, the reply begins `Note:`, ahead of the Session summary: one short statement of fact from the Viewer, the only party that knows the live track (ADR 0006). The model passes it on to the person in a sentence of its own. With no note, the model confirms the change in a few words and explains nothing. The server's MCP `instructions` say so. Each tool that can give a note says so in its own description too, because some Hosts may never show `instructions` to the model (see [`host-instructions.md`](host-instructions.md)). A request that cannot be carried out is still an error, not a note. The tools that give notes list them.
 
@@ -323,6 +325,69 @@ The Session summary gives it in the track's `options` as `displayMode`, in lower
 - A wig track has no display mode: the error points to [`set_signal_style`](#set_signal_style)'s `graphType`. Other Track types are errors naming the four that have one.
 - `full` gives every read of an alignment track a row of its own, unpacked; `fill` stretches a seg track's samples to the track's height.
 - Notes: `all` passed over tracks that do not offer the mode, each with why (`Passed over by all: "Conservation" is a wig track, which has no display mode: how it is drawn is set by set_signal_style's graphType.`); every track already had it, so nothing changed (`"Refseq All" already had display mode squished, so nothing changed.`).
+
+### `set_color_by`
+
+As igv.js's own "Color by" menus: an alignment track's, a variant track's and an SNP track's.
+
+| Argument | |
+| --- | --- |
+| `by` | `none`, `strand`, `firstOfPairStrand`, `pairOrientation`, `tlen`, `unexpectedPair`, `tag`, `info`, `function` or `class` |
+| `tag` | With `by: "tag"`, the read tag, such as `HP`; with `by: "info"`, the INFO field, such as `AF`. Required with those two, an error with any other |
+| `names` | The names of the tracks, each as in [Addressing a track](#what-every-tool-shares) |
+| `positions` | And or instead their positions, counted from 1 at the top |
+| `all` | `true` for every track that offers it, in place of `names` and `positions` |
+
+The Session summary gives it in the track's `options` as `colorBy`, and a tag or INFO field as `colorByTag`, as the tool takes them: igv.js saves a read tag as `tag:HP` and a variant track's INFO field bare. igv.js gives an alignment track a color-by once its reads are first drawn, `unexpectedPair` where they are paired and `none` where not. A variant track with none recorded colors by `AF` where its file has the field, until its Session is first restored. A color-by or grouping no tool sets, such as an annotation track's feature attribute or a seg track's sample grouping, is not given.
+
+```text
+"color the reads by strand"                 set_color_by { by: "strand", names: ["HG00103"] }
+"color reads by haplotype"                  set_color_by { by: "tag", tag: "HP", positions: [3] }
+"color the variants by allele frequency"    set_color_by { by: "info", tag: "AF", all: true }
+"color the SNPs by class"                   set_color_by { by: "class", names: ["dbSNP"] }
+```
+
+- What each Track type offers is that of its igv.js menu:
+
+  | Track type | `by` |
+  | --- | --- |
+  | alignment | `none`, `strand`, `firstOfPairStrand`, `pairOrientation`, `tlen`, `unexpectedPair`, `tag`; the four of paired reads only where its reads are paired |
+  | variant | `none`, `info` |
+  | SNP annotation (`snp`) | `function`, `class` |
+
+- One the track's type does not offer is an error naming those it does (`"HG00103" is an alignment track, which offers color-by none, strand, firstOfPairStrand, pairOrientation, tlen, unexpectedPair and tag, not info.`). One no type offers, or a `tag` missing or out of place, is an error whatever the tracks.
+- A pair color-by on an alignment track whose reads have loaded unpaired is an error naming those they offer. While the reads are still loading it is taken: igv.js has yet to see whether they are paired.
+- A read tag is two characters, a letter then a letter or digit, as SAM spells them. An INFO field the variant file does not declare is an error naming those it does.
+- A wig track has no color-by: the error points to [`set_track_color`](#set_track_color). So has an annotation track not of SNPs, and the error says so; every other Track type is an error naming the three that have one, and `set_track_color` where it colors the track.
+- An SNP track's color-by is not kept in the Session: igv.js colors one by `function` whenever it loads it, so a reload gives back `function`, and the Session summary does not give it.
+- `none` on a variant track is saved as `none`, where igv.js's own menu saves nothing, so the Session summary gives it.
+- Base-modification coloring is left out of v1 (ADR 0005).
+- Notes: `all` passed over tracks that do not offer it, each with why; every track already had it, so nothing changed (`"HG00103" already had color-by tag HP, so nothing changed.`).
+
+### `group_reads`
+
+As igv.js's own alignment "Group by" menu: each group of reads is drawn apart, under its label.
+
+| Argument | |
+| --- | --- |
+| `by` | `none`, `strand`, `firstOfPairStrand`, `pairOrientation`, `mateChr`, `chimeric`, `supplementary`, `readOrder` or `tag` |
+| `tag` | With `by: "tag"`, the read tag, such as `RG`. Required with it, an error with any other |
+| `names` | The names of the tracks, each as in [Addressing a track](#what-every-tool-shares) |
+| `positions` | And or instead their positions, counted from 1 at the top |
+| `all` | `true` for every alignment track, in place of `names` and `positions` |
+
+The Session summary gives it in the track's `options` as `groupBy`, and a tag as `groupByTag`, as the tool takes them. A track without one is not grouped. A grouping by the base or insertion at a position, made by hand from igv.js's right-click menu, is given as igv.js saves it, such as `base:chr8:127,736,231`.
+
+```text
+"group the reads by strand"                 group_reads { by: "strand", names: ["HG00103"] }
+"split reads by read group"                 group_reads { by: "tag", tag: "RG", all: true }
+"ungroup the reads"                         group_reads { by: "none", positions: [3] }
+```
+
+- Only alignment tracks have reads to group: any other track is an error.
+- `firstOfPairStrand`, `pairOrientation` and `mateChr` are igv.js's groupings of paired reads: on reads loaded unpaired they are an error naming those the reads offer. While the reads are still loading they are taken.
+- Grouping by the base or insertion at a position is left out: it takes a position, as a right-click sort does (ADR 0005).
+- Notes: `all` passed over tracks that are not alignment tracks, each with why; every track already had the grouping, so nothing changed (`"HG00103" already had its reads grouped by strand, so nothing changed.`).
 
 ## Crosshairs and centre line
 

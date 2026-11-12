@@ -67,7 +67,7 @@ export function colorsAsked({ color, altColor }: TrackColors): TrackColors {
  * The Track types igv.js's menu offers "Set track color" on (`colorPickerTrackTypeSet`), as
  * canonical names. The others read a color, if at all, only from the config they are loaded with.
  */
-const COLORED_TYPES: ReadonlySet<string> = new Set(['annotation', 'alignment', 'variant', 'wig', 'interact', 'shoebox'])
+export const COLORED_TYPES: ReadonlySet<string> = new Set(['annotation', 'alignment', 'variant', 'wig', 'interact', 'shoebox'])
 
 /** The Track types igv.js's menu offers "Set alt color" on: for a wig track's negative values, an annotation track's minus-strand features. */
 const ALT_COLORED_TYPES: ReadonlySet<string> = new Set(['wig', 'annotation'])

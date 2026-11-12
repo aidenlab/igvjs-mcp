@@ -2,13 +2,15 @@ import type { Command, CommandAnswer, CommandOutcome, CommandType, TrackAddress,
 import { displayOrder, sessionLoci, sessionSummary, trackSummaries, type Session } from './session.ts'
 import { shareableUrl, type SessionCompressor } from './shareableUrl.ts'
 import { addressTrack } from './trackAddress.ts'
+import { colorByAsked, colorByNote, colorByTool, type ColorByAsk } from './trackColorBy.ts'
 import { colorNote, colorsAsked, colorTool, sameColor, UNSET, type ColorChange, type TrackColors } from './trackColor.ts'
 import { dataRangeAsked, dataRangeNote, dataRangeTool, fixedRange, nestedArcs, type DataRange, type DataRangeAsk, type DataRangeChange } from './trackDataRange.ts'
 import { displayModeAsked, displayModeNote, displayModeTool, type DisplayModeChange } from './trackDisplayMode.ts'
+import { groupReadsAsked, groupReadsNote, groupReadsTool, type GroupReadsAsk } from './trackGroupReads.ts'
 import { changedHeight, checkHeight, heightNote, type HeightChange } from './trackHeight.ts'
 import { checkRenamable, newTrackName, renameNote } from './trackName.ts'
 import { colorScaleFor, DEFAULT_GRAPH_TYPE, sameColorScale, signalStyleAsked, signalStyleNote, signalStyleTool, type ColorScale, type SignalStyleAsk, type SignalStyleChange } from './trackSignalStyle.ts'
-import { joinedNotes, passedOverNote, trackTargets, type TrackTool } from './trackTools.ts'
+import { joinedNotes, passedOverNote, trackTargets, type ByChange, type LiveTrack, type TrackTool } from './trackTools.ts'
 
 /**
  * The part of an igv.js browser the commands use. igv.js's own typings are
@@ -106,8 +108,12 @@ interface BrowserTrack {
   displayMode?: string
   /** Lays out a seg track's group labels again: what igv.js's own display mode menu does after a change. */
   createGroupLabels?(): void
-  /** An alignment track's reads, which have the display mode: the track itself is their coverage and reads together. */
-  alignmentTrack?: { displayMode?: string }
+  /** An alignment track's reads, which have the display mode, color-by and grouping: the track itself is their coverage and reads together. */
+  alignmentTrack?: AlignmentReads
+  /** A variant track's file header: the INFO fields it declares, by name. */
+  header?: { INFO?: { [field: string]: unknown } }
+  /** The ways of coloring a variant track's menu lists, by key: igv.js's "Info field..." adds the field it is given. */
+  _colorByItems?: Map<string, string>
   /** An alignment track's reads, one container per locus in view: an empty array where they are not yet loaded. */
   getCachedAlignmentContainers?(): Array<{ pack?(reads: object): void } | undefined>
   /** What the track was loaded with, much of which a Session saves. */
@@ -122,6 +128,22 @@ interface BrowserTrack {
     /** Fetches what is in view, if need be, and draws the track again. */
     updateViews(): Promise<void> | void
   }
+}
+
+/** An alignment track's reads, as igv.js's AlignmentTrack keeps them. */
+interface AlignmentReads {
+  /** As igv.js spells it: "EXPANDED", "SQUISHED" or "FULL". */
+  displayMode?: string
+  /** As igv.js keys it, a read tag as "tag:HP". Undefined until the reads are first drawn. */
+  colorBy?: string
+  /** As igv.js keys it, a read tag as "tag:RG". Undefined for none. */
+  groupBy?: string
+  /** False until reads that are paired have loaded. */
+  hasPairs?: boolean
+  /** The read tags igv.js's "Group by" menu lists. */
+  _groupByTags?: string[]
+  /** A copy of the track's config, which a Session saves beside it. */
+  config?: { [field: string]: unknown }
 }
 
 /** What a command does to igv.js, or to the Controls around it. One that asks for an answer returns it. */
@@ -439,6 +461,97 @@ function setDisplayMode(browser: GenomeBrowser, { mode, ...selection }: { mode: 
   if (note) return { note }
 }
 
+/** What the live `track` knows that its Session summary does not. */
+function liveTrack(track: BrowserTrack): LiveTrack {
+  const reads = track.alignmentTrack
+  // Reads loaded in any locus in view: until then igv.js has not seen whether they are paired.
+  const loaded = (track.getCachedAlignmentContainers?.() ?? []).some(Boolean)
+  return {
+    igvType: track.type,
+    ...(reads && loaded ? { pairs: reads.hasPairs === true } : {}),
+    ...(track.header ? { infoFields: Object.keys(track.header.INFO ?? {}) } : {}),
+  }
+}
+
+/**
+ * Writes `fields` into the configs of an alignment track and of its reads: igv.js's Session
+ * saves both, the reads' over the track's, each where getState does not update it.
+ */
+function keepInReadsSession(track: BrowserTrack, reads: AlignmentReads, fields: { [field: string]: unknown }): void {
+  keepInSession(track, fields)
+  if (reads.config) Object.assign(reads.config, fields)
+}
+
+/** Gives `track` the color-by, as igv.js's own "Color by" menus do. */
+function recolorBy(track: BrowserTrack, name: string, { by, tag }: ColorByAsk): ByChange {
+  const reads = track.alignmentTrack
+  let unchanged: boolean
+  if (reads) {
+    const colorBy = by === 'tag' ? `tag:${tag}` : by
+    unchanged = reads.colorBy === colorBy
+    reads.colorBy = colorBy
+    // A track loaded with colorBy "tag" and a colorByTag is saved with both: a reload would read "tag:HP:HP".
+    keepInReadsSession(track, reads, { colorByTag: undefined })
+  } else if (track.type === 'variant') {
+    // As igv.js's own menu, but none is kept as "none", where the menu keeps nothing, so the Session summary can say so.
+    const colorBy = by === 'info' ? tag! : 'none'
+    unchanged = (track.colorBy ?? 'none') === colorBy
+    track.colorBy = colorBy
+    keepInSession(track, { colorBy })
+    // As igv.js's "Info field...": the menu lists the field from now on, under its own label where it has one.
+    if (by === 'info' && !track._colorByItems?.has(colorBy)) track._colorByItems?.set(colorBy, colorBy)
+  } else {
+    // An SNP track. igv.js colors one by function whenever it loads one, so no Session keeps this.
+    unchanged = track.colorBy === by
+    track.colorBy = by
+  }
+  track.trackView.repaintViews()
+  return { name, unchanged }
+}
+
+function setColorBy(browser: GenomeBrowser, { by, tag, ...selection }: ColorByAsk & TrackSelection): CommandAnswer | void {
+  // Before any track is looked at: a color-by that is an error is one whatever tracks it is for.
+  const asked = colorByAsked({ by, tag })
+  const session = captureSession(browser)
+  const summarized = trackSummaries(session)
+  const tracks = summarizedTracks(browser, session)
+  const { targets, passedOver } = trackTargets(summarized, selection, colorByTool(asked, (index) => liveTrack(tracks[index])))
+
+  const changes = targets.map((index) => recolorBy(tracks[index], summarized[index].name, asked))
+  const note = joinedNotes(colorByNote(asked, changes), passedOverNote(passedOver))
+  if (note) return { note }
+}
+
+/** Groups the reads of `track`, an alignment track, as igv.js's own "Group by" menu does. */
+function regroup(track: BrowserTrack, name: string, { by, tag }: GroupReadsAsk): ByChange {
+  const reads = track.alignmentTrack!
+  const groupBy = by === 'none' ? undefined : by === 'tag' ? `tag:${tag}` : by
+  const unchanged = reads.groupBy === groupBy
+  reads.groupBy = groupBy
+  // As igv.js's "tag...": the menu lists the tag from now on.
+  if (tag !== undefined && reads._groupByTags && !reads._groupByTags.includes(tag)) reads._groupByTags.push(tag)
+  // Or a reload would bring back the grouping the track was loaded with: none is no grouping saved.
+  keepInReadsSession(track, reads, { groupBy })
+  // As igv.js's repackAlignments, but for reads not yet loaded, which it would fail on: those are packed as they load.
+  for (const container of track.getCachedAlignmentContainers?.() ?? []) container?.pack?.(reads)
+  track.trackView.checkContentHeight()
+  track.trackView.repaintViews()
+  return { name, unchanged }
+}
+
+function groupReads(browser: GenomeBrowser, { by, tag, ...selection }: GroupReadsAsk & TrackSelection): CommandAnswer | void {
+  // Before any track is looked at: a grouping that is an error is one whatever tracks it is for.
+  const asked = groupReadsAsked({ by, tag })
+  const session = captureSession(browser)
+  const summarized = trackSummaries(session)
+  const tracks = summarizedTracks(browser, session)
+  const { targets, passedOver } = trackTargets(summarized, selection, groupReadsTool(asked, (index) => liveTrack(tracks[index])))
+
+  const changes = targets.map((index) => regroup(tracks[index], summarized[index].name, asked))
+  const note = joinedNotes(groupReadsNote(asked, changes), passedOverNote(passedOver))
+  if (note) return { note }
+}
+
 /** Whether igv.js is in its whole-genome view, which the Session summary gives as the locus "all". */
 function inWholeGenomeView(browser: GenomeBrowser): boolean {
   return sessionLoci(captureSession(browser))[0] === 'all'
@@ -483,6 +596,8 @@ const APPLIERS: { [T in CommandType]: Applier<T> } = {
   set_data_range: setDataRange,
   set_signal_style: setSignalStyle,
   set_display_mode: setDisplayMode,
+  set_color_by: setColorBy,
+  group_reads: groupReads,
   set_crosshairs: (browser, { show }) => setCrosshairs(browser, show),
   set_centre_line: (browser, { show }) => setCentreLine(browser, show),
   // The same call as the Controls' own button.

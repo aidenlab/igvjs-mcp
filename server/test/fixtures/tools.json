@@ -495,6 +495,117 @@
     }
   },
   {
+    "name": "set_color_by",
+    "title": "Set color-by",
+    "description": "Set what the features of one, several or all tracks of igv-bot are colored by, as igv.js's own \"Color by\" menus do. An alignment track colors its reads by none, strand (read strand), firstOfPairStrand, pairOrientation, tlen (insert size), unexpectedPair (pair orientation and insert size) or tag, a read tag given as tag, such as HP; the four of paired reads only where its reads are paired. A variant track colors by none or info, an INFO field of its file given as tag, such as AF (allele frequency), VT or SVTYPE. An annotation track of SNPs colors by function or class. Other tracks have no color-by: their color is set_track_color's. Address the tracks by their names, by their positions in the tracks of the Session summary, counted from 1 at the top, or pass all for every track that offers it. Change every track a request means in one call. The user also reorders and changes tracks by hand, so take positions from the Session summary of the reply just before, or call read_session_summary first. A call is all or nothing: a track named or placed that does not offer it is an error naming what it does offer, and nothing is changed. The Session summary gives a track's color-by as its options' colorBy, and a tag or INFO field as colorByTag; an SNP track's is not kept in the Session, and igv.js colors it by function again when it is reloaded. A reply begins with a note when all passed over tracks that do not offer it, or when every track already had it, so nothing changed. The reply is the resulting Session summary: genome, loci, and tracks in display order. When the reply begins with \"Note:\", the request was carried out other than as asked: tell the person in one sentence of your own what was done and why; otherwise just confirm the change in a few words.",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {
+        "by": {
+          "description": "What to color by: none, strand, firstOfPairStrand, pairOrientation, tlen, unexpectedPair or tag for alignment tracks; none or info for variant tracks; function or class for annotation tracks of SNPs",
+          "type": "string",
+          "enum": [
+            "none",
+            "strand",
+            "firstOfPairStrand",
+            "pairOrientation",
+            "tlen",
+            "unexpectedPair",
+            "tag",
+            "info",
+            "function",
+            "class"
+          ]
+        },
+        "tag": {
+          "description": "With by tag, the read tag to color by, such as HP; with by info, the INFO field, such as AF. Left out otherwise.",
+          "type": "string"
+        },
+        "names": {
+          "description": "The names of the tracks as the Session summary gives them. Case does not matter.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "positions": {
+          "description": "The positions of the tracks in the tracks of the Session summary: 1 is the top track",
+          "type": "array",
+          "items": {
+            "type": "number"
+          }
+        },
+        "all": {
+          "description": "True for every track that offers it, in place of names and positions",
+          "type": "boolean"
+        },
+        "room": {
+          "description": "The Room id igv-bot was opened with, as given in the reply of open_viewer. Pass it on every call.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "by"
+      ]
+    }
+  },
+  {
+    "name": "group_reads",
+    "title": "Group reads",
+    "description": "Group the reads of one, several or all alignment tracks of igv-bot, as igv.js's own \"Group by\" menu does: each group is drawn apart, under its label. Group by none (no grouping), strand (read strand), firstOfPairStrand, pairOrientation, mateChr (chromosome of the mate), chimeric, supplementary (supplementary flag), readOrder or tag, a read tag given as tag, such as RG or HP; the three of paired reads only where the reads are paired. Only alignment tracks have reads to group. Address the tracks by their names, by their positions in the tracks of the Session summary, counted from 1 at the top, or pass all for every alignment track. Change every track a request means in one call. The user also reorders and changes tracks by hand, so take positions from the Session summary of the reply just before, or call read_session_summary first. A call is all or nothing: a track named or placed that is not an alignment track, or whose reads do not offer the grouping, is an error, and nothing is changed. The Session summary gives a track's grouping as its options' groupBy, and a tag as groupByTag; a track without one is not grouped. A reply begins with a note when all passed over tracks that are not alignment tracks, or when every track already had the grouping, so nothing changed. The reply is the resulting Session summary: genome, loci, and tracks in display order. When the reply begins with \"Note:\", the request was carried out other than as asked: tell the person in one sentence of your own what was done and why; otherwise just confirm the change in a few words.",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {
+        "by": {
+          "description": "What to group the reads by: none, strand, firstOfPairStrand, pairOrientation, mateChr, chimeric, supplementary, readOrder or tag",
+          "type": "string",
+          "enum": [
+            "none",
+            "strand",
+            "firstOfPairStrand",
+            "pairOrientation",
+            "mateChr",
+            "chimeric",
+            "supplementary",
+            "readOrder",
+            "tag"
+          ]
+        },
+        "tag": {
+          "description": "With by tag, the read tag to group by, such as RG. Left out otherwise.",
+          "type": "string"
+        },
+        "names": {
+          "description": "The names of the tracks as the Session summary gives them. Case does not matter.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "positions": {
+          "description": "The positions of the tracks in the tracks of the Session summary: 1 is the top track",
+          "type": "array",
+          "items": {
+            "type": "number"
+          }
+        },
+        "all": {
+          "description": "True for every alignment track, in place of names and positions",
+          "type": "boolean"
+        },
+        "room": {
+          "description": "The Room id igv-bot was opened with, as given in the reply of open_viewer. Pass it on every call.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "by"
+      ]
+    }
+  },
+  {
     "name": "set_crosshairs",
     "title": "Show or hide the crosshairs",
     "description": "Show or hide igv-bot's crosshairs: a vertical and a horizontal line that follow the pointer across the tracks. The Session summary says whether they are showing, as crosshairs; the user also turns them on and off by hand. The whole-genome view has no crosshairs: showing them there is an error, so go to a locus or gene first, and going to the whole-genome view hides them. The reply is the resulting Session summary: genome, loci, and tracks in display order.",

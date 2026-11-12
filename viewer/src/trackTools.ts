@@ -69,3 +69,41 @@ export function joinedNotes(...notes: Array<string | undefined>): string | undef
   const given = notes.filter((note): note is string => note !== undefined)
   return given.length > 0 ? given.join(' ') : undefined
 }
+
+/**
+ * What the live track knows that its Session summary does not: igv.js's own name for its
+ * Track type, which tells an SNP track from other annotation tracks; for an alignment track,
+ * whether its reads are paired, undefined until they load; for a variant track, the INFO
+ * fields its file declares, undefined until its header is read.
+ */
+export interface LiveTrack {
+  igvType?: string
+  pairs?: boolean
+  infoFields?: string[]
+}
+
+/** What a color-by or grouping call asks for: a way of coloring or grouping, and the tag or INFO field where it needs one. */
+export interface ByAsk {
+  by: string
+  tag?: string
+}
+
+/** "strand", "tag HP": a way of coloring or grouping, with its tag. */
+export function byWithTag({ by, tag }: ByAsk): string {
+  return tag === undefined ? by : `${by} ${tag}`
+}
+
+/** A read tag as SAM spells them: two characters, a letter then a letter or digit. */
+const READ_TAG = /^[A-Za-z][A-Za-z0-9]$/
+
+/** An error unless `tag`, given with group or color-by tag, is a read tag. */
+export function checkReadTag(tag: string): void {
+  if (!READ_TAG.test(tag)) throw new Error(`"${tag}" is no read tag: a read tag is two characters, a letter then a letter or digit, such as HP.`)
+}
+
+/** What a color-by or grouping change did to one track, named as the Session summary names it. */
+export interface ByChange {
+  name: string
+  /** True when the track already had it. */
+  unchanged: boolean
+}

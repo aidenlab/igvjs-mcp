@@ -62,6 +62,8 @@ export type Command =
   | ({ type: 'set_data_range'; min?: number; max?: number; autoscale?: boolean; logScale?: boolean } & TrackSelection)
   | ({ type: 'set_signal_style'; graphType?: string; windowFunction?: string; flipAxis?: boolean; colorScale?: ColorScaleAsk } & TrackSelection)
   | ({ type: 'set_display_mode'; mode: string } & TrackSelection)
+  | ({ type: 'set_color_by'; by: string; tag?: string } & TrackSelection)
+  | ({ type: 'group_reads'; by: string; tag?: string } & TrackSelection)
   | { type: 'set_crosshairs'; show: boolean }
   | { type: 'set_centre_line'; show: boolean }
   | { type: 'set_controls'; show: boolean }
@@ -80,6 +82,16 @@ export const WINDOW_FUNCTIONS = ['mean', 'min', 'max', 'none'] as const
  * squished, expanded and, for seg proper, fill. Lower case, as igv.js's alignment menu spells them.
  */
 export const DISPLAY_MODES = ['collapsed', 'squished', 'expanded', 'full', 'fill'] as const
+
+/**
+ * What igv.js's "Color by" menus color a track by, on one Track type or another, each as igv.js
+ * keys it: an alignment track's none, strand, the four of paired reads and tag; a variant track's
+ * none and an INFO field; an SNP track's function and class. Base modifications are left out of v1.
+ */
+export const COLOR_BY = ['none', 'strand', 'firstOfPairStrand', 'pairOrientation', 'tlen', 'unexpectedPair', 'tag', 'info', 'function', 'class'] as const
+
+/** What igv.js's alignment "Group by" menu groups reads by, each as igv.js keys it. Grouping by a base or insertion at a position is left out. */
+export const GROUP_BY = ['none', 'strand', 'firstOfPairStrand', 'pairOrientation', 'mateChr', 'chimeric', 'supplementary', 'readOrder', 'tag'] as const
 
 /** The two kinds of color scale igv.js's "Set color scale" edits. */
 export const COLOR_SCALE_TYPES = ['gradient', 'diverging'] as const
