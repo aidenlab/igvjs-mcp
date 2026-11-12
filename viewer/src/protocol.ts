@@ -65,6 +65,7 @@ export type Command =
   | ({ type: 'set_color_by'; by: string; tag?: string } & TrackSelection)
   | ({ type: 'group_reads'; by: string; tag?: string } & TrackSelection)
   | ({ type: 'show_track_parts' } & PartsAsk & TrackSelection)
+  | ({ type: 'set_visibility_window'; window: number } & TrackSelection)
   | { type: 'set_crosshairs'; show: boolean }
   | { type: 'set_centre_line'; show: boolean }
   | { type: 'set_controls'; show: boolean }

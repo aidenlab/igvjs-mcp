@@ -139,6 +139,22 @@ describe('sessionSummary', () => {
     expect(summaryOf(session({ tracks })).tracks.map((track) => track.options)).toEqual([{ displayMode: 'squished' }, { displayMode: 'full' }])
   })
 
+  it("gives the visibility window a track's saved state records, on the Track types set_visibility_window sets it on", () => {
+    const tracks = [
+      { name: 'genes', type: 'genes', visibilityWindow: 100000, order: 1, height: 50 },
+      { name: 'calls', type: 'variant', visibilityWindow: 1000000, order: 2, height: 50 },
+      { name: 'reads', type: 'alignment', visibilityWindow: 0, order: 3, height: 300 },
+      { name: 'signal', type: 'wig', visibilityWindow: -1, order: 4, height: 50 },
+    ]
+
+    expect(summaryOf(session({ tracks })).tracks.map((track) => track.options)).toEqual([
+      { visibilityWindow: 100000 },
+      { visibilityWindow: 1000000 },
+      { visibilityWindow: 0 },
+      undefined,
+    ])
+  })
+
   it('gives color-by and grouping as set_color_by and group_reads take them, a tag as its own field', () => {
     const tracks = [
       // As igv.js saves an alignment track loaded with colorBy "tag" and colorByTag "HP": its config's colorByTag beside.

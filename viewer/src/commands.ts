@@ -10,6 +10,7 @@ import { groupReadsAsked, groupReadsNote, groupReadsTool, type GroupReadsAsk } f
 import { changedHeight, checkHeight, heightNote, type HeightChange } from './trackHeight.ts'
 import { checkRenamable, newTrackName, renameNote } from './trackName.ts'
 import { colorScaleFor, DEFAULT_GRAPH_TYPE, sameColorScale, signalStyleAsked, signalStyleNote, signalStyleTool, type ColorScale, type SignalStyleAsk, type SignalStyleChange } from './trackSignalStyle.ts'
+import { VISIBILITY_WINDOW_TOOL, visibilityWindowAsked, visibilityWindowNote } from './trackVisibilityWindow.ts'
 import { partsAsked, partsNote, partsTool, type LiveParts, type PartsAsk } from './trackParts.ts'
 import { joinedNotes, passedOverNote, trackTargets, type ByChange, type LiveTrack, type TrackTool } from './trackTools.ts'
 
@@ -36,8 +37,10 @@ export interface GenomeBrowser extends SessionCompressor {
   setCenterLineVisibility(show: boolean): void
   /** Fetches and draws every track again: what autoscales a track. */
   updateViews(): Promise<void> | void
-  /** One per locus in view, side by side. */
-  referenceFrameList: Array<{ bpPerPixel: number }>
+  /** One per locus in view, side by side: chr is "all" in the whole-genome view. */
+  referenceFrameList: Array<{ bpPerPixel: number; chr?: string }>
+  /** The width in pixels of each locus's view when `count` are side by side. */
+  calculateViewportWidth?(count: number): number
   /** Tells igv.js's listeners, the Viewer's among them, of a change. */
   fireEvent(event: string, args: unknown[]): void
   /** igv.js's own buttons, each lit while what it toggles is showing. */
@@ -134,6 +137,8 @@ interface BrowserTrack {
   _colorByItems?: Map<string, string>
   /** An alignment track's reads, one container per locus in view: an empty array where they are not yet loaded. */
   getCachedAlignmentContainers?(): Array<{ pack?(reads: object): void } | undefined>
+  /** The widest view, in bp, in which the track's features are loaded and drawn: 0 or less for the whole chromosome. */
+  visibilityWindow?: number
   /** What the track was loaded with, much of which a Session saves. */
   config?: { [field: string]: unknown }
   getState?: () => object
@@ -650,6 +655,39 @@ function showTrackParts(browser: GenomeBrowser, { names, positions, all, ...part
   if (note) return { note }
 }
 
+/** Gives `track` the visibility window, as igv.js's own "Set visibility window" does. */
+function rewindow(track: BrowserTrack, name: string, window: number): ByChange {
+  // igv.js reads 0 or less as the whole chromosome, and its own dialog saves -1 for an empty answer.
+  const unchanged = track.visibilityWindow !== undefined && Math.max(track.visibilityWindow, 0) === window
+  track.visibilityWindow = window
+  keepInSession(track, { visibilityWindow: window })
+  // Not waited for, as igv.js's own menu does not: a wider window, or a whole chromosome, can be a long load.
+  void track.trackView.updateViews()
+  return { name, unchanged }
+}
+
+/** The widest locus in view, in bp, as igv.js measures it against a window; undefined in the whole-genome view, where none applies. */
+function widestLocus(browser: GenomeBrowser): number | undefined {
+  const frames = browser.referenceFrameList
+  if (frames.some(({ chr }) => chr?.toLowerCase() === 'all')) return undefined
+  const width = browser.calculateViewportWidth?.(frames.length)
+  if (width === undefined) return undefined
+  return Math.max(...frames.map(({ bpPerPixel }) => bpPerPixel * width))
+}
+
+function setVisibilityWindow(browser: GenomeBrowser, { window, ...selection }: { window: number } & TrackSelection): CommandAnswer | void {
+  // Before any track is looked at: a window that is an error is one whatever tracks it is for.
+  const checked = visibilityWindowAsked(window)
+  const session = captureSession(browser)
+  const summarized = trackSummaries(session)
+  const tracks = summarizedTracks(browser, session)
+  const { targets, passedOver } = trackTargets(summarized, selection, VISIBILITY_WINDOW_TOOL)
+
+  const changes = targets.map((index) => rewindow(tracks[index], summarized[index].name, checked))
+  const note = joinedNotes(visibilityWindowNote(checked, changes, widestLocus(browser)), passedOverNote(passedOver))
+  if (note) return { note }
+}
+
 /** Whether igv.js is in its whole-genome view, which the Session summary gives as the locus "all". */
 function inWholeGenomeView(browser: GenomeBrowser): boolean {
   return sessionLoci(captureSession(browser))[0] === 'all'
@@ -697,6 +735,7 @@ const APPLIERS: { [T in CommandType]: Applier<T> } = {
   set_color_by: setColorBy,
   group_reads: groupReads,
   show_track_parts: showTrackParts,
+  set_visibility_window: setVisibilityWindow,
   set_crosshairs: (browser, { show }) => setCrosshairs(browser, show),
   set_centre_line: (browser, { show }) => setCentreLine(browser, show),
   // The same call as the Controls' own button.
