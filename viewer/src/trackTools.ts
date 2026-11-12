@@ -46,7 +46,7 @@ export function trackTargets(tracks: TrackSummary[], selection: TrackSelection, 
 /** The note when all passed over tracks the tool does not apply to (ADR 0006). Pure. Undefined when it passed over none. */
 export function passedOverNote(passedOver: string[]): string | undefined {
   if (passedOver.length === 0) return undefined
-  return `all passed over ${passedOver.length} track${passedOver.length === 1 ? '' : 's'}: ${passedOver.join(' ')}`
+  return `Passed over by all: ${passedOver.join(' ')}`
 }
 
 /** The notes of a reply as one, or none. */

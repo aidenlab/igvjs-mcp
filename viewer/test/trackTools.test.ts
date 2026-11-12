@@ -57,12 +57,12 @@ describe('the note when all passed over tracks', () => {
   })
 
   it('gives why the one was passed over', () => {
-    expect(passedOverNote(['"Copy number" is a seg track, which has no alt color.'])).toBe('all passed over 1 track: "Copy number" is a seg track, which has no alt color.')
+    expect(passedOverNote(['"Copy number" is a seg track, which has no alt color.'])).toBe('Passed over by all: "Copy number" is a seg track, which has no alt color.')
   })
 
   it('gives why each was passed over', () => {
     expect(passedOverNote(['"Copy number" is a seg track, which has no alt color.', '"Variants" is a variant track, which has no alt color.'])).toBe(
-      'all passed over 2 tracks: "Copy number" is a seg track, which has no alt color. "Variants" is a variant track, which has no alt color.',
+      'Passed over by all: "Copy number" is a seg track, which has no alt color. "Variants" is a variant track, which has no alt color.',
     )
   })
 })

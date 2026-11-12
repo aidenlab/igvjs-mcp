@@ -221,7 +221,7 @@ Either color or both, each as `"#RRGGBB"` (or `"#RGB"`) or `"rgb(R, G, B)"`, or 
 - Only wig and annotation tracks take an `altColor`.
 - A wig track drawn as a heatmap takes neither: it is an error pointing to `set_signal_style`'s `colorScale`.
 - A color in any other form, a CSS name among them, is an error giving the forms.
-- Notes: `all` passed over tracks that do not take the colors, each with why (`all passed over 1 track: "Copy number" is a seg track, which igv.js gives no track color.`); a variant track colored by an attribute is drawn in the one color from then on, as igv.js's own color does (`"Variants" is no longer colored by AF: it is drawn in the color asked for.`); every track already had the colors, so nothing changed (`"Refseq All" already had that color, so nothing changed.`).
+- Notes: `all` passed over tracks that do not take the colors, each with why (`Passed over by all: "Copy number" is a seg track, which igv.js gives no track color.`); a variant track colored by an attribute is drawn in the one color from then on, as igv.js's own color does (`"Variants" is no longer colored by AF: it is drawn in the color asked for.`); every track already had the colors, so nothing changed (`"Refseq All" already had that color, so nothing changed.`).
 
 ## Crosshairs and centre line
 
