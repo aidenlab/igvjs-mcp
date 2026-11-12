@@ -448,6 +448,53 @@
     }
   },
   {
+    "name": "set_display_mode",
+    "title": "Set display mode",
+    "description": "Set how the rows of one, several or all tracks of igv-bot are laid out, as igv.js's own display mode menu does. collapsed draws every feature on one row; squished on rows packed thin; expanded on full-height rows, with labels; full, for an alignment track, gives every read a row of its own, unpacked; fill, for a seg track, stretches its samples to fill the track's height. Annotation and variant tracks offer collapsed, squished and expanded; alignment tracks expanded, squished and full; seg tracks squished, expanded and fill, though a seg track of mutations offers no fill. A wig (signal) track has no display mode: how it is drawn is set_signal_style's graphType. Address the tracks by their names, by their positions in the tracks of the Session summary, counted from 1 at the top, or pass all for every track that offers the mode. Change every track a request means in one call. The user also reorders and changes tracks by hand, so take positions from the Session summary of the reply just before, or call read_session_summary first. A call is all or nothing: a track named or placed that does not offer the mode is an error naming the modes it does, and nothing is changed. The Session summary gives a track's display mode as its options' displayMode; a track without one is expanded, igv.js's default. A reply begins with a note when all passed over tracks that do not offer the mode, or when every track already had it, so nothing changed. The reply is the resulting Session summary: genome, loci, and tracks in display order. When the reply begins with \"Note:\", the request was carried out other than as asked: tell the person in one sentence of your own what was done and why; otherwise just confirm the change in a few words.",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {
+        "mode": {
+          "description": "How the rows are laid out: collapsed, squished and expanded for annotation and variant tracks; expanded, squished and full for alignment tracks; squished, expanded and fill for seg tracks",
+          "type": "string",
+          "enum": [
+            "collapsed",
+            "squished",
+            "expanded",
+            "full",
+            "fill"
+          ]
+        },
+        "names": {
+          "description": "The names of the tracks as the Session summary gives them. Case does not matter.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "positions": {
+          "description": "The positions of the tracks in the tracks of the Session summary: 1 is the top track",
+          "type": "array",
+          "items": {
+            "type": "number"
+          }
+        },
+        "all": {
+          "description": "True for every track that offers the mode, in place of names and positions",
+          "type": "boolean"
+        },
+        "room": {
+          "description": "The Room id igv-bot was opened with, as given in the reply of open_viewer. Pass it on every call.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "mode"
+      ]
+    }
+  },
+  {
     "name": "set_crosshairs",
     "title": "Show or hide the crosshairs",
     "description": "Show or hide igv-bot's crosshairs: a vertical and a horizontal line that follow the pointer across the tracks. The Session summary says whether they are showing, as crosshairs; the user also turns them on and off by hand. The whole-genome view has no crosshairs: showing them there is an error, so go to a locus or gene first, and going to the whole-genome view hides them. The reply is the resulting Session summary: genome, loci, and tracks in display order.",

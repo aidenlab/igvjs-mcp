@@ -65,12 +65,17 @@ function trackType(type: string): string {
  * track carries only the ones set on it. Grows as each track tool lands; height is not here,
  * as every track summary gives it.
  */
-const TOOL_TRACK_OPTIONS: readonly string[] = ['color', 'altColor', 'min', 'max', 'autoscale', 'logScale', 'graphType', 'windowFunction', 'flipAxis', 'colorScale']
+const TOOL_TRACK_OPTIONS: readonly string[] = ['color', 'altColor', 'min', 'max', 'autoscale', 'logScale', 'graphType', 'windowFunction', 'flipAxis', 'colorScale', 'displayMode']
+
+/** A Track option as the Session summary gives it: a display mode in lower case, as set_display_mode takes it, not as igv.js saves it. */
+function optionValue(option: string, value: unknown): unknown {
+  return option === 'displayMode' && typeof value === 'string' ? value.toLowerCase() : value
+}
 
 /** The Track options of `track` that a track tool controls, or none when it records none. */
 function trackOptions(track: SessionTrack): TrackOptions | undefined {
   const recorded = TOOL_TRACK_OPTIONS.filter((option) => track[option] !== undefined)
-  return recorded.length > 0 ? Object.fromEntries(recorded.map((option) => [option, track[option]])) : undefined
+  return recorded.length > 0 ? Object.fromEntries(recorded.map((option) => [option, optionValue(option, track[option])])) : undefined
 }
 
 /** The tracks of the Session summary for `session`, in display order. */

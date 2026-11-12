@@ -7,6 +7,16 @@ export function listed(names: string[]): string {
   return quoted.length === 1 ? quoted[0] : `${quoted.slice(0, -1).join(', ')} and ${quoted[quoted.length - 1]}`
 }
 
+/** "a, b or c", or with `and`: "a, b and c". */
+export function either(values: readonly string[], word = 'or'): string {
+  return values.length === 1 ? values[0] : `${values.slice(0, -1).join(', ')} ${word} ${values[values.length - 1]}`
+}
+
+/** An error naming the legal values when `value`, a `what`, is none of them. */
+export function checkOneOf(what: string, value: string | undefined, legal: readonly string[]): void {
+  if (value !== undefined && !legal.includes(value)) throw new Error(`"${value}" is no ${what}: give ${either(legal)}.`)
+}
+
 /** "a seg track", "an alignment track". */
 export function aTrack(type: string): string {
   return `${/^[aeiou]/.test(type) ? 'an' : 'a'} ${type} track`

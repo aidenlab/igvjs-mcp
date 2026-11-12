@@ -87,6 +87,8 @@ describe('a command tool with a Viewer in the Room', () => {
       { graphType: 'heatmap', colorScale: { min: -1, mid: 0, max: 1, midColor: '#ffffff' }, positions: [2] },
       { type: 'set_signal_style', graphType: 'heatmap', colorScale: { min: -1, mid: 0, max: 1, midColor: '#ffffff' }, positions: [2] },
     ],
+    ['set_display_mode', { mode: 'squished', names: ['Refseq All'] }, { type: 'set_display_mode', mode: 'squished', names: ['Refseq All'] }],
+    ['set_display_mode', { mode: 'expanded', all: true }, { type: 'set_display_mode', mode: 'expanded', all: true }],
     ['set_crosshairs', { show: true }, { type: 'set_crosshairs', show: true }],
     ['set_crosshairs', { show: false }, { type: 'set_crosshairs', show: false }],
     ['set_centre_line', { show: true }, { type: 'set_centre_line', show: true }],

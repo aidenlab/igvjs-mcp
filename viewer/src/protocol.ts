@@ -61,6 +61,7 @@ export type Command =
   | ({ type: 'set_track_color'; color?: string; altColor?: string } & TrackSelection)
   | ({ type: 'set_data_range'; min?: number; max?: number; autoscale?: boolean; logScale?: boolean } & TrackSelection)
   | ({ type: 'set_signal_style'; graphType?: string; windowFunction?: string; flipAxis?: boolean; colorScale?: ColorScaleAsk } & TrackSelection)
+  | ({ type: 'set_display_mode'; mode: string } & TrackSelection)
   | { type: 'set_crosshairs'; show: boolean }
   | { type: 'set_centre_line'; show: boolean }
   | { type: 'set_controls'; show: boolean }
@@ -72,6 +73,13 @@ export const GRAPH_TYPES = ['bar', 'line', 'points', 'heatmap', 'dynseq'] as con
 
 /** The window functions igv.js's wig sources offer (`windowFunctions`). A track offers those its source does. */
 export const WINDOW_FUNCTIONS = ['mean', 'min', 'max', 'none'] as const
+
+/**
+ * The display modes igv.js's track menus offer, on one Track type or another: annotation and
+ * variant offer collapsed, squished and expanded; alignment expanded, squished and full; seg
+ * squished, expanded and, for seg proper, fill. Lower case, as igv.js's alignment menu spells them.
+ */
+export const DISPLAY_MODES = ['collapsed', 'squished', 'expanded', 'full', 'fill'] as const
 
 /** The two kinds of color scale igv.js's "Set color scale" edits. */
 export const COLOR_SCALE_TYPES = ['gradient', 'diverging'] as const

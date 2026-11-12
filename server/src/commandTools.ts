@@ -1,5 +1,5 @@
 import { z, type ZodRawShape } from 'zod'
-import { COLOR_SCALE_TYPES, GRAPH_TYPES, WINDOW_FUNCTIONS, type CommandType } from 'igvjs-mcp-viewer/protocol'
+import { COLOR_SCALE_TYPES, DISPLAY_MODES, GRAPH_TYPES, WINDOW_FUNCTIONS, type CommandType } from 'igvjs-mcp-viewer/protocol'
 
 /**
  * A tool whose whole job is to send the Viewer one command. Its arguments are
@@ -190,6 +190,19 @@ export const COMMAND_TOOLS: CommandTool[] = [
       all: z.boolean().optional().describe('True for every track that takes what is given, in place of names and positions'),
     },
     commandType: 'set_signal_style',
+  },
+  {
+    name: 'set_display_mode',
+    title: 'Set display mode',
+    description: `Set how the rows of one, several or all tracks of igv-bot are laid out, as igv.js's own display mode menu does. collapsed draws every feature on one row; squished on rows packed thin; expanded on full-height rows, with labels; full, for an alignment track, gives every read a row of its own, unpacked; fill, for a seg track, stretches its samples to fill the track's height. Annotation and variant tracks offer collapsed, squished and expanded; alignment tracks expanded, squished and full; seg tracks squished, expanded and fill, though a seg track of mutations offers no fill. A wig (signal) track has no display mode: how it is drawn is set_signal_style's graphType. Address the tracks by their names, by their positions in the tracks of the Session summary, counted from 1 at the top, or pass all for every track that offers the mode. Change every track a request means in one call. The user also reorders and changes tracks by hand, so take positions from the Session summary of the reply just before, or call read_session_summary first. A call is all or nothing: a track named or placed that does not offer the mode is an error naming the modes it does, and nothing is changed. The Session summary gives a track's display mode as its options' displayMode; a track without one is expanded, igv.js's default. A reply begins with a note when all passed over tracks that do not offer the mode, or when every track already had it, so nothing changed. ${REPLY} ${NOTE_LINE}`,
+    inputSchema: {
+      mode: z.enum(DISPLAY_MODES).describe('How the rows are laid out: collapsed, squished and expanded for annotation and variant tracks; expanded, squished and full for alignment tracks; squished, expanded and fill for seg tracks'),
+      names: z.array(z.string()).optional().describe('The names of the tracks as the Session summary gives them. Case does not matter.'),
+      // Any numbers: one that is no position is answered by the Viewer, which can list the tracks.
+      positions: z.array(z.number()).optional().describe('The positions of the tracks in the tracks of the Session summary: 1 is the top track'),
+      all: z.boolean().optional().describe('True for every track that offers the mode, in place of names and positions'),
+    },
+    commandType: 'set_display_mode',
   },
   {
     name: 'set_crosshairs',

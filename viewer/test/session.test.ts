@@ -130,6 +130,15 @@ describe('sessionSummary', () => {
     expect(summaryOf(session({ tracks })).tracks[0].options).toEqual({ graphType: 'heatmap', windowFunction: 'max', flipAxis: true, colorScale })
   })
 
+  it("gives the display mode a track's saved state records in lower case, as set_display_mode takes it", () => {
+    const tracks = [
+      { name: 'genes', type: 'annotation', displayMode: 'SQUISHED', order: 1, height: 50 },
+      { name: 'reads', type: 'alignment', displayMode: 'FULL', order: 2, height: 300 },
+    ]
+
+    expect(summaryOf(session({ tracks })).tracks.map((track) => track.options)).toEqual([{ displayMode: 'squished' }, { displayMode: 'full' }])
+  })
+
   it('gives a height in whole pixels: "shorter" leaves a track a part of a pixel', () => {
     const tracks = [
       { name: 'two thirds of 50', type: 'wig', order: 1, height: 33.333333333333336 },
