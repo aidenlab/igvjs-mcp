@@ -64,6 +64,7 @@ export type Command =
   | ({ type: 'set_display_mode'; mode: string } & TrackSelection)
   | ({ type: 'set_color_by'; by: string; tag?: string } & TrackSelection)
   | ({ type: 'group_reads'; by: string; tag?: string } & TrackSelection)
+  | ({ type: 'show_track_parts' } & PartsAsk & TrackSelection)
   | { type: 'set_crosshairs'; show: boolean }
   | { type: 'set_centre_line'; show: boolean }
   | { type: 'set_controls'; show: boolean }
@@ -92,6 +93,19 @@ export const COLOR_BY = ['none', 'strand', 'firstOfPairStrand', 'pairOrientation
 
 /** What igv.js's alignment "Group by" menu groups reads by, each as igv.js keys it. Grouping by a base or insertion at a position is left out. */
 export const GROUP_BY = ['none', 'strand', 'firstOfPairStrand', 'pairOrientation', 'mateChr', 'chimeric', 'supplementary', 'readOrder', 'tag'] as const
+
+/**
+ * The parts of a track igv.js's menus show and hide, each as igv.js names the option: an alignment
+ * track's coverage and alignments ("Show Coverage", "Show Alignments") and how its reads are drawn
+ * ("View as pairs", "Show mismatches", "Show soft clips", "Show insertions"); a variant track's
+ * genotypes ("Show Genotypes").
+ */
+export const ALIGNMENT_PARTS = ['showCoverage', 'showAlignments', 'viewAsPairs', 'showMismatches', 'showSoftClips', 'showInsertions'] as const
+export const VARIANT_PARTS = ['showGenotypes'] as const
+export const TRACK_PARTS = [...ALIGNMENT_PARTS, ...VARIANT_PARTS] as const
+
+/** What a show_track_parts call asks for: each part given, shown (true) or hidden (false). */
+export type PartsAsk = { [part in (typeof TRACK_PARTS)[number]]?: boolean }
 
 /** The two kinds of color scale igv.js's "Set color scale" edits. */
 export const COLOR_SCALE_TYPES = ['gradient', 'diverging'] as const

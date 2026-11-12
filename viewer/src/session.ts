@@ -1,4 +1,4 @@
-import type { SessionSummary, TrackOptions, TrackSummary, ViewerSettings } from './protocol.ts'
+import { ALIGNMENT_PARTS, TRACK_PARTS, VARIANT_PARTS, type SessionSummary, type TrackOptions, type TrackSummary, type ViewerSettings } from './protocol.ts'
 
 /** One track of a Session: the fields the Session summary reads. igv.js writes many more. */
 export interface SessionTrack {
@@ -65,7 +65,7 @@ function trackType(type: string): string {
  * track carries only the ones set on it. Grows as each track tool lands; height is not here,
  * as every track summary gives it.
  */
-const TOOL_TRACK_OPTIONS: readonly string[] = ['color', 'altColor', 'min', 'max', 'autoscale', 'logScale', 'graphType', 'windowFunction', 'flipAxis', 'colorScale', 'displayMode', 'colorBy', 'groupBy']
+const TOOL_TRACK_OPTIONS: readonly string[] = ['color', 'altColor', 'min', 'max', 'autoscale', 'logScale', 'graphType', 'windowFunction', 'flipAxis', 'colorScale', 'displayMode', 'colorBy', 'groupBy', ...TRACK_PARTS]
 
 /**
  * A color-by or grouping as set_color_by and group_reads take it, `option` naming it: igv.js
@@ -93,11 +93,14 @@ function optionFields(option: string, value: unknown, type: string): TrackOption
 /**
  * The igv.js Track types, before aliases are folded, whose colorBy and groupBy are set_color_by's
  * and group_reads': a plain annotation track's colorBy names a feature attribute, a seg track's
- * groupBy a sample attribute, and no tool sets those.
+ * groupBy a sample attribute, and no tool sets those. The parts show_track_parts shows or hides
+ * are those of alignment and variant tracks only, whatever else a track was loaded with.
  */
 const SET_BY_TOOL: Readonly<Record<string, readonly string[]>> = {
   colorBy: ['alignment', 'variant', 'snp'],
   groupBy: ['alignment'],
+  ...Object.fromEntries(ALIGNMENT_PARTS.map((part) => [part, ['alignment']])),
+  ...Object.fromEntries(VARIANT_PARTS.map((part) => [part, ['variant']])),
 }
 
 /** Whether `option` of a track of igv.js's Track type `igvType` is one a track tool sets. */

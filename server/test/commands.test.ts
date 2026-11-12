@@ -93,6 +93,8 @@ describe('a command tool with a Viewer in the Room', () => {
     ['set_color_by', { by: 'info', tag: 'AF', all: true }, { type: 'set_color_by', by: 'info', tag: 'AF', all: true }],
     ['group_reads', { by: 'tag', tag: 'RG', positions: [3] }, { type: 'group_reads', by: 'tag', tag: 'RG', positions: [3] }],
     ['group_reads', { by: 'none', all: true }, { type: 'group_reads', by: 'none', all: true }],
+    ['show_track_parts', { showCoverage: false, viewAsPairs: true, names: ['HG00103'] }, { type: 'show_track_parts', showCoverage: false, viewAsPairs: true, names: ['HG00103'] }],
+    ['show_track_parts', { showGenotypes: false, all: true }, { type: 'show_track_parts', showGenotypes: false, all: true }],
     ['set_crosshairs', { show: true }, { type: 'set_crosshairs', show: true }],
     ['set_crosshairs', { show: false }, { type: 'set_crosshairs', show: false }],
     ['set_centre_line', { show: true }, { type: 'set_centre_line', show: true }],
