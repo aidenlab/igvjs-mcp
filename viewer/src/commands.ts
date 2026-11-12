@@ -1,4 +1,4 @@
-import type { Command, CommandAnswer, CommandOutcome, CommandType, TrackAddress, TrackHeight, TrackSelection, TrackToLoad, ViewerSettings } from './protocol.ts'
+import { READS_PARTS, type Command, type CommandAnswer, type CommandOutcome, type CommandType, type TrackAddress, type TrackHeight, type TrackSelection, type TrackToLoad, type ViewerSettings } from './protocol.ts'
 import { displayOrder, sessionLoci, sessionSummary, trackSummaries, type Session } from './session.ts'
 import { shareableUrl, type SessionCompressor } from './shareableUrl.ts'
 import { addressTrack } from './trackAddress.ts'
@@ -10,6 +10,7 @@ import { groupReadsAsked, groupReadsNote, groupReadsTool, type GroupReadsAsk } f
 import { changedHeight, checkHeight, heightNote, type HeightChange } from './trackHeight.ts'
 import { checkRenamable, newTrackName, renameNote } from './trackName.ts'
 import { colorScaleFor, DEFAULT_GRAPH_TYPE, sameColorScale, signalStyleAsked, signalStyleNote, signalStyleTool, type ColorScale, type SignalStyleAsk, type SignalStyleChange } from './trackSignalStyle.ts'
+import { partsAsked, partsNote, partsTool, type LiveParts, type PartsAsk } from './trackParts.ts'
 import { joinedNotes, passedOverNote, trackTargets, type ByChange, type LiveTrack, type TrackTool } from './trackTools.ts'
 
 /**
@@ -44,6 +45,14 @@ export interface GenomeBrowser extends SessionCompressor {
     cursorGuideButton: NavbarButton
     centerLineButton: NavbarButton
   }
+  /** igv.js's buttons that show and hide the column of sample names and of sample info beside the tracks. */
+  sampleNameControl?: SampleControl
+  sampleInfoControl?: SampleControl
+}
+
+interface SampleControl {
+  /** Shows the column, or hides it: what igv.js's "Show Genotypes" does with a variant track's. */
+  performClickWithState(browser: GenomeBrowser, show: boolean): void
 }
 
 /** The part of the Controls the commands use. See `controls.ts`. */
@@ -110,6 +119,15 @@ interface BrowserTrack {
   createGroupLabels?(): void
   /** An alignment track's reads, which have the display mode, color-by and grouping: the track itself is their coverage and reads together. */
   alignmentTrack?: AlignmentReads
+  /** An alignment track's coverage and reads: each drawn while true. */
+  showCoverage?: boolean
+  showAlignments?: boolean
+  /** The height of an alignment track's coverage. */
+  coverageTrackHeight?: number
+  /** A variant track's genotypes: drawn while not false. */
+  showGenotypes?: boolean
+  /** How many samples a variant track's file has: none until its header is read. */
+  getSampleCount?(): number
   /** A variant track's file header: the INFO fields it declares, by name. */
   header?: { INFO?: { [field: string]: unknown } }
   /** The ways of coloring a variant track's menu lists, by key: igv.js's "Info field..." adds the field it is given. */
@@ -138,6 +156,13 @@ interface AlignmentReads {
   colorBy?: string
   /** As igv.js keys it, a read tag as "tag:RG". Undefined for none. */
   groupBy?: string
+  /** How the reads are drawn, each as igv.js's own menu checks it. */
+  viewAsPairs?: boolean
+  showMismatches?: boolean
+  showSoftClips?: boolean
+  showInsertions?: boolean
+  /** The height of the reads beneath the coverage. */
+  height?: number
   /** False until reads that are paired have loaded. */
   hasPairs?: boolean
   /** The read tags igv.js's "Group by" menu lists. */
@@ -552,6 +577,79 @@ function groupReads(browser: GenomeBrowser, { by, tag, ...selection }: GroupRead
   if (note) return { note }
 }
 
+/** What the live `track` knows of its parts that its Session summary may not give. */
+function liveParts(track: BrowserTrack): LiveParts {
+  const reads = track.alignmentTrack
+  if (reads) {
+    const { pairs } = liveTrack(track)
+    return { ...(pairs !== undefined ? { pairs } : {}), groupBy: reads.groupBy, showCoverage: track.showCoverage, showAlignments: track.showAlignments }
+  }
+  // A variant track has its samples once its header is read.
+  return track.header && track.getSampleCount ? { samples: track.getSampleCount() } : {}
+}
+
+/** What igv.js draws the reads with until told otherwise (AlignmentTrack.defaults). */
+const READS_PARTS_SHOWN: Readonly<Record<(typeof READS_PARTS)[number], boolean>> = {
+  viewAsPairs: false,
+  showMismatches: true,
+  showSoftClips: false,
+  showInsertions: true,
+}
+
+/** Shows and hides the parts of `track` as `asked`, as igv.js's own menu items do. */
+function reshowParts(browser: GenomeBrowser, track: BrowserTrack, name: string, asked: PartsAsk): ByChange {
+  const reads = track.alignmentTrack
+  let unchanged = true
+  if (reads) {
+    for (const part of ['showCoverage', 'showAlignments'] as const) {
+      const shown = asked[part]
+      if (shown === undefined) continue
+      unchanged &&= track[part] === shown
+      track[part] = shown
+      // The reads' config is saved over the track's, and carries what the track was loaded with.
+      keepInReadsSession(track, reads, { [part]: shown })
+    }
+    for (const part of READS_PARTS) {
+      const shown = asked[part]
+      if (shown === undefined) continue
+      unchanged &&= (reads[part] ?? READS_PARTS_SHOWN[part]) === shown
+      reads[part] = shown
+    }
+    // As igv.js's "Show Coverage" and "Show Alignments": the track keeps to what it draws, unless it fits what it holds.
+    if ((asked.showCoverage !== undefined || asked.showAlignments !== undefined) && !track.autoHeight) {
+      track.trackView.setTrackHeight((track.showCoverage ? (track.coverageTrackHeight ?? 0) : 0) + (track.showAlignments ? (reads.height ?? 0) : 0))
+    }
+    // As igv.js's "View as pairs" and "Show soft clips", but for reads not yet loaded: those are packed as they load.
+    if (asked.viewAsPairs !== undefined || asked.showSoftClips !== undefined) {
+      for (const container of track.getCachedAlignmentContainers?.() ?? []) container?.pack?.(reads)
+    }
+  } else {
+    const shown = asked.showGenotypes!
+    unchanged = (track.showGenotypes !== false) === shown
+    track.showGenotypes = shown
+    // As igv.js's "Show Genotypes": the sample names and info beside the tracks are shown or hidden with them.
+    browser.sampleNameControl?.performClickWithState(browser, shown)
+    browser.sampleInfoControl?.performClickWithState(browser, shown)
+  }
+  track.trackView.checkContentHeight()
+  track.trackView.repaintViews()
+  return { name, unchanged }
+}
+
+function showTrackParts(browser: GenomeBrowser, { names, positions, all, ...parts }: PartsAsk & TrackSelection): CommandAnswer | void {
+  // Before any track is looked at: parts that are an error are one whatever tracks they are for.
+  const asked = partsAsked(parts)
+  const session = captureSession(browser)
+  const summarized = trackSummaries(session)
+  const tracks = summarizedTracks(browser, session)
+  const selection = { names, positions, all }
+  const { targets, passedOver } = trackTargets(summarized, selection, partsTool(asked, (index) => liveParts(tracks[index])))
+
+  const changes = targets.map((index) => reshowParts(browser, tracks[index], summarized[index].name, asked))
+  const note = joinedNotes(partsNote(asked, changes), passedOverNote(passedOver))
+  if (note) return { note }
+}
+
 /** Whether igv.js is in its whole-genome view, which the Session summary gives as the locus "all". */
 function inWholeGenomeView(browser: GenomeBrowser): boolean {
   return sessionLoci(captureSession(browser))[0] === 'all'
@@ -598,6 +696,7 @@ const APPLIERS: { [T in CommandType]: Applier<T> } = {
   set_display_mode: setDisplayMode,
   set_color_by: setColorBy,
   group_reads: groupReads,
+  show_track_parts: showTrackParts,
   set_crosshairs: (browser, { show }) => setCrosshairs(browser, show),
   set_centre_line: (browser, { show }) => setCentreLine(browser, show),
   // The same call as the Controls' own button.

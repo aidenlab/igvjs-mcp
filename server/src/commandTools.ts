@@ -233,6 +233,25 @@ export const COMMAND_TOOLS: CommandTool[] = [
     commandType: 'group_reads',
   },
   {
+    name: 'show_track_parts',
+    title: 'Show or hide track parts',
+    description: `Show or hide the parts of one, several or all tracks of igv-bot, as igv.js's own menus do: true shows a part, false hides it, and a part left out is left as it is. An alignment track's parts are showCoverage, the coverage above its reads, and showAlignments, the reads themselves, never both hidden; viewAsPairs, drawing the two reads of a pair joined on one row, only where its reads are paired and not grouped other than by firstOfPairStrand; and showMismatches, showSoftClips and showInsertions, how its reads are drawn. The alignment track is the one to address for its coverage: the coverage is no track of its own. A variant track's one part is showGenotypes, its samples' rows, where its file has samples. Other tracks have no parts. Address the tracks by their names, by their positions in the tracks of the Session summary, counted from 1 at the top, or pass all for every track that has the parts. Change every track a request means in one call; parts of alignment tracks and genotypes take two calls. The user also reorders and changes tracks by hand, so take positions from the Session summary of the reply just before, or call read_session_summary first. A call is all or nothing: a track named or placed that does not have every part given is an error, and nothing is changed. The Session summary gives a part shown or hidden in the track's options as the tool takes it, where igv.js saves it: a track without one has it as igv.js does unless told, every part shown but viewAsPairs and showSoftClips. A reply begins with a note when all passed over tracks that do not have the parts, or when every track already had them as asked, so nothing changed. ${REPLY} ${NOTE_LINE}`,
+    inputSchema: {
+      showCoverage: z.boolean().optional().describe("An alignment track's coverage: true shows it, false hides it"),
+      showAlignments: z.boolean().optional().describe("An alignment track's reads: true shows them, false hides them, leaving the coverage"),
+      viewAsPairs: z.boolean().optional().describe("True draws an alignment track's paired reads joined, each pair on one row; false draws each read apart"),
+      showMismatches: z.boolean().optional().describe("An alignment track's bases that differ from the reference: true colors them, false hides them"),
+      showSoftClips: z.boolean().optional().describe("An alignment track's soft-clipped bases, at the ends of reads: true shows them, false hides them"),
+      showInsertions: z.boolean().optional().describe("An alignment track's insertions: true marks them, false hides them"),
+      showGenotypes: z.boolean().optional().describe("A variant track's genotypes, a row for each sample: true shows them, false hides them"),
+      names: z.array(z.string()).optional().describe('The names of the tracks as the Session summary gives them. Case does not matter.'),
+      // Any numbers: one that is no position is answered by the Viewer, which can list the tracks.
+      positions: z.array(z.number()).optional().describe('The positions of the tracks in the tracks of the Session summary: 1 is the top track'),
+      all: z.boolean().optional().describe('True for every track that has the parts, in place of names and positions'),
+    },
+    commandType: 'show_track_parts',
+  },
+  {
     name: 'set_crosshairs',
     title: 'Show or hide the crosshairs',
     description: `Show or hide igv-bot's crosshairs: a vertical and a horizontal line that follow the pointer across the tracks. The Session summary says whether they are showing, as crosshairs; the user also turns them on and off by hand. The whole-genome view has no crosshairs: showing them there is an error, so go to a locus or gene first, and going to the whole-genome view hides them. ${REPLY}`,

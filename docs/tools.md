@@ -20,6 +20,7 @@ The tools the Connector gives the model, and how each is used. The wording the m
 | [`set_display_mode`](#set_display_mode) | Sets how the rows of one, several or all annotation, variant, alignment and seg tracks are laid out |
 | [`set_color_by`](#set_color_by) | Sets what one, several or all alignment, variant and SNP annotation tracks are colored by |
 | [`group_reads`](#group_reads) | Groups the reads of one, several or all alignment tracks |
+| [`show_track_parts`](#show_track_parts) | Shows or hides the coverage, alignments and read drawing of alignment tracks, and the genotypes of variant tracks |
 | [`set_crosshairs`](#set_crosshairs-and-set_centre_line), [`set_centre_line`](#set_crosshairs-and-set_centre_line) | Shows or hides the crosshairs, or the centre line |
 | [`set_controls`](#set_controls) | Shows or hides the Controls: the Navigation bar and, unless the Viewer is Embedded, the Shareable URL |
 | [`read_session_summary`](#read_session_summary) | Reads what igv-bot is showing, changing nothing |
@@ -388,6 +389,41 @@ The Session summary gives it in the track's `options` as `groupBy`, and a tag as
 - `firstOfPairStrand`, `pairOrientation` and `mateChr` are igv.js's groupings of paired reads: on reads loaded unpaired they are an error naming those the reads offer. While the reads are still loading they are taken.
 - Grouping by the base or insertion at a position is left out: it takes a position, as a right-click sort does (ADR 0005).
 - Notes: `all` passed over tracks that are not alignment tracks, each with why; every track already had the grouping, so nothing changed (`"HG00103" already had its reads grouped by strand, so nothing changed.`).
+
+### `show_track_parts`
+
+As igv.js's own checkboxes: an alignment track's "Show Coverage", "Show Alignments", "View as pairs", "Show mismatches", "Show soft clips" and "Show insertions", and a variant track's "Show Genotypes". `true` shows a part, `false` hides it, and a part left out is left as it is.
+
+| Argument | |
+| --- | --- |
+| `showCoverage` | An alignment track's coverage, above its reads |
+| `showAlignments` | An alignment track's reads |
+| `viewAsPairs` | `true` draws an alignment track's paired reads joined, each pair on one row |
+| `showMismatches` | An alignment track's bases that differ from the reference |
+| `showSoftClips` | An alignment track's soft-clipped bases, at the ends of its reads |
+| `showInsertions` | An alignment track's insertions |
+| `showGenotypes` | A variant track's genotypes, a row for each sample |
+| `names` | The names of the tracks, each as in [Addressing a track](#what-every-tool-shares) |
+| `positions` | And or instead their positions, counted from 1 at the top |
+| `all` | `true` for every track that has the parts, in place of `names` and `positions` |
+
+The alignment track is the one to address for its coverage: the coverage is no track of its own, and the model never addresses it apart (ADR 0005). The Session summary gives each part in the track's `options` under the tool's name for it, where igv.js saves it. A track without one has it as igv.js does by default: every part shown but `viewAsPairs` and `showSoftClips`. A part saved on a track whose type does not have it is not given.
+
+```text
+"hide the coverage"                         show_track_parts { showCoverage: false, names: ["HG00103"] }
+"show only the coverage"                    show_track_parts { showCoverage: true, showAlignments: false, positions: [3] }
+"view the reads as pairs, with soft clips"  show_track_parts { viewAsPairs: true, showSoftClips: true, names: ["HG00103"] }
+"hide the genotypes"                        show_track_parts { showGenotypes: false, all: true }
+```
+
+- Alignment tracks have `showCoverage`, `showAlignments`, `viewAsPairs`, `showMismatches`, `showSoftClips` and `showInsertions`; variant tracks have `showGenotypes`. A part the track's type does not have is an error naming those it does. Every other Track type is an error naming the two that have parts.
+- Parts of alignment tracks and `showGenotypes` together are an error whatever the tracks: no track has both, so they take two calls. So is a call with no part.
+- Hiding both the coverage and the alignments would leave the track nothing to draw: it is an error, whether both are hidden in one call or one is hidden while the other already is. `remove_track` takes a track away.
+- `viewAsPairs: true` on reads loaded unpaired is an error, as igv.js's menu offers it only on paired reads. While the reads are still loading it is taken. It is an error while the reads are grouped by anything but `firstOfPairStrand`, as igv.js means it to be: its own menu looks for the grouping in the wrong place and never refuses one: ungroup them with [`group_reads`](#group_reads) first.
+- `showGenotypes` on a variant track whose file has no samples is an error. As igv.js's own checkbox does, it also shows or hides the column of sample names and sample info beside the tracks.
+- Showing or hiding the coverage or alignments changes the track's height to what it then draws, as igv.js's menu does, unless igv.js is fitting the track's height to what it holds.
+- The coverage's data range is set by [`set_data_range`](#set_data_range), addressed to the alignment track.
+- Notes: `all` passed over tracks that do not have the parts, each with why; every track already had them as asked, so nothing changed (`"HG00103" already had its coverage hidden, so nothing changed.`).
 
 ## Crosshairs and centre line
 

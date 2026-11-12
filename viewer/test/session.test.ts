@@ -168,6 +168,26 @@ describe('sessionSummary', () => {
     expect(summaryOf(session({ tracks })).tracks.map((track) => track.options)).toEqual([undefined, undefined])
   })
 
+  it("gives the parts shown or hidden that an alignment or variant track's saved state records, as show_track_parts takes them", () => {
+    const tracks = [
+      { name: 'reads', type: 'alignment', showCoverage: false, viewAsPairs: true, showMismatches: false, showSoftClips: true, showInsertions: false, order: 1, height: 300 },
+      { name: 'coverage only', type: 'alignment', showAlignments: false, order: 2, height: 50 },
+      { name: 'calls', type: 'variant', showGenotypes: false, order: 3, height: 50 },
+    ]
+
+    expect(summaryOf(session({ tracks })).tracks.map((track) => track.options)).toEqual([
+      { showCoverage: false, viewAsPairs: true, showMismatches: false, showSoftClips: true, showInsertions: false },
+      { showAlignments: false },
+      { showGenotypes: false },
+    ])
+  })
+
+  it('gives no part on a track show_track_parts does not show or hide it on', () => {
+    const tracks = [{ name: 'reads loaded with genotypes', type: 'alignment', showGenotypes: false, order: 1, height: 300 }]
+
+    expect(summaryOf(session({ tracks })).tracks[0].options).toBeUndefined()
+  })
+
   it('gives a height in whole pixels: "shorter" leaves a track a part of a pixel', () => {
     const tracks = [
       { name: 'two thirds of 50', type: 'wig', order: 1, height: 33.333333333333336 },
