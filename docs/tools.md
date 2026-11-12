@@ -461,13 +461,13 @@ As igv.js's own interact track menu: its "Arc Type" items, "Toggle arc direction
 | `arcType` | `nested`, each arc as high as it is wide; or, each as high as its score, `proportional` (every arc), `inView` (both ends in view) or `partialInView` (one or both) |
 | `arcOrientation` | `up` or `down` |
 | `thickness` | The width of each arc in pixels, above 0 |
-| `alpha` | From `0`, clear, to `1`, opaque: how a proportional arc is filled, and how a nested arc reaching out of view is faded |
+| `alpha` | From `0`, clear, to `1`, opaque: how a proportional arc is filled, and, unless shaded by score, how a nested arc reaching out of view is faded |
 | `useScore` | `true` shades each arc by its score; `false` does not |
 | `names` | The names of the tracks, each as in [Addressing a track](#what-every-tool-shares) |
 | `positions` | And or instead their positions, counted from 1 at the top |
 | `all` | `true` for every interact track, in place of `names` and `positions` |
 
-The Session summary gives them in the track's `options` as `arcType`, `arcOrientation` (in lower case, as the tool takes it), `thickness`, `alpha` and `useScore`, where igv.js saves them, on interact tracks only. A track without one has igv.js's default: nested arcs drawn up, thickness 1, alpha 0.02, not shaded by score. igv.js saves an `arcType` only once one is set, and reads the old `chiapet` and `chiapetoutbound` as `inView` and `partialInView`.
+The Session summary gives them in the track's `options` as `arcType`, `arcOrientation` (in lower case, as the tool takes it), `thickness`, `alpha` and `useScore`, where igv.js saves them, on interact tracks only, but no `useScore` on a track read from a `.hic` file, which igv.js gives every one. A track without one has igv.js's default: nested arcs drawn up, thickness 1, alpha 0.02, not shaded by score. igv.js saves an `arcType` only once one is set, and reads the old `chiapet` and `chiapetoutbound` as `inView` and `partialInView`.
 
 ```text
 "draw the loops by their scores"            set_arcs { arcType: "proportional", names: ["Loops"] }
@@ -476,7 +476,7 @@ The Session summary gives them in the track's `options` as `arcType`, `arcOrient
 ```
 
 - Only interact tracks have arcs. Every other Track type is an error saying so.
-- An interact track read from a `.hic` file takes only `arcOrientation` and `thickness`, as igv.js's menu offers: igv.js shades its arcs by their scores itself, with a transparency of its own. Its normalization is left out of v1.
+- An interact track read from a `.hic` file takes only `arcOrientation` and `thickness`, as igv.js's menu offers: igv.js shades its arcs by their scores itself, with a transparency of its own.
 - A track whose features have no scores takes no `arcType` but `nested` and no `useScore: true`, as igv.js's menu offers neither until it has seen scores. Before its features load, the track takes them all.
 - An arc type, orientation, thickness or alpha that is none of the above is an error whatever the tracks.
 - Proportional arcs have a data range, set with [`set_data_range`](#set_data_range); nested arcs have none.

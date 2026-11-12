@@ -43,7 +43,7 @@ const HIC_ARC_OPTIONS: ReadonlyArray<keyof ArcsAsk> = ['arcOrientation', 'thickn
 function noArcs(asked: ArcsAsk, name: string, { hic, scored }: LiveArcs): string | undefined {
   if (hic) {
     const offered = given(asked).filter((option) => !HIC_ARC_OPTIONS.includes(option))
-    if (offered.length > 0) return `"${name}" is read from a .hic file, whose arcs igv.js shades by their scores itself: it takes only ${either(HIC_ARC_OPTIONS, 'and')}, not ${either(offered, 'and')}.`
+    if (offered.length > 0) return `"${name}" is read from a .hic file, whose arcs igv.js shades by their scores itself: it takes only ${either(HIC_ARC_OPTIONS, 'and')}, not ${either(offered)}.`
     return undefined
   }
   // As igv.js's menu, which offers arc types and useScore only once it has seen scores.

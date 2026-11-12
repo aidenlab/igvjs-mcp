@@ -81,8 +81,7 @@ function byOption(option: 'colorBy' | 'groupBy', value: string, type: string): T
 /**
  * A Track option as the Session summary gives it, as an object of one or two fields: a display
  * mode and an arc orientation in lower case, as set_display_mode and set_arcs take them, not as
- * igv.js saves them; a color-by or grouping
- * as `byOption` gives it.
+ * igv.js saves them; a color-by or grouping as `byOption` gives it.
  */
 function optionFields(option: string, value: unknown, type: string): TrackOptions {
   if (typeof value !== 'string') return { [option]: value }
@@ -108,14 +107,16 @@ const SET_BY_TOOL: Readonly<Record<string, readonly string[]>> = {
   ...Object.fromEntries(ARC_OPTIONS.map((option) => [option, ['interact', 'interaction']])),
 }
 
-/** Whether `option` of a track of igv.js's Track type `igvType` is one a track tool sets. */
-function toolSets(option: string, igvType: string | undefined): boolean {
+/** Whether `option` of `track` is one a track tool sets. igv.js gives every .hic interact track useScore, which set_arcs does not set. */
+function toolSets(option: string, track: SessionTrack): boolean {
+  if (option === 'useScore' && track.format === 'hic') return false
+  const igvType = track.type
   return !Object.hasOwn(SET_BY_TOOL, option) || (igvType !== undefined && SET_BY_TOOL[option].includes(igvType))
 }
 
 /** The Track options of `track`, of Track type `type`, that a track tool controls, or none when it records none. */
 function trackOptions(track: SessionTrack, type: string): TrackOptions | undefined {
-  const recorded = TOOL_TRACK_OPTIONS.filter((option) => track[option] !== undefined && toolSets(option, track.type))
+  const recorded = TOOL_TRACK_OPTIONS.filter((option) => track[option] !== undefined && toolSets(option, track))
   return recorded.length > 0 ? Object.assign({}, ...recorded.map((option) => optionFields(option, track[option], type))) : undefined
 }
 

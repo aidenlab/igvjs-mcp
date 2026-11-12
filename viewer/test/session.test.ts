@@ -143,6 +143,8 @@ describe('sessionSummary', () => {
     const tracks = [
       { name: 'loops', type: 'interact', arcType: 'proportional', arcOrientation: 'DOWN', thickness: 2, alpha: 0.1, useScore: true, order: 1, height: 250 },
       { name: 'links', type: 'interaction', arcOrientation: 'UP', order: 2, height: 250 },
+      // igv.js gives every .hic interact track useScore, which no tool set.
+      { name: 'contacts', type: 'interact', format: 'hic', useScore: true, thickness: 2, order: 4, height: 250 },
       // A thickness some other Track type was loaded with is no arc.
       { name: 'peaks', type: 'annotation', thickness: 3, alpha: 0.5, order: 3, height: 50 },
     ]
@@ -151,6 +153,7 @@ describe('sessionSummary', () => {
       { arcType: 'proportional', arcOrientation: 'down', thickness: 2, alpha: 0.1, useScore: true },
       { arcOrientation: 'up' },
       undefined,
+      { thickness: 2 },
     ])
   })
 

@@ -58,7 +58,7 @@ describe('the tracks with arcs', () => {
       '"T" is read from a .hic file, whose arcs igv.js shades by their scores itself: it takes only arcOrientation and thickness, not alpha.',
     )
     expect(tool({ arcType: 'proportional', useScore: false }, hic).refuse(track('interact'), 0)).toBe(
-      '"T" is read from a .hic file, whose arcs igv.js shades by their scores itself: it takes only arcOrientation and thickness, not arcType and useScore.',
+      '"T" is read from a .hic file, whose arcs igv.js shades by their scores itself: it takes only arcOrientation and thickness, not arcType or useScore.',
     )
   })
 
