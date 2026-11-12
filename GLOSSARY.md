@@ -40,6 +40,14 @@ _Avoid_: Control panel, side panel, sidebar, toolbar
 The complete description of what the genome browser is showing: genome, loci and tracks, as igv.js defines it. It is the single source of truth and is owned by the Viewer.
 _Avoid_: State, config; and "session" for the connection between the Host and the server (an MCP session) or for the Conversation
 
+**Track type**:
+The kind of track igv.js draws, such as wig, annotation, alignment, variant or interact, which decides how the track looks and which Track options it offers. Always given as igv.js's own name, with its aliases folded into it, so genes and feature both read annotation.
+_Avoid_: Format (how a file is read), class, kind
+
+**Track option**:
+One of the choices igv.js offers for how a single track is drawn, such as its display mode, graph type, data range or color. Track options are part of the Session.
+_Avoid_: Track setting (Viewer settings are something else), property, attribute
+
 **Viewer settings**:
 What the Viewer shows around the genome browser that is no part of the Session, such as whether the Controls are shown. Owned by the Viewer and kept beside the Session, never in it, so the Session stays exactly as igv.js defines it.
 _Avoid_: State, Viewer state, preferences
