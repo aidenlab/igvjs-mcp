@@ -9,7 +9,7 @@ export const MessageType = {
   JOINED: 'joined', // Room → Viewer: {room}, and {session} and {viewerSettings} when the Room has them saved
   EXPIRED: 'expired', // Room → Viewer: {}, in answer to a join of a Room whose stored data was deleted; the Room then closes the socket
   COMMAND: 'command', // Room → Viewer: {id, command}
-  ACK: 'ack', // Viewer → Room: {id, ok: true, summary}, with {shareableUrl} when the command asked for it, or {id, ok: false, error, summary}
+  ACK: 'ack', // Viewer → Room: {id, ok: true, summary}, with {shareableUrl} when the command asked for it and {note} when it was carried out other than as asked, or {id, ok: false, error, summary}
   SESSION: 'session', // Viewer → Room: {session, summary}, whenever the Room's copies may be out of date
   VIEWER_SETTINGS: 'viewer_settings', // Viewer → Room: {viewerSettings}, whenever the Room's copy may be out of date
 } as const
@@ -120,10 +120,16 @@ export interface SessionSummary {
   controls: boolean
 }
 
-/** What a command that asks the Viewer for an answer is answered with. */
+/** What a command is answered with beyond the Session summary, when there is more to say. */
 export interface CommandAnswer {
   /** The Shareable URL of the Session as it stands: the answer to `get_shareable_url`. */
   shareableUrl?: string
+  /**
+   * One short statement of fact, given only when the command was carried out
+   * other than as asked, such as "taller" stopping at a height limit (ADR 0006).
+   * The model passes it to the person in a sentence of its own.
+   */
+  note?: string
 }
 
 /** How a command went in the Viewer: applied, or igv.js's own error. Either way with the Session summary afterwards. */

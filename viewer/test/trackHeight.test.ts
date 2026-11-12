@@ -3,7 +3,7 @@
  * shorter than it is.
  */
 import { describe, it, expect } from 'vitest'
-import { changedHeight, checkHeight } from '../src/trackHeight.ts'
+import { changedHeight, checkHeight, heightNote } from '../src/trackHeight.ts'
 
 describe('an absolute height', () => {
   it.each([
@@ -85,5 +85,43 @@ describe('"taller" and "shorter"', () => {
 
   it('a change that is neither is an error', () => {
     expect(() => changedHeight(50, 'huge' as 'taller')).toThrow('A track cannot be huge pixels high. Give a height from 1 to 1000 pixels, or "taller" or "shorter".')
+  })
+})
+
+describe('the note a height change gives', () => {
+  it('none when every track got the height asked for', () => {
+    expect(heightNote(120, [{ name: 'Conservation', from: 50, to: 120 }])).toBeUndefined()
+    expect(heightNote('taller', [{ name: 'Conservation', from: 50, to: 75 }])).toBeUndefined()
+  })
+
+  it('"taller" stopped at the limit says which track stopped there', () => {
+    expect(heightNote('taller', [{ name: 'Conservation', from: 800, to: 1000 }, { name: 'Refseq All', from: 70, to: 105 }])).toBe(
+      '"Conservation" stopped at 1000 pixels: no track is made taller than that.',
+    )
+  })
+
+  it('"shorter" stopped at the limit, on several tracks, names them all', () => {
+    expect(heightNote('shorter', [{ name: 'A', from: 1.2, to: 1 }, { name: 'B', from: 1.4, to: 1 }])).toBe(
+      '"A" and "B" stopped at 1 pixel: no track is made shorter than that.',
+    )
+  })
+
+  it('a track already at the limit did not move, and is said to be left there', () => {
+    expect(heightNote('taller', [{ name: 'Conservation', from: 1000, to: 1000 }])).toBe('"Conservation" was left at 1000 pixels: no track is made taller than 1000.')
+  })
+
+  it('a track a person set beyond the limit is left as it was', () => {
+    expect(heightNote('taller', [{ name: 'Wide', from: 2000, to: 2000 }])).toBe('"Wide" was left at 2000 pixels: no track is made taller than 1000.')
+  })
+
+  it('a height every track already had changes nothing, and says so', () => {
+    expect(heightNote(120, [{ name: 'Conservation', from: 120, to: 120 }])).toBe('"Conservation" was already 120 pixels high, so nothing changed.')
+    expect(heightNote(40, [{ name: 'A', from: 40, to: 40 }, { name: 'B', from: 40, to: 40 }])).toBe(
+      '"A" and "B" were already 40 pixels high, so nothing changed.',
+    )
+  })
+
+  it('a height some tracks already had is no note: the others changed as asked', () => {
+    expect(heightNote(40, [{ name: 'A', from: 40, to: 40 }, { name: 'B', from: 70, to: 40 }])).toBeUndefined()
   })
 })

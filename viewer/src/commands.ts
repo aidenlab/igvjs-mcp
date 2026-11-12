@@ -2,7 +2,7 @@ import type { Command, CommandAnswer, CommandOutcome, CommandType, TrackAddress,
 import { displayOrder, sessionLoci, sessionSummary, trackSummaries, type Session } from './session.ts'
 import { shareableUrl, type SessionCompressor } from './shareableUrl.ts'
 import { addressTrack, addressTracks } from './trackAddress.ts'
-import { changedHeight, checkHeight } from './trackHeight.ts'
+import { changedHeight, checkHeight, heightNote, type HeightChange } from './trackHeight.ts'
 
 /**
  * The part of an igv.js browser the commands use. igv.js's own typings are
@@ -133,7 +133,7 @@ function resize(track: BrowserTrack, height: number): void {
   track.trackView.repaintViews()
 }
 
-function setTrackHeight(browser: GenomeBrowser, { height, ...selection }: { height: TrackHeight } & TrackSelection): void {
+function setTrackHeight(browser: GenomeBrowser, { height, ...selection }: { height: TrackHeight } & TrackSelection): CommandAnswer | void {
   // Before any track is looked at: a height that is an error is one whatever tracks it is for.
   checkHeight(height)
   const session = captureSession(browser)
@@ -144,11 +144,17 @@ function setTrackHeight(browser: GenomeBrowser, { height, ...selection }: { heig
   if (!selection.all && !addressed.every(sizable)) throw new Error("The sequence track's height cannot be set.")
 
   const tracks = summarizedTracks(browser, session)
+  const changes: HeightChange[] = []
   for (const index of addressed.filter(sizable)) {
     const track = tracks[index]
     // The height igv.js has, which the Session summary gives in whole pixels.
-    resize(track, changedHeight(track.height ?? summarized[index].height, height))
+    const from = track.height ?? summarized[index].height
+    const to = changedHeight(from, height)
+    resize(track, to)
+    changes.push({ name: summarized[index].name, from, to })
   }
+  const note = heightNote(height, changes)
+  if (note) return { note }
 }
 
 /** Whether igv.js is in its whole-genome view, which the Session summary gives as the locus "all". */

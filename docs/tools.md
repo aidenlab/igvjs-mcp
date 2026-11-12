@@ -26,6 +26,8 @@ The tools the Connector gives the model, and how each is used. The wording the m
 
 A track's type is igv.js's canonical name for its Track type, with igv.js's aliases folded in: genes, feature, snp and fusionjuncspan read `annotation`; interaction reads `interact`; maf and mut read `seg`; eqtl reads `qtl`; junctions and splicejunctions read `junction`. A track's `options` holds the Track options a track tool sets, each as igv.js saves it, and only those set on the track in the Session; it is left out when there are none. The tools that add to it say so.
 
+**Notes.** When a Command was carried out other than as asked, the reply begins `Note:`, ahead of the Session summary: one short statement of fact from the Viewer, the only party that knows the live track (ADR 0006). The model passes it on to the person in a sentence of its own. With no note, the model confirms the change in a few words and explains nothing. The server's MCP `instructions` say so. Each tool that can give a note says so in its own description too, because some Hosts may never show `instructions` to the model (see [`host-instructions.md`](host-instructions.md)). A request that cannot be carried out is still an error, not a note. The tools that give notes list them.
+
 **Errors.** A reply that begins `Error:` says what went wrong, and still carries the Session summary when a Viewer answered. Three replies are not about the tool itself:
 
 - No Viewer is in the Room: open igv-bot with `open_viewer`, or pass `room`.
@@ -170,6 +172,7 @@ One of the two, not both. The sequence track cannot be removed.
 - One name or position that matches nothing is an error, and no height is changed.
 - The sequence track keeps its height: `all` leaves it as it is, and addressing it is an error.
 - The Session summary gives heights in whole pixels, so 50 made shorter reads 33.
+- Notes: "taller" or "shorter" stopped at a limit (`"Conservation" stopped at 1000 pixels: no track is made taller than that.`), a track already at the limit, or beyond it as a person may set one, was left as it was, or every track already had the height asked for, so nothing changed (`"Refseq All" was already 105 pixels high, so nothing changed.`). A height that only some tracks already had gets no note.
 
 ## Crosshairs and centre line
 

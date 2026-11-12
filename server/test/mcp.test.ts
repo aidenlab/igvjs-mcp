@@ -32,6 +32,16 @@ describe('initialize', () => {
     const body = await (await initialize()).json<{ result: { serverInfo: { version: string } } }>()
     expect(body.result.serverInfo.version).toBe('main (d4e5f6a)')
   })
+
+  it("gives the server's instructions on feedback: confirm briefly, pass a note on in a sentence, otherwise don't explain", async () => {
+    const body = await (await initialize()).json<{ result: { instructions?: string } }>()
+    const { instructions } = body.result
+
+    expect(instructions).toContain('confirm it in a few words')
+    expect(instructions).toContain('When a reply begins with "Note:"')
+    expect(instructions).toContain('tell the person in one sentence of your own what was done and why')
+    expect(instructions).toContain('Otherwise do not explain')
+  })
 })
 
 /** The Room an open_viewer reply names. */

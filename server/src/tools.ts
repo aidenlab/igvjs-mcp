@@ -35,6 +35,16 @@ export interface ToolDeps {
 }
 
 /**
+ * The server's MCP `instructions`: how the model gives the person feedback on
+ * a change (ADR 0006). Hosts that make little of them still get the rule from
+ * NOTE_LINE (commandTools.ts), in the description of each tool that can give a note.
+ * ChatGPT advises keeping what matters in the first 512 characters, so all
+ * three rules come before that (docs/host-instructions.md).
+ */
+export const SERVER_INSTRUCTIONS =
+  'When a tool changes igv-bot, confirm it in a few words, from the Session summary of the reply: for example "Done: Conservation is now 120 pixels high." When a reply begins with "Note:", the request was carried out other than as asked, such as a height that stopped at a limit or a value already set: tell the person in one sentence of your own what was done and why, without quoting the note. Otherwise do not explain what a tool did or how: the person sees igv-bot change beside the conversation.'
+
+/**
  * Every tool takes the Room id back from the model: a Host may move a
  * Conversation to another MCP session, whose own Room is empty (ADR 0003).
  */
@@ -234,9 +244,13 @@ export function registerTools(
           case 'acked': {
             const { outcome } = delivery
             if (!outcome.ok) return errorReply(withSummary(outcome.error, outcome.summary))
+            // A note begins the reply, as the server's instructions tell the model to expect (ADR 0006).
             // A bare URL on its own line, as the Join link is given.
-            const answer = outcome.shareableUrl ? `Shareable URL:\n${outcome.shareableUrl}` : 'Done.'
-            return { content: [{ type: 'text', text: withSummary(answer, outcome.summary) }] }
+            const answer = [
+              ...(outcome.note ? [`Note: ${outcome.note}`] : []),
+              ...(outcome.shareableUrl ? [`Shareable URL:\n${outcome.shareableUrl}`] : []),
+            ]
+            return { content: [{ type: 'text', text: withSummary(answer.length > 0 ? answer.join('\n\n') : 'Done.', outcome.summary) }] }
           }
         }
       },
