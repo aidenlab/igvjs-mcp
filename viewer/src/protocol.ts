@@ -60,11 +60,32 @@ export type Command =
   | ({ type: 'rename_track'; newName: string } & TrackAddress)
   | ({ type: 'set_track_color'; color?: string; altColor?: string } & TrackSelection)
   | ({ type: 'set_data_range'; min?: number; max?: number; autoscale?: boolean; logScale?: boolean } & TrackSelection)
+  | ({ type: 'set_signal_style'; graphType?: string; windowFunction?: string; flipAxis?: boolean; colorScale?: ColorScaleAsk } & TrackSelection)
   | { type: 'set_crosshairs'; show: boolean }
   | { type: 'set_centre_line'; show: boolean }
   | { type: 'set_controls'; show: boolean }
   | { type: 'read_session_summary' }
   | { type: 'get_shareable_url' }
+
+/** The graph types igv.js's wig track menu offers (`graphTypeItems`). */
+export const GRAPH_TYPES = ['bar', 'line', 'points', 'heatmap', 'dynseq'] as const
+
+/** The window functions igv.js's wig sources offer (`windowFunctions`). A track offers those its source does. */
+export const WINDOW_FUNCTIONS = ['mean', 'min', 'max', 'none'] as const
+
+/** The two kinds of color scale igv.js's "Set color scale" edits. */
+export const COLOR_SCALE_TYPES = ['gradient', 'diverging'] as const
+
+/** What a set_signal_style call asks of a heatmap's color scale: any part of it, the rest kept as the track has it. */
+export interface ColorScaleAsk {
+  type?: string
+  min?: number
+  mid?: number
+  max?: number
+  minColor?: string
+  midColor?: string
+  maxColor?: string
+}
 
 /** A track to load: any URL the browser can fetch. */
 export interface TrackToLoad {

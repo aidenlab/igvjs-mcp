@@ -1,5 +1,5 @@
 import { z, type ZodRawShape } from 'zod'
-import type { CommandType } from 'igvjs-mcp-viewer/protocol'
+import { COLOR_SCALE_TYPES, GRAPH_TYPES, WINDOW_FUNCTIONS, type CommandType } from 'igvjs-mcp-viewer/protocol'
 
 /**
  * A tool whose whole job is to send the Viewer one command. Its arguments are
@@ -161,6 +161,35 @@ export const COMMAND_TOOLS: CommandTool[] = [
       all: z.boolean().optional().describe('True for every track that takes what is given, in place of names and positions'),
     },
     commandType: 'set_data_range',
+  },
+  {
+    name: 'set_signal_style',
+    title: 'Set signal style',
+    description: `Set how one, several or all wig (signal) tracks of igv-bot are drawn, as igv.js's own "Graph type", "Windowing function", "Flip y-axis" and "Set color scale" do. graphType draws the values as bar, line, points, heatmap or dynseq: dynseq draws the bases of the sequence at the height of the values, and shows them only below 2 bp per pixel, zoomed in far enough to read the sequence; further out it draws bars. windowFunction is how the values under one pixel are summed up: mean, min, max, or none to draw every value; a track offers those its file does. flipAxis true draws a track upside down, false the right way up. colorScale gives a heatmap its colors: from minColor at min to maxColor at max, or, with a mid, diverging through midColor at the mid; give only what changes, the rest kept as the track has it, and type gradient to drop the mid. Colors are "#RRGGBB" or "rgb(R, G, B)". Give several of these at once. Address the tracks by their names, by their positions in the tracks of the Session summary, counted from 1 at the top, or pass all for every track that takes what is given. Change every track a request means in one call. The user also reorders and changes tracks by hand, so take positions from the Session summary of the reply just before, or call read_session_summary first. A call is all or nothing: a track named or placed that is not a wig track, a colorScale for a track that is not drawn as a heatmap unless graphType heatmap is given with it, or a windowFunction its file does not offer, is an error saying why; so is a colorScale whose min is not below its max or whose mid is not between them; either way nothing is changed. The color and data range of a heatmap are its colorScale: set_track_color and set_data_range do not apply to it. The Session summary gives a track's style as its options' graphType, windowFunction, flipAxis and colorScale. A reply begins with a note when dynseq will not show at the current zoom, when all passed over tracks that do not take what is given, or when every track already had it, so nothing changed. ${REPLY} ${NOTE_LINE}`,
+    inputSchema: {
+      graphType: z.enum(GRAPH_TYPES).optional().describe('How the values are drawn'),
+      windowFunction: z.enum(WINDOW_FUNCTIONS).optional().describe('How the values under one pixel are summed up; none draws every value'),
+      flipAxis: z.boolean().optional().describe('True to draw the tracks upside down, false the right way up'),
+      colorScale: z
+        .object({
+          type: z.enum(COLOR_SCALE_TYPES).optional().describe('gradient from min to max, or diverging about a mid. Left out, diverging when a mid is given or the track has one'),
+          // Any numbers: bounds out of order are answered by the Viewer, which knows each track's scale.
+          min: z.number().optional().describe('The value drawn in minColor, and any below it'),
+          mid: z.number().optional().describe('The value drawn in midColor, between min and max'),
+          max: z.number().optional().describe('The value drawn in maxColor, and any above it'),
+          // Any strings: one that is no color is answered by the Viewer, whose error gives the forms one takes.
+          minColor: z.string().optional().describe('"#RRGGBB" or "rgb(R, G, B)"'),
+          midColor: z.string().optional().describe('"#RRGGBB" or "rgb(R, G, B)"'),
+          maxColor: z.string().optional().describe('"#RRGGBB" or "rgb(R, G, B)"'),
+        })
+        .optional()
+        .describe('The colors of tracks drawn as a heatmap: give only what changes'),
+      names: z.array(z.string()).optional().describe('The names of the tracks as the Session summary gives them. Case does not matter.'),
+      // Any numbers: one that is no position is answered by the Viewer, which can list the tracks.
+      positions: z.array(z.number()).optional().describe('The positions of the tracks in the tracks of the Session summary: 1 is the top track'),
+      all: z.boolean().optional().describe('True for every track that takes what is given, in place of names and positions'),
+    },
+    commandType: 'set_signal_style',
   },
   {
     name: 'set_crosshairs',

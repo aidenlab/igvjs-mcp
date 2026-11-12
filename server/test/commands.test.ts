@@ -80,6 +80,13 @@ describe('a command tool with a Viewer in the Room', () => {
     ['set_data_range', { autoscale: true, logScale: false, all: true }, { type: 'set_data_range', autoscale: true, logScale: false, all: true }],
     // A min not below the max still reaches the Viewer, which knows each track's range.
     ['set_data_range', { min: 10, max: 1, positions: [2] }, { type: 'set_data_range', min: 10, max: 1, positions: [2] }],
+    ['set_signal_style', { graphType: 'line', windowFunction: 'max', names: ['Conservation'] }, { type: 'set_signal_style', graphType: 'line', windowFunction: 'max', names: ['Conservation'] }],
+    ['set_signal_style', { flipAxis: true, all: true }, { type: 'set_signal_style', flipAxis: true, all: true }],
+    [
+      'set_signal_style',
+      { graphType: 'heatmap', colorScale: { min: -1, mid: 0, max: 1, midColor: '#ffffff' }, positions: [2] },
+      { type: 'set_signal_style', graphType: 'heatmap', colorScale: { min: -1, mid: 0, max: 1, midColor: '#ffffff' }, positions: [2] },
+    ],
     ['set_crosshairs', { show: true }, { type: 'set_crosshairs', show: true }],
     ['set_crosshairs', { show: false }, { type: 'set_crosshairs', show: false }],
     ['set_centre_line', { show: true }, { type: 'set_centre_line', show: true }],
