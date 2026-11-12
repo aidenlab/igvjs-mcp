@@ -407,36 +407,35 @@ async function setSignalStyle(browser: GenomeBrowser, { graphType, windowFunctio
 function redisplay(track: BrowserTrack, name: string, mode: string): DisplayModeChange {
   const igvMode = mode.toUpperCase()
   const reads = track.alignmentTrack
+  let unchanged: boolean
   if (reads) {
     // As igv.js's own setDisplayMode, but for reads not yet loaded, which it would fail on: those are packed as they load.
-    const unchanged = reads.displayMode === igvMode
+    unchanged = reads.displayMode === igvMode
     const repack = reads.displayMode === 'FULL' || igvMode === 'FULL'
     reads.displayMode = igvMode
     if (repack) for (const container of track.getCachedAlignmentContainers?.() ?? []) container?.pack?.(reads)
-    track.trackView.checkContentHeight()
-    track.trackView.repaintViews()
-    return { name, unchanged }
+  } else {
+    unchanged = track.displayMode?.toUpperCase() === igvMode
+    track.displayMode = igvMode
+    // As igv.js's annotation and seg menus do; its variant menu does not, but the Session saves the mode either way.
+    keepInSession(track, { displayMode: igvMode })
+    track.createGroupLabels?.()
   }
-  const unchanged = track.displayMode?.toUpperCase() === igvMode
-  track.displayMode = igvMode
-  // igv.js's variant menu leaves the config as loaded, which a Session saves where the track's state is the default.
-  keepInSession(track, { displayMode: igvMode })
   track.trackView.checkContentHeight()
   track.trackView.repaintViews()
-  track.createGroupLabels?.()
   return { name, unchanged }
 }
 
 function setDisplayMode(browser: GenomeBrowser, { mode, ...selection }: { mode: string } & TrackSelection): CommandAnswer | void {
   // Before any track is looked at: a mode no Track type offers is an error whatever tracks it is for.
-  const asked = displayModeAsked(mode)
+  const checked = displayModeAsked(mode)
   const session = captureSession(browser)
   const summarized = trackSummaries(session)
   const tracks = summarizedTracks(browser, session)
-  const { targets, passedOver } = trackTargets(summarized, selection, displayModeTool(asked, (index) => tracks[index].type))
+  const { targets, passedOver } = trackTargets(summarized, selection, displayModeTool(checked, (index) => tracks[index].type))
 
-  const changes = targets.map((index) => redisplay(tracks[index], summarized[index].name, asked))
-  const note = joinedNotes(displayModeNote(asked, changes), passedOverNote(passedOver))
+  const changes = targets.map((index) => redisplay(tracks[index], summarized[index].name, checked))
+  const note = joinedNotes(displayModeNote(checked, changes), passedOverNote(passedOver))
   if (note) return { note }
 }
 
