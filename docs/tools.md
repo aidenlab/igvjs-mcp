@@ -15,6 +15,7 @@ The tools the Connector gives the model, and how each is used. The wording the m
 | [`set_track_height`](#set_track_height) | Sets the height of one, several or all tracks |
 | [`rename_track`](#rename_track) | Gives one track a new name |
 | [`set_track_color`](#set_track_color) | Sets the color, and alt color, of one, several or all tracks |
+| [`set_data_range`](#set_data_range) | Sets the data range, autoscale and log scale of one, several or all tracks |
 | [`set_crosshairs`](#set_crosshairs-and-set_centre_line), [`set_centre_line`](#set_crosshairs-and-set_centre_line) | Shows or hides the crosshairs, or the centre line |
 | [`set_controls`](#set_controls) | Shows or hides the Controls: the Navigation bar and, unless the Viewer is Embedded, the Shareable URL |
 | [`read_session_summary`](#read_session_summary) | Reads what igv-bot is showing, changing nothing |
@@ -222,6 +223,36 @@ Either color or both, each as `"#RRGGBB"` (or `"#RGB"`) or `"rgb(R, G, B)"`, or 
 - A wig track drawn as a heatmap takes neither: it is an error pointing to `set_signal_style`'s `colorScale`.
 - A color in any other form, a CSS name among them, is an error giving the forms.
 - Notes: `all` passed over tracks that do not take the colors, each with why (`Passed over by all: "Copy number" is a seg track, which igv.js gives no track color.`); a variant track colored by an attribute is drawn in the one color from then on, as igv.js's own color does (`"Variants" is no longer colored by AF: it is drawn in the color asked for.`); every track already had the colors, so nothing changed (`"Refseq All" already had that color, so nothing changed.`).
+
+### `set_data_range`
+
+As igv.js's own "Set data range", "Autoscale" and "Log scale".
+
+| Argument | |
+| --- | --- |
+| `min`, `max` | A fixed range: the values at the bottom and top of the tracks. One alone keeps the other as each track has it, as igv.js's dialog fills it in |
+| `autoscale` | `true` for a range that follows what is in view; `false` to fix the range each track has now |
+| `logScale` | `true` to draw the values on a log scale, `false` for a linear one |
+| `names` | The names of the tracks, each as in [Addressing a track](#what-every-tool-shares) |
+| `positions` | And or instead their positions, counted from 1 at the top |
+| `all` | `true` for every track that takes what is given, in place of `names` and `positions` |
+
+Any of `min` and `max`, `autoscale` and `logScale` together, but not a fixed range with `autoscale: true`. The Session summary gives them in the track's `options`, as igv.js saves them: `min` and `max` while the range is fixed, `autoscale`, and `logScale` where it is not igv.js's default for the Track type.
+
+```text
+"set the CTCF track's range to 0 to 50"   set_data_range { min: 0, max: 50, names: ["K562 CTCF"] }
+"cap the second track at 10"              set_data_range { max: 10, positions: [2] }
+"autoscale all the signal tracks"         set_data_range { autoscale: true, all: true }
+"show the conservation on a log scale"    set_data_range { logScale: true, names: ["Conservation"] }
+```
+
+- Wig tracks, alignment tracks (the range of their coverage), qtl, gwas and gcnv tracks, and interact tracks drawn with proportional arcs: those igv.js's menu offers "Set data range" on. An interact track drawn with nested arcs is an error pointing to `set_arcs`. shoebox, cnvpytor and merged tracks, whose ranges igv.js's menu sets in its own ways, are errors, as are the others.
+- Only wig and interact tracks take a `logScale`.
+- A wig track drawn as a heatmap is an error pointing to `set_signal_style`'s `colorScale`.
+- A `min` not below the `max`, with the bound a track already has where only one is given, is an error.
+- No autoscale groups (ADR 0005). A fixed range, or autoscale turned off, on a track a person grouped by hand takes it out of its group, as igv.js does. `autoscale: true` leaves a grouped track in its group, autoscaled with it.
+- The range, autoscale and group are kept in the Session as asked, also where igv.js would bring back on a reload the ones the track was loaded with.
+- Notes: tracks taken out of an autoscale group, naming those still in it (`"Conservation" was taken out of its autoscale group; "H3K27ac" is still in it.`); `all` passed over tracks that do not take what is given, each with why (`Passed over by all: "Refseq All" is an annotation track, which has no data range.`); every track already had it, so nothing changed (`"Conservation" already had a data range of 0 to 10, so nothing changed.`).
 
 ## Crosshairs and centre line
 
