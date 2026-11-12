@@ -22,6 +22,7 @@ The tools the Connector gives the model, and how each is used. The wording the m
 | [`group_reads`](#group_reads) | Groups the reads of one, several or all alignment tracks |
 | [`show_track_parts`](#show_track_parts) | Shows or hides the coverage, alignments and read drawing of alignment tracks, and the genotypes of variant tracks |
 | [`set_visibility_window`](#set_visibility_window) | Sets the widest view in which one, several or all annotation, variant and alignment tracks show their features |
+| [`set_arcs`](#set_arcs) | Sets how one, several or all interact tracks draw their arcs: type, orientation, thickness, alpha and shading by score |
 | [`set_crosshairs`](#set_crosshairs-and-set_centre_line), [`set_centre_line`](#set_crosshairs-and-set_centre_line) | Shows or hides the crosshairs, or the centre line |
 | [`set_controls`](#set_controls) | Shows or hides the Controls: the Navigation bar and, unless the Viewer is Embedded, the Shareable URL |
 | [`read_session_summary`](#read_session_summary) | Reads what igv-bot is showing, changing nothing |
@@ -33,7 +34,7 @@ The tools the Connector gives the model, and how each is used. The wording the m
 
 **The reply.** Every tool but `open_viewer` replies with the Session summary: the genome, the loci, the tracks in display order (name, Track type, URL, height in whole pixels and `options`), whether the crosshairs and centre line are showing, and whether the controls are. A person also changes the Viewer by hand, and the model is not told when they do: the Session summary of the latest reply is how it learns.
 
-A track's type is igv.js's canonical name for its Track type, with igv.js's aliases folded in: genes, feature, snp and fusionjuncspan read `annotation`; interaction reads `interact`; maf and mut read `seg`; eqtl reads `qtl`; junctions and splicejunctions read `junction`. A track's `options` holds the Track options a track tool sets, each as igv.js saves it (but a display mode in lower case, as `set_display_mode` takes it, and a color-by or grouping as `set_color_by` and `group_reads` take it), and only those set on the track in the Session; it is left out when there are none. The tools that add to it say so.
+A track's type is igv.js's canonical name for its Track type, with igv.js's aliases folded in: genes, feature, snp and fusionjuncspan read `annotation`; interaction reads `interact`; maf and mut read `seg`; eqtl reads `qtl`; junctions and splicejunctions read `junction`. A track's `options` holds the Track options a track tool sets, each as igv.js saves it (but a display mode and an arc orientation in lower case, as `set_display_mode` and `set_arcs` take them, and a color-by or grouping as `set_color_by` and `group_reads` take it), and only those set on the track in the Session; it is left out when there are none. The tools that add to it say so.
 
 **Notes.** When a Command was carried out other than as asked, the reply begins `Note:`, ahead of the Session summary: one short statement of fact from the Viewer, the only party that knows the live track (ADR 0006). The model passes it on to the person in a sentence of its own. With no note, the model confirms the change in a few words and explains nothing. The server's MCP `instructions` say so. Each tool that can give a note says so in its own description too, because some Hosts may never show `instructions` to the model (see [`host-instructions.md`](host-instructions.md)). A request that cannot be carried out is still an error, not a note. The tools that give notes list them.
 
@@ -450,6 +451,36 @@ The Session summary gives it in the track's `options` as `visibilityWindow`, as 
 - A larger window loads more. `0` is no window: an annotation or variant track loads its whole chromosome, and an alignment track every read in view, however wide, which igv.js allows and which can be slow.
 - In the whole-genome view no window applies: whether a track shows there is igv.js's to decide. igv.js draws an annotation track from a file with no index there only while it has no window at all: giving it one, even `0`, stops that, as igv.js's own dialog does.
 - Notes: the window is smaller than the view, so the track shows nothing until it is zoomed in (`"Refseq All" shows its features only in a view of 10,000 bp or less: the view is 52,000 bp wide, so until it is zoomed in that far it shows none.`); `all` passed over tracks that have no window, each with why (`Passed over by all: "Conservation" is a wig track: set_visibility_window sets the visibility window of annotation, variant and alignment tracks only.`); every track already had it, so nothing changed (`"Refseq All" already had visibility window 100,000 bp, so nothing changed.`).
+
+### `set_arcs`
+
+As igv.js's own interact track menu: its "Arc Type" items, "Toggle arc direction", "Set line thickness", "Set alpha" and "Use score". Give any of the arcs, or several; one left out is left as it is.
+
+| Argument | |
+| --- | --- |
+| `arcType` | `nested`, each arc as high as it is wide; or, each as high as its score, `proportional` (every arc), `inView` (both ends in view) or `partialInView` (one or both) |
+| `arcOrientation` | `up` or `down` |
+| `thickness` | The width of each arc in pixels, above 0 |
+| `alpha` | From `0`, clear, to `1`, opaque: how a proportional arc is filled, and how a nested arc reaching out of view is faded |
+| `useScore` | `true` shades each arc by its score; `false` does not |
+| `names` | The names of the tracks, each as in [Addressing a track](#what-every-tool-shares) |
+| `positions` | And or instead their positions, counted from 1 at the top |
+| `all` | `true` for every interact track, in place of `names` and `positions` |
+
+The Session summary gives them in the track's `options` as `arcType`, `arcOrientation` (in lower case, as the tool takes it), `thickness`, `alpha` and `useScore`, where igv.js saves them, on interact tracks only. A track without one has igv.js's default: nested arcs drawn up, thickness 1, alpha 0.02, not shaded by score. igv.js saves an `arcType` only once one is set, and reads the old `chiapet` and `chiapetoutbound` as `inView` and `partialInView`.
+
+```text
+"draw the loops by their scores"            set_arcs { arcType: "proportional", names: ["Loops"] }
+"flip the arcs underneath"                  set_arcs { arcOrientation: "down", all: true }
+"make the arcs thicker and shade by score"  set_arcs { thickness: 3, useScore: true, positions: [4] }
+```
+
+- Only interact tracks have arcs. Every other Track type is an error saying so.
+- An interact track read from a `.hic` file takes only `arcOrientation` and `thickness`, as igv.js's menu offers: igv.js shades its arcs by their scores itself, with a transparency of its own. Its normalization is left out of v1.
+- A track whose features have no scores takes no `arcType` but `nested` and no `useScore: true`, as igv.js's menu offers neither until it has seen scores. Before its features load, the track takes them all.
+- An arc type, orientation, thickness or alpha that is none of the above is an error whatever the tracks.
+- Proportional arcs have a data range, set with [`set_data_range`](#set_data_range); nested arcs have none.
+- Notes: `all` passed over tracks that have no arcs, each with why (`Passed over by all: "Conservation" is a wig track, which has no arcs: only interact tracks have them.`); every track already had the arcs as asked, so nothing changed (`"Loops" already had arc type proportional and thickness 2, so nothing changed.`).
 
 ## Crosshairs and centre line
 

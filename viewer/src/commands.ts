@@ -11,6 +11,7 @@ import { changedHeight, checkHeight, heightNote, type HeightChange } from './tra
 import { checkRenamable, newTrackName, renameNote } from './trackName.ts'
 import { colorScaleFor, DEFAULT_GRAPH_TYPE, sameColorScale, signalStyleAsked, signalStyleNote, signalStyleTool, type ColorScale, type SignalStyleAsk, type SignalStyleChange } from './trackSignalStyle.ts'
 import { partsAsked, partsNote, partsTool, type LiveParts, type PartsAsk } from './trackParts.ts'
+import { arcsAsked, arcsNote, arcsTool, type ArcsAsk, type LiveArcs } from './trackArcs.ts'
 import { VISIBILITY_WINDOW_TOOL, visibilityWindowAsked, visibilityWindowNote } from './trackVisibilityWindow.ts'
 import { joinedNotes, passedOverNote, trackTargets, type ByChange, type LiveTrack, type TrackTool } from './trackTools.ts'
 
@@ -114,6 +115,16 @@ interface BrowserTrack {
   logScale?: boolean
   /** How an interact track draws its arcs: nested, proportional, inView or partialInView. */
   arcType?: string
+  /** Which way an interact track's arcs are drawn: "UP" or "DOWN". */
+  arcOrientation?: string
+  /** The width of an interact track's arcs, in pixels. */
+  thickness?: number
+  /** How opaque igv.js fills or shades an interact track's arcs. */
+  alpha?: number
+  /** True for an interact track read from a .hic file. */
+  _hic?: boolean
+  /** Whether an interact track's features have scores: undefined until they load. */
+  hasValue?: boolean
   /** As igv.js's own "Set data range" dialog does: a fixed range, out of autoscale and any group. */
   setDataRange?(range: DataRange): void
   /** How an annotation, variant or seg track lays out its rows, as igv.js spells it: "EXPANDED", "SQUISHED" and so on. */
@@ -688,6 +699,46 @@ function setVisibilityWindow(browser: GenomeBrowser, { window, ...selection }: {
   if (note) return { note }
 }
 
+/** Gives `track`, an interact track, the arcs `asked`, as igv.js's own interact track menu does. */
+function rearc(track: BrowserTrack, name: string, { arcType, arcOrientation, thickness, alpha, useScore }: ArcsAsk): ByChange {
+  const orientation = arcOrientation?.toUpperCase()
+  const unchanged =
+    (arcType === undefined || track.arcType === arcType) &&
+    (orientation === undefined || track.arcOrientation === orientation) &&
+    (thickness === undefined || (track.thickness || 1) === thickness) &&
+    (alpha === undefined || track.alpha === alpha) &&
+    (useScore === undefined || Boolean(track.config?.useScore) === useScore)
+
+  if (arcType !== undefined) {
+    track.arcType = arcType
+    // igv.js saves an arc type only where the track was loaded with one.
+    keepInSession(track, { arcType })
+  }
+  if (orientation !== undefined) track.arcOrientation = orientation
+  if (thickness !== undefined) track.thickness = thickness
+  if (alpha !== undefined) track.alpha = alpha
+  if (useScore !== undefined) {
+    // igv.js keeps it in the config alone, which its Session saves.
+    keepInSession(track, { useScore })
+  }
+  track.trackView.repaintViews()
+  return { name, unchanged }
+}
+
+function setArcs(browser: GenomeBrowser, { names, positions, all, ...arcs }: ArcsAsk & TrackSelection): CommandAnswer | void {
+  // Before any track is looked at: arcs that are an error are one whatever tracks they are for.
+  const asked = arcsAsked(arcs)
+  const session = captureSession(browser)
+  const summarized = trackSummaries(session)
+  const tracks = summarizedTracks(browser, session)
+  const live = (index: number): LiveArcs => ({ hic: tracks[index]._hic === true, scored: tracks[index].hasValue })
+  const { targets, passedOver } = trackTargets(summarized, { names, positions, all }, arcsTool(asked, live))
+
+  const changes = targets.map((index) => rearc(tracks[index], summarized[index].name, asked))
+  const note = joinedNotes(arcsNote(asked, changes), passedOverNote(passedOver))
+  if (note) return { note }
+}
+
 /** Whether igv.js is in its whole-genome view, which the Session summary gives as the locus "all". */
 function inWholeGenomeView(browser: GenomeBrowser): boolean {
   return sessionLoci(captureSession(browser))[0] === 'all'
@@ -736,6 +787,7 @@ const APPLIERS: { [T in CommandType]: Applier<T> } = {
   group_reads: groupReads,
   show_track_parts: showTrackParts,
   set_visibility_window: setVisibilityWindow,
+  set_arcs: setArcs,
   set_crosshairs: (browser, { show }) => setCrosshairs(browser, show),
   set_centre_line: (browser, { show }) => setCentreLine(browser, show),
   // The same call as the Controls' own button.
