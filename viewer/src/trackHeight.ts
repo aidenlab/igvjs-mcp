@@ -1,4 +1,5 @@
 import type { TrackHeight } from './protocol.ts'
+import { listed } from './trackTools.ts'
 
 /** A track is at least a pixel high, and at most what igv.js lets one be dragged to. */
 const MIN_HEIGHT = 1
@@ -44,12 +45,6 @@ export interface HeightChange {
   name: string
   from: number
   to: number
-}
-
-/** "A", "A" and "B", "A", "B" and "C". */
-function listed(names: string[]): string {
-  const quoted = names.map((name) => `"${name}"`)
-  return quoted.length === 1 ? quoted[0] : `${quoted.slice(0, -1).join(', ')} and ${quoted[quoted.length - 1]}`
 }
 
 function pixels(height: number): string {

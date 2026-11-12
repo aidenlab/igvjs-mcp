@@ -116,6 +116,36 @@ export const COMMAND_TOOLS: CommandTool[] = [
     commandType: 'set_track_height',
   },
   {
+    name: 'rename_track',
+    title: 'Rename a track',
+    description: `Give one track of igv-bot a new name, the name it is shown under. Address the track by its name or by its position in the tracks of the Session summary, counted from 1 at the top; give name or position, not both, and the new name as newName. The user also reorders and renames tracks by hand, so take a position from the Session summary of the reply just before, or call read_session_summary first. A name or position that matches no track is reported as an error listing the tracks, and a name that several tracks share as an error giving their positions; either way nothing is renamed. The sequence track cannot be renamed. A reply begins with a note when the track already had the new name, so nothing changed. ${REPLY} ${NOTE_LINE}`,
+    inputSchema: {
+      name: z.string().optional().describe('The name of the track as the Session summary gives it now. Case does not matter.'),
+      // Any number: one that is no position is answered by the Viewer, which can list the tracks.
+      position: z.number().optional().describe('The position of the track in the tracks of the Session summary: 1 is the top track'),
+      newName: z.string().describe('The name to show the track under from now on'),
+    },
+    commandType: 'rename_track',
+  },
+  {
+    name: 'set_track_color',
+    title: 'Set track color',
+    description: `Set the color of one, several or all tracks of igv-bot, as igv.js's own "Set track color" and "Set alt color" do. color is the color a track is drawn in; altColor is a second color, for the negative values of a wig (signal) track and the minus-strand features of an annotation track. Give either or both, each as "#RRGGBB" or "rgb(R, G, B)": turn a color's name, such as "dark blue", into one of these. "unset" gives a track back the color it was loaded with. Annotation, alignment, variant, wig, interact and shoebox tracks take a color; only wig and annotation tracks take an altColor. Address the tracks by their names, by their positions in the tracks of the Session summary, counted from 1 at the top, or pass all for every track that takes the colors given. Change every track a request means in one call. The user also reorders, recolors and removes tracks by hand, so take positions from the Session summary of the reply just before, or call read_session_summary first. A call is all or nothing: a track named or placed that does not take a color given is an error saying why, and so is a wig track drawn as a heatmap, whose colors are set_signal_style's colorScale; a color that is not one of the forms above is an error too; either way no color is changed. The Session summary gives the colors a track has been given as its options' color and altColor. A reply begins with a note when all passed over tracks that do not take the colors, when a variant track colored by an attribute such as AF is drawn in the one color from then on, or when every track already had the colors, so nothing changed. ${REPLY} ${NOTE_LINE}`,
+    inputSchema: {
+      // Any string: one that is no color is answered by the Viewer, which gives the forms one takes.
+      color: z.string().optional().describe('The color to draw the tracks in, as "#RRGGBB" or "rgb(R, G, B)", or "unset" for the color each was loaded with'),
+      altColor: z
+        .string()
+        .optional()
+        .describe("The color of a wig track's negative values or an annotation track's minus-strand features, as \"#RRGGBB\" or \"rgb(R, G, B)\", or \"unset\""),
+      names: z.array(z.string()).optional().describe('The names of the tracks as the Session summary gives them. Case does not matter.'),
+      // Any numbers: one that is no position is answered by the Viewer, which can list the tracks.
+      positions: z.array(z.number()).optional().describe('The positions of the tracks in the tracks of the Session summary: 1 is the top track'),
+      all: z.boolean().optional().describe('True for every track that takes the colors given, in place of names and positions'),
+    },
+    commandType: 'set_track_color',
+  },
+  {
     name: 'set_crosshairs',
     title: 'Show or hide the crosshairs',
     description: `Show or hide igv-bot's crosshairs: a vertical and a horizontal line that follow the pointer across the tracks. The Session summary says whether they are showing, as crosshairs; the user also turns them on and off by hand. The whole-genome view has no crosshairs: showing them there is an error, so go to a locus or gene first, and going to the whole-genome view hides them. ${REPLY}`,

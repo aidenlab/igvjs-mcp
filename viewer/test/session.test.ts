@@ -105,6 +105,15 @@ describe('sessionSummary', () => {
     expect(summaryOf(session({ tracks })).tracks).toEqual([{ name: 'grouped', type: 'wig', url: 'https://example.org/a.bw', height: 50 }])
   })
 
+  it("gives the track color and alt color a track's saved state records, as igv.js saves them", () => {
+    const tracks = [
+      { name: 'colored', type: 'wig', color: 'rgb(31, 119, 180)', altColor: 'rgb(255,0,0)', autoscaleGroup: '1', order: 1, height: 50 },
+      { name: 'plain', type: 'annotation', order: 2, height: 70 },
+    ]
+
+    expect(summaryOf(session({ tracks })).tracks.map((track) => track.options)).toEqual([{ color: 'rgb(31, 119, 180)', altColor: 'rgb(255,0,0)' }, undefined])
+  })
+
   it('gives a height in whole pixels: "shorter" leaves a track a part of a pixel', () => {
     const tracks = [
       { name: 'two thirds of 50', type: 'wig', order: 1, height: 33.333333333333336 },

@@ -1,8 +1,11 @@
 import type { Command, CommandAnswer, CommandOutcome, CommandType, TrackAddress, TrackHeight, TrackSelection, TrackToLoad, ViewerSettings } from './protocol.ts'
 import { displayOrder, sessionLoci, sessionSummary, trackSummaries, type Session } from './session.ts'
 import { shareableUrl, type SessionCompressor } from './shareableUrl.ts'
-import { addressTrack, addressTracks } from './trackAddress.ts'
+import { addressTrack } from './trackAddress.ts'
+import { colorNote, colorsAsked, colorTool, sameColor, UNSET, type ColorChange, type TrackColors } from './trackColor.ts'
 import { changedHeight, checkHeight, heightNote, type HeightChange } from './trackHeight.ts'
+import { checkRenamable, newTrackName, renameNote } from './trackName.ts'
+import { joinedNotes, passedOverNote, trackTargets, type TrackTool } from './trackTools.ts'
 
 /**
  * The part of an igv.js browser the commands use. igv.js's own typings are
@@ -25,6 +28,8 @@ export interface GenomeBrowser extends SessionCompressor {
   doShowCenterLine?: boolean
   setCursorGuideVisibility(show: boolean): void
   setCenterLineVisibility(show: boolean): void
+  /** Tells igv.js's listeners, the Viewer's among them, of a change. */
+  fireEvent(event: string, args: unknown[]): void
   /** igv.js's own buttons, each lit while what it toggles is showing. */
   navbar: {
     cursorGuideButton: NavbarButton
@@ -53,7 +58,21 @@ interface BrowserTrack {
   maxHeight?: number
   /** False for the sequence track. */
   removable?: boolean
-  config?: object
+  /** igv.js's name for the Track type, before its aliases are folded in. */
+  type?: string
+  /** How a wig track is drawn, such as "heatmap". */
+  graphType?: string
+  /** A CSS color, or a function igv.js calls for each feature. */
+  color?: unknown
+  /** The color of a wig track's negative values and an annotation track's minus-strand features. */
+  altColor?: unknown
+  /** What a variant track is colored by; igv.js ends it when the track is given a color. */
+  colorBy?: string
+  /** The colors the track was loaded with: what igv.js's "Unset track color" and "Unset alt color" give back. */
+  _initialColor?: unknown
+  _initialAltColor?: unknown
+  /** What the track was loaded with, much of which a Session saves. */
+  config?: { [field: string]: unknown }
   getState?: () => object
   /** The track as it is drawn. */
   trackView: {
@@ -133,19 +152,22 @@ function resize(track: BrowserTrack, height: number): void {
   track.trackView.repaintViews()
 }
 
+/** set_track_height as a track tool. The sequence track's height is igv.js's to set: its own menu offers none. */
+const HEIGHT_TOOL: TrackTool = {
+  refuse: ({ type }) => (type === 'sequence' ? "The sequence track's height cannot be set." : undefined),
+  none: "No track's height can be set: the sequence track keeps its own.",
+}
+
 function setTrackHeight(browser: GenomeBrowser, { height, ...selection }: { height: TrackHeight } & TrackSelection): CommandAnswer | void {
   // Before any track is looked at: a height that is an error is one whatever tracks it is for.
   checkHeight(height)
   const session = captureSession(browser)
   const summarized = trackSummaries(session)
-  // The sequence track's height is igv.js's to set: its own menu offers none. All tracks is all the others.
-  const sizable = (index: number) => summarized[index].type !== 'sequence'
-  const addressed = addressTracks(summarized, selection)
-  if (!selection.all && !addressed.every(sizable)) throw new Error("The sequence track's height cannot be set.")
+  const { targets } = trackTargets(summarized, selection, HEIGHT_TOOL)
 
   const tracks = summarizedTracks(browser, session)
   const changes: HeightChange[] = []
-  for (const index of addressed.filter(sizable)) {
+  for (const index of targets) {
     const track = tracks[index]
     // The height igv.js has, which the Session summary gives in whole pixels.
     const from = track.height ?? summarized[index].height
@@ -154,6 +176,59 @@ function setTrackHeight(browser: GenomeBrowser, { height, ...selection }: { heig
     changes.push({ name: summarized[index].name, from, to })
   }
   const note = heightNote(height, changes)
+  if (note) return { note }
+}
+
+function renameTrack(browser: GenomeBrowser, { newName, ...address }: { newName: string } & TrackAddress): CommandAnswer | void {
+  // Before any track is looked at: a name that is an error is one whatever track it is for.
+  const name = newTrackName(newName)
+  const session = captureSession(browser)
+  const summarized = trackSummaries(session)
+  const index = addressTrack(summarized, address)
+  checkRenamable(summarized[index])
+
+  const track = summarizedTracks(browser, session)[index]
+  const from = summarized[index].name
+  // As igv.js's own "Set track name" does.
+  track.name = name
+  // Which sets no name a Session keeps for a track loaded without one: igv.js saves its config's name.
+  if (track.config) track.config.name = name
+  browser.fireEvent('tracknamechange', [track])
+  const note = renameNote(from, name)
+  if (note) return { note }
+}
+
+/** The color `option` of `track` that `color` asks for: UNSET is the one it was loaded with, as igv.js's own "Unset" gives it back. */
+function colorFor(track: BrowserTrack, option: keyof TrackColors, color: string): unknown {
+  if (color !== UNSET) return color
+  const loadedWith = option === 'color' ? track._initialColor : track._initialAltColor
+  return loadedWith || (track.constructor as { defaultColor?: string }).defaultColor
+}
+
+/** Gives `track` the colors, as igv.js's own color picker does. */
+function recolor(track: BrowserTrack, name: string, colors: TrackColors): ColorChange {
+  const given = (Object.entries(colors) as Array<[keyof TrackColors, string]>).map(([option, color]) => [option, colorFor(track, option, color)] as const)
+  // A variant track's color takes it out of its color-by: igv.js's color setter ends it.
+  const colorByEnded = colors.color !== undefined && track.type === 'variant' && track.colorBy && track.colorBy !== 'none' ? track.colorBy : undefined
+  const unchanged = colorByEnded === undefined && given.every(([option, color]) => track[option] === color || (typeof color === 'string' && sameColor(track[option], color)))
+
+  for (const [option, color] of given) track[option] = color
+  // Or a Session would bring the color-by back.
+  if (colorByEnded !== undefined && track.config) track.config.colorBy = undefined
+  track.trackView.repaintViews()
+  return { name, unchanged, ...(colorByEnded !== undefined ? { colorByEnded } : {}) }
+}
+
+function setTrackColor(browser: GenomeBrowser, { color, altColor, ...selection }: TrackColors & TrackSelection): CommandAnswer | void {
+  // Before any track is looked at: a color that is an error is one whatever tracks it is for.
+  const colors = colorsAsked({ color, altColor })
+  const session = captureSession(browser)
+  const summarized = trackSummaries(session)
+  const tracks = summarizedTracks(browser, session)
+  const { targets, passedOver } = trackTargets(summarized, selection, colorTool(colors, (index) => tracks[index].graphType === 'heatmap'))
+
+  const changes = targets.map((index) => recolor(tracks[index], summarized[index].name, colors))
+  const note = joinedNotes(colorNote(changes), passedOverNote(passedOver))
   if (note) return { note }
 }
 
@@ -196,6 +271,8 @@ const APPLIERS: { [T in CommandType]: Applier<T> } = {
   load_tracks: (browser, { tracks }) => loadTracks(browser, tracks),
   remove_track: removeTrack,
   set_track_height: setTrackHeight,
+  rename_track: renameTrack,
+  set_track_color: setTrackColor,
   set_crosshairs: (browser, { show }) => setCrosshairs(browser, show),
   set_centre_line: (browser, { show }) => setCentreLine(browser, show),
   // The same call as the Controls' own button.

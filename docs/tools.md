@@ -13,6 +13,8 @@ The tools the Connector gives the model, and how each is used. The wording the m
 | [`load_tracks`](#load_tracks) | Loads one or several tracks by URL |
 | [`remove_track`](#remove_track) | Removes one track |
 | [`set_track_height`](#set_track_height) | Sets the height of one, several or all tracks |
+| [`rename_track`](#rename_track) | Gives one track a new name |
+| [`set_track_color`](#set_track_color) | Sets the color, and alt color, of one, several or all tracks |
 | [`set_crosshairs`](#set_crosshairs-and-set_centre_line), [`set_centre_line`](#set_crosshairs-and-set_centre_line) | Shows or hides the crosshairs, or the centre line |
 | [`set_controls`](#set_controls) | Shows or hides the Controls: the Navigation bar and, unless the Viewer is Embedded, the Shareable URL |
 | [`read_session_summary`](#read_session_summary) | Reads what igv-bot is showing, changing nothing |
@@ -35,6 +37,8 @@ A track's type is igv.js's canonical name for its Track type, with igv.js's alia
 - `"…" is not a Room id`: pass the Room id from the reply of `open_viewer`.
 
 **Addressing a track.** A track is addressed by its name, or by its position in the tracks of the Session summary, counted from 1 at the top. A name is matched as spelled, and failing that whatever its case; part of a name is not a match. A name or position that matches nothing is an error listing the tracks, and a name that several tracks share is an error giving their positions.
+
+**Track tools.** The tools that change tracks share these rules (ADR 0005). Tracks are chosen by `names`, `positions` or `all`, where `all` is every track the tool applies to. The Viewer checks every value against every track chosen before it changes any, against the live tracks, not the Room's Session summary: a call is all or nothing. A track named or placed whose Track type the tool does not apply to is an error saying why, and naming the tool that does where there is one. `all` passes over such tracks with a note saying why, except the sequence track, which no track tool changes and which is passed over without a word. The legal values are read from igv.js's own menus.
 
 ## Opening
 
@@ -173,6 +177,51 @@ One of the two, not both. The sequence track cannot be removed.
 - The sequence track keeps its height: `all` leaves it as it is, and addressing it is an error.
 - The Session summary gives heights in whole pixels, so 50 made shorter reads 33.
 - Notes: "taller" or "shorter" stopped at a limit (`"Conservation" stopped at 1000 pixels: no track is made taller than that.`), a track already at the limit, or beyond it as a person may set one, was left as it was, or every track already had the height asked for, so nothing changed (`"Refseq All" was already 105 pixels high, so nothing changed.`). A height that only some tracks already had gets no note.
+
+### `rename_track`
+
+| Argument | |
+| --- | --- |
+| `newName` (required) | The name to show the track under from now on. Spaces around it are dropped; a blank name is an error |
+| `name` | The track's name now, as in [Addressing a track](#what-every-tool-shares) |
+| `position` | Or its position, counted from 1 at the top |
+
+```text
+"call the second track Conservation"   rename_track { position: 2, newName: "Conservation" }
+"rename K562 CTCF to CTCF"             rename_track { name: "K562 CTCF", newName: "CTCF" }
+```
+
+- One track, by `name` or `position`, not both.
+- Every track but the sequence track, as igv.js's own "Set track name" offers.
+- The name is kept in the Session and the Shareable URL, also for a track loaded with no name, whose rename igv.js's own dialog leaves out of the Session it writes.
+- Note: the track already had the name, so nothing changed (`The track was already named "Refseq All", so nothing changed.`).
+
+### `set_track_color`
+
+As igv.js's own "Set track color", "Set alt color" and their "Unset" items.
+
+| Argument | |
+| --- | --- |
+| `color` | The color the track is drawn in |
+| `altColor` | The color of a wig track's negative values and an annotation track's minus-strand features |
+| `names` | The names of the tracks, each as in [Addressing a track](#what-every-tool-shares) |
+| `positions` | And or instead their positions, counted from 1 at the top |
+| `all` | `true` for every track that takes the colors given, in place of `names` and `positions` |
+
+Either color or both, each as `"#RRGGBB"` (or `"#RGB"`) or `"rgb(R, G, B)"`, or `"unset"` for the color the track was loaded with. The model turns a color's name into one of these. igv.js keeps a color as `rgb(R, G, B)`, as its color picker gives one, and the Session summary gives it so in the track's `options`, as `color` and `altColor`.
+
+```text
+"make the CTCF track blue"             set_track_color { color: "#1f77b4", names: ["K562 CTCF"] }
+"negative values in red"               set_track_color { altColor: "rgb(214, 39, 40)", positions: [2] }
+"make everything black"                set_track_color { color: "#000000", all: true }
+"put the genes' color back"            set_track_color { color: "unset", names: ["Refseq All"] }
+```
+
+- Annotation, alignment, variant, wig, interact and shoebox tracks take a `color`: those igv.js's menu offers it on. The others (seg, junction, gwas, qtl and the rest) read a color only from the config they are loaded with, so a color given later would not show: they are an error.
+- Only wig and annotation tracks take an `altColor`.
+- A wig track drawn as a heatmap takes neither: it is an error pointing to `set_signal_style`'s `colorScale`.
+- A color in any other form, a CSS name among them, is an error giving the forms.
+- Notes: `all` passed over tracks that do not take the colors, each with why (`Passed over by all: "Copy number" is a seg track, which igv.js gives no track color.`); a variant track colored by an attribute is drawn in the one color from then on, as igv.js's own color does (`"Variants" is no longer colored by AF: it is drawn in the color asked for.`); every track already had the colors, so nothing changed (`"Refseq All" already had that color, so nothing changed.`).
 
 ## Crosshairs and centre line
 
