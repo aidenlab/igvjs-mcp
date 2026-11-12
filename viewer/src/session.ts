@@ -1,5 +1,4 @@
 import { ALIGNMENT_PARTS, TRACK_PARTS, VARIANT_PARTS, type SessionSummary, type TrackOptions, type TrackSummary, type ViewerSettings } from './protocol.ts'
-import { WITH_VISIBILITY_WINDOW } from './trackVisibilityWindow.ts'
 
 /** One track of a Session: the fields the Session summary reads. igv.js writes many more. */
 export interface SessionTrack {
@@ -104,7 +103,7 @@ const SET_BY_TOOL: Readonly<Record<string, readonly string[]>> = {
   groupBy: ['alignment'],
   ...Object.fromEntries(ALIGNMENT_PARTS.map((part) => [part, ['alignment']])),
   ...Object.fromEntries(VARIANT_PARTS.map((part) => [part, ['variant']])),
-  visibilityWindow: [...WITH_VISIBILITY_WINDOW, ...Object.keys(TRACK_TYPE_ALIASES).filter((alias) => WITH_VISIBILITY_WINDOW.includes(TRACK_TYPE_ALIASES[alias]))],
+  visibilityWindow: ['annotation', 'feature', 'genes', 'snp', 'fusionjuncspan', 'variant', 'alignment'],
 }
 
 /** Whether `option` of a track of igv.js's Track type `igvType` is one a track tool sets. */

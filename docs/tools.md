@@ -432,12 +432,12 @@ As igv.js's own "Set visibility window": the widest view, in base pairs, in whic
 
 | Argument | |
 | --- | --- |
-| `window` | A whole number of base pairs, or `0` for the whole chromosome |
+| `window` | A whole number of base pairs, or `0` for no window |
 | `names` | The names of the tracks, each as in [Addressing a track](#what-every-tool-shares) |
 | `positions` | And or instead their positions, counted from 1 at the top |
 | `all` | `true` for every annotation, variant and alignment track, in place of `names` and `positions` |
 
-The Session summary gives it in the track's `options` as `visibilityWindow`, as igv.js saves it, on annotation, variant and alignment tracks only: 0 or less is the whole chromosome (igv.js's own dialog saves `-1` for an empty answer). igv.js picks a window for many files as it loads them, and saves it, so a track may have one no tool set. An alignment track without one has igv.js's default, 30,000 bp; an annotation or variant track without one has no window.
+The Session summary gives it in the track's `options` as `visibilityWindow`, as igv.js saves it, on annotation, variant and alignment tracks only: 0 or less is no window (igv.js's own dialog saves `-1` for an empty answer). igv.js picks a window for many files as it loads them, and saves it, so a track may have one no tool set. An alignment track without one has igv.js's default, 30,000 bp; an annotation or variant track without one has no window.
 
 ```text
 "show the genes further out"                set_visibility_window { window: 1000000, names: ["Refseq All"] }
@@ -447,8 +447,8 @@ The Session summary gives it in the track's `options` as `visibilityWindow`, as 
 
 - Annotation, variant and alignment tracks have one. Every other Track type is an error naming those three. igv.js's own menu also offers a window on wig, qtl and shoebox tracks, where it matters little: the tool leaves them out.
 - A window that is not a whole number of 0 or more is an error whatever the tracks.
-- A larger window loads more: `0` on an alignment track loads every read of the chromosome in view, which igv.js allows and which can be slow.
-- In the whole-genome view no window applies: whether a track shows there is igv.js's to decide.
+- A larger window loads more. `0` is no window: an annotation or variant track loads its whole chromosome, and an alignment track every read in view, however wide, which igv.js allows and which can be slow.
+- In the whole-genome view no window applies: whether a track shows there is igv.js's to decide. igv.js draws an annotation track from a file with no index there only while it has no window at all: giving it one, even `0`, stops that, as igv.js's own dialog does.
 - Notes: the window is smaller than the view, so the track shows nothing until it is zoomed in (`"Refseq All" shows its features only in a view of 10,000 bp or less: the view is 52,000 bp wide, so until it is zoomed in that far it shows none.`); `all` passed over tracks that have no window, each with why (`Passed over by all: "Conservation" is a wig track: set_visibility_window sets the visibility window of annotation, variant and alignment tracks only.`); every track already had it, so nothing changed (`"Refseq All" already had visibility window 100,000 bp, so nothing changed.`).
 
 ## Crosshairs and centre line

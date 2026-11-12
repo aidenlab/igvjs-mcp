@@ -10,8 +10,8 @@ import { groupReadsAsked, groupReadsNote, groupReadsTool, type GroupReadsAsk } f
 import { changedHeight, checkHeight, heightNote, type HeightChange } from './trackHeight.ts'
 import { checkRenamable, newTrackName, renameNote } from './trackName.ts'
 import { colorScaleFor, DEFAULT_GRAPH_TYPE, sameColorScale, signalStyleAsked, signalStyleNote, signalStyleTool, type ColorScale, type SignalStyleAsk, type SignalStyleChange } from './trackSignalStyle.ts'
-import { VISIBILITY_WINDOW_TOOL, visibilityWindowAsked, visibilityWindowNote } from './trackVisibilityWindow.ts'
 import { partsAsked, partsNote, partsTool, type LiveParts, type PartsAsk } from './trackParts.ts'
+import { VISIBILITY_WINDOW_TOOL, visibilityWindowAsked, visibilityWindowNote } from './trackVisibilityWindow.ts'
 import { joinedNotes, passedOverNote, trackTargets, type ByChange, type LiveTrack, type TrackTool } from './trackTools.ts'
 
 /**
@@ -37,10 +37,10 @@ export interface GenomeBrowser extends SessionCompressor {
   setCenterLineVisibility(show: boolean): void
   /** Fetches and draws every track again: what autoscales a track. */
   updateViews(): Promise<void> | void
-  /** One per locus in view, side by side: chr is "all" in the whole-genome view. */
-  referenceFrameList: Array<{ bpPerPixel: number; chr?: string }>
+  /** One per locus in view, side by side. */
+  referenceFrameList: Array<{ bpPerPixel: number }>
   /** The width in pixels of each locus's view when `count` are side by side. */
-  calculateViewportWidth?(count: number): number
+  calculateViewportWidth(count: number): number
   /** Tells igv.js's listeners, the Viewer's among them, of a change. */
   fireEvent(event: string, args: unknown[]): void
   /** igv.js's own buttons, each lit while what it toggles is showing. */
@@ -657,7 +657,8 @@ function showTrackParts(browser: GenomeBrowser, { names, positions, all, ...part
 
 /** Gives `track` the visibility window, as igv.js's own "Set visibility window" does. */
 function rewindow(track: BrowserTrack, name: string, window: number): ByChange {
-  // igv.js reads 0 or less as the whole chromosome, and its own dialog saves -1 for an empty answer.
+  // igv.js reads 0 or less as no window, and its own dialog saves -1 for an empty answer. No window at all
+  // is a change all the same: igv.js draws a non-indexed track in the whole-genome view only while it has none.
   const unchanged = track.visibilityWindow !== undefined && Math.max(track.visibilityWindow, 0) === window
   track.visibilityWindow = window
   keepInSession(track, { visibilityWindow: window })
@@ -668,10 +669,9 @@ function rewindow(track: BrowserTrack, name: string, window: number): ByChange {
 
 /** The widest locus in view, in bp, as igv.js measures it against a window; undefined in the whole-genome view, where none applies. */
 function widestLocus(browser: GenomeBrowser): number | undefined {
+  if (inWholeGenomeView(browser)) return undefined
   const frames = browser.referenceFrameList
-  if (frames.some(({ chr }) => chr?.toLowerCase() === 'all')) return undefined
-  const width = browser.calculateViewportWidth?.(frames.length)
-  if (width === undefined) return undefined
+  const width = browser.calculateViewportWidth(frames.length)
   return Math.max(...frames.map(({ bpPerPixel }) => bpPerPixel * width))
 }
 

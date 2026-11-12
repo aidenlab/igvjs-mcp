@@ -76,7 +76,7 @@ describe('setting visibility windows, round trip', () => {
 
     const negative = await callTool(room, 'set_visibility_window', { window: -1, positions: [3] })
     expect(negative.isError).toBe(true)
-    expect(negative.text).toMatch(/^Error: -1 is no visibility window: give a whole number of base pairs, or 0 for the whole chromosome\.\n/)
+    expect(negative.text).toMatch(/^Error: -1 is no visibility window: give a whole number of base pairs, or 0 for no window\.\n/)
     expect(optionsIn(negative)[2]).toBeUndefined()
   })
 

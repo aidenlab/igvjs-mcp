@@ -1,16 +1,16 @@
 import { aTrack, either, listed, type ByChange, type TrackTool } from './trackTools.ts'
 
 /** The Track types set_visibility_window sets the window of, as the Session summary names them. */
-export const WITH_VISIBILITY_WINDOW: readonly string[] = ['annotation', 'variant', 'alignment']
+const WITH_VISIBILITY_WINDOW: readonly string[] = ['annotation', 'variant', 'alignment']
 
 /**
  * The visibility window of a call, checked. Pure. Before any track is looked at: a window
- * that is an error is one whatever tracks it is for. 0 is the whole chromosome, as igv.js's
- * own "Set visibility window" takes it.
+ * that is an error is one whatever tracks it is for. 0 is no window, as igv.js's own
+ * "Set visibility window" takes it: the whole chromosome for annotation and variant tracks.
  */
 export function visibilityWindowAsked(window: number): number {
   if (!Number.isInteger(window) || window < 0) {
-    throw new Error(`${window} is no visibility window: give a whole number of base pairs, or 0 for the whole chromosome.`)
+    throw new Error(`${window} is no visibility window: give a whole number of base pairs, or 0 for no window.`)
   }
   return window
 }
@@ -44,7 +44,7 @@ export function visibilityWindowNote(window: number, changes: ByChange[], widest
   const names = listed(changes.map(({ name }) => name))
   const notes: string[] = []
   if (changes.every(({ unchanged }) => unchanged)) {
-    notes.push(`${names} already had visibility window ${window === 0 ? '0, the whole chromosome' : bp(window)}, so nothing changed.`)
+    notes.push(`${names} already had visibility window ${window === 0 ? '0, no window' : bp(window)}, so nothing changed.`)
   }
   // As igv.js's own test: a track draws nothing where the view is wider than its window.
   if (window > 0 && widest !== undefined && widest > window) {

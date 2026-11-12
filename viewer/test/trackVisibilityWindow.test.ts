@@ -7,13 +7,13 @@ import type { TrackSummary } from '../src/protocol.ts'
 import { VISIBILITY_WINDOW_TOOL, visibilityWindowAsked, visibilityWindowNote } from '../src/trackVisibilityWindow.ts'
 
 describe('the visibility window of one call', () => {
-  it('is a whole number of base pairs, or 0 for the whole chromosome', () => {
+  it('is a whole number of base pairs, or 0 for no window', () => {
     expect(visibilityWindowAsked(100000)).toBe(100000)
     expect(visibilityWindowAsked(0)).toBe(0)
   })
 
   it.each([-1, 2.5, Number.NaN])('%s is an error', (window) => {
-    expect(() => visibilityWindowAsked(window)).toThrow(`${window} is no visibility window: give a whole number of base pairs, or 0 for the whole chromosome.`)
+    expect(() => visibilityWindowAsked(window)).toThrow(`${window} is no visibility window: give a whole number of base pairs, or 0 for no window.`)
   })
 })
 
@@ -48,7 +48,7 @@ describe('the note on a visibility window', () => {
 
   it('says so when every track already had it', () => {
     expect(visibilityWindowNote(100000, [unchanged('A'), unchanged('B')], 600)).toBe('"A" and "B" already had visibility window 100,000 bp, so nothing changed.')
-    expect(visibilityWindowNote(0, [unchanged('A')], 600)).toBe('"A" already had visibility window 0, the whole chromosome, so nothing changed.')
+    expect(visibilityWindowNote(0, [unchanged('A')], 600)).toBe('"A" already had visibility window 0, no window, so nothing changed.')
   })
 
   it('says the track will not show until zoomed in when the window is smaller than the view', () => {
@@ -60,7 +60,7 @@ describe('the note on a visibility window', () => {
     )
   })
 
-  it('a whole chromosome is no smaller than any view, nor is any window smaller than the whole-genome view', () => {
+  it('no window is smaller than any view, nor is any window smaller than the whole-genome view', () => {
     expect(visibilityWindowNote(0, [changed('A')], 52000)).toBeUndefined()
     expect(visibilityWindowNote(10000, [changed('A')], undefined)).toBeUndefined()
   })
