@@ -69,6 +69,13 @@ describe('a command tool with a Viewer in the Room', () => {
     ['set_track_height', { height: 'shorter', all: true }, { type: 'set_track_height', height: 'shorter', all: true }],
     // A number that is no height still reaches the Viewer, whose error gives the limits.
     ['set_track_height', { height: 0, all: true }, { type: 'set_track_height', height: 0, all: true }],
+    ['rename_track', { name: 'K562 CTCF', newName: 'CTCF' }, { type: 'rename_track', name: 'K562 CTCF', newName: 'CTCF' }],
+    ['rename_track', { position: 2, newName: 'CTCF' }, { type: 'rename_track', position: 2, newName: 'CTCF' }],
+    ['set_track_color', { color: '#1f77b4', names: ['K562 CTCF'] }, { type: 'set_track_color', color: '#1f77b4', names: ['K562 CTCF'] }],
+    ['set_track_color', { altColor: 'rgb(255, 0, 0)', positions: [2] }, { type: 'set_track_color', altColor: 'rgb(255, 0, 0)', positions: [2] }],
+    ['set_track_color', { color: 'unset', altColor: 'unset', all: true }, { type: 'set_track_color', color: 'unset', altColor: 'unset', all: true }],
+    // A color that is no color still reaches the Viewer, whose error gives the forms one takes.
+    ['set_track_color', { color: 'red', all: true }, { type: 'set_track_color', color: 'red', all: true }],
     ['set_crosshairs', { show: true }, { type: 'set_crosshairs', show: true }],
     ['set_crosshairs', { show: false }, { type: 'set_crosshairs', show: false }],
     ['set_centre_line', { show: true }, { type: 'set_centre_line', show: true }],

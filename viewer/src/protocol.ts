@@ -57,6 +57,8 @@ export type Command =
   | { type: 'load_tracks'; tracks: TrackToLoad[] }
   | ({ type: 'remove_track' } & TrackAddress)
   | ({ type: 'set_track_height'; height: TrackHeight } & TrackSelection)
+  | ({ type: 'rename_track'; newName: string } & TrackAddress)
+  | ({ type: 'set_track_color'; color?: string; altColor?: string } & TrackSelection)
   | { type: 'set_crosshairs'; show: boolean }
   | { type: 'set_centre_line'; show: boolean }
   | { type: 'set_controls'; show: boolean }

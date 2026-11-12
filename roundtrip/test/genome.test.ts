@@ -18,7 +18,8 @@ afterAll(() => Promise.all(browsers.map((browser) => browser.close())))
 // mm10's default track as the igv.org genome list gives it; igv.js adds the sequence track.
 const MM10_TRACKS = [
   { name: 'sequence', type: 'sequence', height: 25 },
-  { name: 'RefSeq All', type: 'annotation', url: 'https://hgdownload.soe.ucsc.edu/goldenPath/mm10/database/ncbiRefSeq.txt.gz', height: 70 },
+  // mm10's genome list gives its gene track a color, which its Session records.
+  { name: 'RefSeq All', type: 'annotation', url: 'https://hgdownload.soe.ucsc.edu/goldenPath/mm10/database/ncbiRefSeq.txt.gz', height: 70, options: { color: 'rgb(12,12,120)' } },
 ]
 
 describe('changing genome, round trip', () => {
