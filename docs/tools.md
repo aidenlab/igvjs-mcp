@@ -17,6 +17,7 @@ The tools the Connector gives the model, and how each is used. The wording the m
 | [`set_track_color`](#set_track_color) | Sets the color, and alt color, of one, several or all tracks |
 | [`set_data_range`](#set_data_range) | Sets the data range, autoscale and log scale of one, several or all tracks |
 | [`set_signal_style`](#set_signal_style) | Sets the graph type, window function, flipped axis and heatmap color scale of one, several or all wig tracks |
+| [`set_display_mode`](#set_display_mode) | Sets how the rows of one, several or all annotation, variant, alignment and seg tracks are laid out |
 | [`set_crosshairs`](#set_crosshairs-and-set_centre_line), [`set_centre_line`](#set_crosshairs-and-set_centre_line) | Shows or hides the crosshairs, or the centre line |
 | [`set_controls`](#set_controls) | Shows or hides the Controls: the Navigation bar and, unless the Viewer is Embedded, the Shareable URL |
 | [`read_session_summary`](#read_session_summary) | Reads what igv-bot is showing, changing nothing |
@@ -28,7 +29,7 @@ The tools the Connector gives the model, and how each is used. The wording the m
 
 **The reply.** Every tool but `open_viewer` replies with the Session summary: the genome, the loci, the tracks in display order (name, Track type, URL, height in whole pixels and `options`), whether the crosshairs and centre line are showing, and whether the controls are. A person also changes the Viewer by hand, and the model is not told when they do: the Session summary of the latest reply is how it learns.
 
-A track's type is igv.js's canonical name for its Track type, with igv.js's aliases folded in: genes, feature, snp and fusionjuncspan read `annotation`; interaction reads `interact`; maf and mut read `seg`; eqtl reads `qtl`; junctions and splicejunctions read `junction`. A track's `options` holds the Track options a track tool sets, each as igv.js saves it, and only those set on the track in the Session; it is left out when there are none. The tools that add to it say so.
+A track's type is igv.js's canonical name for its Track type, with igv.js's aliases folded in: genes, feature, snp and fusionjuncspan read `annotation`; interaction reads `interact`; maf and mut read `seg`; eqtl reads `qtl`; junctions and splicejunctions read `junction`. A track's `options` holds the Track options a track tool sets, each as igv.js saves it (but a display mode in lower case, as `set_display_mode` takes it), and only those set on the track in the Session; it is left out when there are none. The tools that add to it say so.
 
 **Notes.** When a Command was carried out other than as asked, the reply begins `Note:`, ahead of the Session summary: one short statement of fact from the Viewer, the only party that knows the live track (ADR 0006). The model passes it on to the person in a sentence of its own. With no note, the model confirms the change in a few words and explains nothing. The server's MCP `instructions` say so. Each tool that can give a note says so in its own description too, because some Hosts may never show `instructions` to the model (see [`host-instructions.md`](host-instructions.md)). A request that cannot be carried out is still an error, not a note. The tools that give notes list them.
 
@@ -288,6 +289,40 @@ Any of them together. The Session summary gives them in the track's `options`, a
 - A points track keeps its window function in the Session, as asked: igv.js would load one with no window function in its config with `none`.
 - `dynseq` draws the bases of the sequence at the height of the values, and only below 2 bp per pixel; further out igv.js draws bars.
 - Notes: `dynseq` set while the view is zoomed out further than 2 bp per pixel (`"Conservation" is drawn as dynseq, which shows bases only below 2 bp per pixel: until the view is zoomed in that far it is drawn as bars.`); `all` passed over tracks that do not take what is given, each with why (`Passed over by all: "Refseq All" is an annotation track, which has no signal style: only wig tracks have one.`); every track already had it, so nothing changed (`"Conservation" already had graph type line, so nothing changed.`).
+
+### `set_display_mode`
+
+As igv.js's own display mode menu: "Collapse", "Squish" and "Expand", an alignment track's "full", a seg track's "Fill".
+
+| Argument | |
+| --- | --- |
+| `mode` | `collapsed`, `squished`, `expanded`, `full` or `fill` |
+| `names` | The names of the tracks, each as in [Addressing a track](#what-every-tool-shares) |
+| `positions` | And or instead their positions, counted from 1 at the top |
+| `all` | `true` for every track that offers the mode, in place of `names` and `positions` |
+
+The Session summary gives it in the track's `options` as `displayMode`, in lower case as the tool takes it, where igv.js saves one: a track without one is `expanded`, igv.js's default.
+
+```text
+"squish the genes"                         set_display_mode { mode: "squished", names: ["Refseq All"] }
+"collapse every annotation and variant"    set_display_mode { mode: "collapsed", all: true }
+"show every read on its own row"           set_display_mode { mode: "full", positions: [3] }
+"fill the copy number track"               set_display_mode { mode: "fill", names: ["TCGA CNV"] }
+```
+
+- The modes each Track type offers are those of its igv.js menu:
+
+  | Track type | Modes |
+  | --- | --- |
+  | annotation | `collapsed`, `squished`, `expanded` |
+  | variant | `collapsed`, `squished`, `expanded` |
+  | alignment | `expanded`, `squished`, `full` |
+  | seg | `squished`, `expanded`, `fill`; a seg track of mutations (maf, mut) offers no `fill` |
+
+- A mode the track's type does not offer is an error naming those it does (`"Refseq All" is an annotation track, which offers display modes collapsed, squished and expanded, not full.`). A mode no type offers is an error whatever the tracks.
+- A wig track has no display mode: the error points to [`set_signal_style`](#set_signal_style)'s `graphType`. Other Track types are errors naming the four that have one.
+- `full` gives every read of an alignment track a row of its own, unpacked; `fill` stretches a seg track's samples to the track's height.
+- Notes: `all` passed over tracks that do not offer the mode, each with why (`Passed over by all: "Conservation" is a wig track, which has no display mode: how it is drawn is set by set_signal_style's graphType.`); every track already had it, so nothing changed (`"Refseq All" already had display mode squished, so nothing changed.`).
 
 ## Crosshairs and centre line
 

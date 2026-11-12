@@ -1,6 +1,6 @@
 import { COLOR_SCALE_TYPES, GRAPH_TYPES, WINDOW_FUNCTIONS, type ColorScaleAsk } from './protocol.ts'
 import { sameColor, trackColor, UNSET } from './trackColor.ts'
-import { aTrack, listed, type TrackTool } from './trackTools.ts'
+import { aTrack, checkOneOf, either, listed, type TrackTool } from './trackTools.ts'
 
 /** The graph type igv.js draws a wig track with when it is given none. */
 export const DEFAULT_GRAPH_TYPE = 'bar'
@@ -11,15 +11,6 @@ export interface SignalStyleAsk {
   windowFunction?: string
   flipAxis?: boolean
   colorScale?: ColorScaleAsk
-}
-
-/** "a, b or c", or with `and`: "a, b and c". */
-function either(values: readonly string[], word = 'or'): string {
-  return values.length === 1 ? values[0] : `${values.slice(0, -1).join(', ')} ${word} ${values[values.length - 1]}`
-}
-
-function checkOneOf(what: string, value: string | undefined, legal: readonly string[]): void {
-  if (value !== undefined && !legal.includes(value)) throw new Error(`"${value}" is no ${what}: give ${either(legal)}.`)
 }
 
 const BOUNDS = ['min', 'mid', 'max'] as const

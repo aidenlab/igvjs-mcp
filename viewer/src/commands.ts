@@ -4,6 +4,7 @@ import { shareableUrl, type SessionCompressor } from './shareableUrl.ts'
 import { addressTrack } from './trackAddress.ts'
 import { colorNote, colorsAsked, colorTool, sameColor, UNSET, type ColorChange, type TrackColors } from './trackColor.ts'
 import { dataRangeAsked, dataRangeNote, dataRangeTool, fixedRange, nestedArcs, type DataRange, type DataRangeAsk, type DataRangeChange } from './trackDataRange.ts'
+import { displayModeAsked, displayModeNote, displayModeTool, type DisplayModeChange } from './trackDisplayMode.ts'
 import { changedHeight, checkHeight, heightNote, type HeightChange } from './trackHeight.ts'
 import { checkRenamable, newTrackName, renameNote } from './trackName.ts'
 import { colorScaleFor, DEFAULT_GRAPH_TYPE, sameColorScale, signalStyleAsked, signalStyleNote, signalStyleTool, type ColorScale, type SignalStyleAsk, type SignalStyleChange } from './trackSignalStyle.ts'
@@ -101,6 +102,14 @@ interface BrowserTrack {
   arcType?: string
   /** As igv.js's own "Set data range" dialog does: a fixed range, out of autoscale and any group. */
   setDataRange?(range: DataRange): void
+  /** How an annotation, variant or seg track lays out its rows, as igv.js spells it: "EXPANDED", "SQUISHED" and so on. */
+  displayMode?: string
+  /** Lays out a seg track's group labels again: what igv.js's own display mode menu does after a change. */
+  createGroupLabels?(): void
+  /** An alignment track's reads, which have the display mode: the track itself is their coverage and reads together. */
+  alignmentTrack?: { displayMode?: string }
+  /** An alignment track's reads, one container per locus in view: an empty array where they are not yet loaded. */
+  getCachedAlignmentContainers?(): Array<{ pack?(reads: object): void } | undefined>
   /** What the track was loaded with, much of which a Session saves. */
   config?: { [field: string]: unknown }
   getState?: () => object
@@ -394,6 +403,42 @@ async function setSignalStyle(browser: GenomeBrowser, { graphType, windowFunctio
   if (note) return { note }
 }
 
+/** Gives `track` the display `mode`, as igv.js's own display mode menu does. */
+function redisplay(track: BrowserTrack, name: string, mode: string): DisplayModeChange {
+  const igvMode = mode.toUpperCase()
+  const reads = track.alignmentTrack
+  let unchanged: boolean
+  if (reads) {
+    // As igv.js's own setDisplayMode, but for reads not yet loaded, which it would fail on: those are packed as they load.
+    unchanged = reads.displayMode === igvMode
+    const repack = reads.displayMode === 'FULL' || igvMode === 'FULL'
+    reads.displayMode = igvMode
+    if (repack) for (const container of track.getCachedAlignmentContainers?.() ?? []) container?.pack?.(reads)
+  } else {
+    unchanged = track.displayMode?.toUpperCase() === igvMode
+    track.displayMode = igvMode
+    // As igv.js's annotation and seg menus do; its variant menu does not, but the Session saves the mode either way.
+    keepInSession(track, { displayMode: igvMode })
+    track.createGroupLabels?.()
+  }
+  track.trackView.checkContentHeight()
+  track.trackView.repaintViews()
+  return { name, unchanged }
+}
+
+function setDisplayMode(browser: GenomeBrowser, { mode, ...selection }: { mode: string } & TrackSelection): CommandAnswer | void {
+  // Before any track is looked at: a mode no Track type offers is an error whatever tracks it is for.
+  const checked = displayModeAsked(mode)
+  const session = captureSession(browser)
+  const summarized = trackSummaries(session)
+  const tracks = summarizedTracks(browser, session)
+  const { targets, passedOver } = trackTargets(summarized, selection, displayModeTool(checked, (index) => tracks[index].type))
+
+  const changes = targets.map((index) => redisplay(tracks[index], summarized[index].name, checked))
+  const note = joinedNotes(displayModeNote(checked, changes), passedOverNote(passedOver))
+  if (note) return { note }
+}
+
 /** Whether igv.js is in its whole-genome view, which the Session summary gives as the locus "all". */
 function inWholeGenomeView(browser: GenomeBrowser): boolean {
   return sessionLoci(captureSession(browser))[0] === 'all'
@@ -437,6 +482,7 @@ const APPLIERS: { [T in CommandType]: Applier<T> } = {
   set_track_color: setTrackColor,
   set_data_range: setDataRange,
   set_signal_style: setSignalStyle,
+  set_display_mode: setDisplayMode,
   set_crosshairs: (browser, { show }) => setCrosshairs(browser, show),
   set_centre_line: (browser, { show }) => setCentreLine(browser, show),
   // The same call as the Controls' own button.
