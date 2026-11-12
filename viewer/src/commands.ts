@@ -3,7 +3,7 @@ import { displayOrder, sessionLoci, sessionSummary, trackSummaries, type Session
 import { shareableUrl, type SessionCompressor } from './shareableUrl.ts'
 import { addressTrack } from './trackAddress.ts'
 import { colorNote, colorsAsked, colorTool, sameColor, UNSET, type ColorChange, type TrackColors } from './trackColor.ts'
-import { dataRangeAsked, dataRangeNote, dataRangeTool, fixedRange, type DataRange, type DataRangeAsk, type DataRangeChange } from './trackDataRange.ts'
+import { dataRangeAsked, dataRangeNote, dataRangeTool, fixedRange, nestedArcs, type DataRange, type DataRangeAsk, type DataRangeChange } from './trackDataRange.ts'
 import { changedHeight, checkHeight, heightNote, type HeightChange } from './trackHeight.ts'
 import { checkRenamable, newTrackName, renameNote } from './trackName.ts'
 import { joinedNotes, passedOverNote, trackTargets, type TrackTool } from './trackTools.ts'
@@ -247,9 +247,6 @@ function setTrackColor(browser: GenomeBrowser, { color, altColor, ...selection }
   if (note) return { note }
 }
 
-/** The arc types igv.js's menu offers "Set data range" on: the proportional ones. */
-const PROPORTIONAL_ARCS: ReadonlySet<string> = new Set(['proportional', 'inView', 'partialInView'])
-
 /** The range `track` is drawn over, or none when igv.js has not set one yet. */
 function currentRange({ dataRange }: BrowserTrack): DataRange | undefined {
   const { min, max } = dataRange ?? {}
@@ -302,7 +299,7 @@ async function setDataRange(browser: GenomeBrowser, { min, max, autoscale, logSc
   const tracks = summarizedTracks(browser, session)
   const drawing = (index: number) => ({
     heatmap: tracks[index].graphType === 'heatmap',
-    nestedArcs: summarized[index].type === 'interact' && !PROPORTIONAL_ARCS.has(tracks[index].arcType ?? ''),
+    nestedArcs: summarized[index].type === 'interact' && nestedArcs(tracks[index].arcType),
   })
   const { targets, passedOver } = trackTargets(summarized, selection, dataRangeTool(asked, drawing))
   // Every track's range before any is given: a call is all or nothing.

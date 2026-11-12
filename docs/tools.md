@@ -15,7 +15,7 @@ The tools the Connector gives the model, and how each is used. The wording the m
 | [`set_track_height`](#set_track_height) | Sets the height of one, several or all tracks |
 | [`rename_track`](#rename_track) | Gives one track a new name |
 | [`set_track_color`](#set_track_color) | Sets the color, and alt color, of one, several or all tracks |
-| [`set_data_range`](#set_data_range) | Sets the data range, autoscale and log scale of one, several or all signal tracks |
+| [`set_data_range`](#set_data_range) | Sets the data range, autoscale and log scale of one, several or all tracks |
 | [`set_crosshairs`](#set_crosshairs-and-set_centre_line), [`set_centre_line`](#set_crosshairs-and-set_centre_line) | Shows or hides the crosshairs, or the centre line |
 | [`set_controls`](#set_controls) | Shows or hides the Controls: the Navigation bar and, unless the Viewer is Embedded, the Shareable URL |
 | [`read_session_summary`](#read_session_summary) | Reads what igv-bot is showing, changing nothing |

@@ -4,7 +4,7 @@
  */
 import { describe, it, expect } from 'vitest'
 import type { TrackSummary } from '../src/protocol.ts'
-import { dataRangeAsked, dataRangeNote, dataRangeTool, fixedRange } from '../src/trackDataRange.ts'
+import { dataRangeAsked, dataRangeNote, dataRangeTool, fixedRange, nestedArcs } from '../src/trackDataRange.ts'
 
 describe('the data range of one call', () => {
   it('is a fixed min and max, autoscale, log scale, or several of them', () => {
@@ -135,5 +135,15 @@ describe('the note when a data range was set other than as asked', () => {
     ]
 
     expect(dataRangeNote({ autoscale: false }, changes)).toBe('"A" and "B" were taken out of their autoscale group; "C" is still in it. "D" was taken out of its autoscale group.')
+  })
+})
+
+describe("an interact track's arcs", () => {
+  it.each(['proportional', 'inView', 'partialInView'])('%s arcs have a data range, as igv.js offers in its menu', (arcType) => {
+    expect(nestedArcs(arcType)).toBe(false)
+  })
+
+  it('nested arcs have none', () => {
+    expect(nestedArcs('nested')).toBe(true)
   })
 })

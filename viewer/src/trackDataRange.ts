@@ -42,6 +42,17 @@ export function dataRangeAsked({ min, max, autoscale, logScale }: DataRangeAsk):
  */
 const RANGED_TYPES: ReadonlySet<string> = new Set(['wig', 'alignment', 'qtl', 'gwas', 'gcnv', 'interact'])
 
+/** The Track types with a range of their own, set in igv.js's menu in its own way, that igv-bot does not set. */
+const OWN_RANGE_TYPES: ReadonlySet<string> = new Set(['shoebox', 'cnvpytor', 'merged'])
+
+/** The arc types igv.js's menu offers "Set data range" on: the proportional ones. */
+const PROPORTIONAL_ARCS: ReadonlySet<string> = new Set(['proportional', 'inView', 'partialInView'])
+
+/** Whether an interact track drawing its arcs as `arcType` draws them nested, with no data range. Pure. */
+export function nestedArcs(arcType: string | undefined): boolean {
+  return !PROPORTIONAL_ARCS.has(arcType ?? '')
+}
+
 /** The Track types igv.js gives a log scale (`logScale` defined): its "Log scale" item. */
 const LOG_SCALED_TYPES: ReadonlySet<string> = new Set(['wig', 'interact'])
 
@@ -64,7 +75,7 @@ export function dataRangeTool(asked: DataRangeAsk, drawing: (index: number) => L
     refuse: ({ name, type }, index) => {
       if (type === 'sequence') return 'The sequence track has no data range.'
       if (!RANGED_TYPES.has(type)) {
-        return `"${name}" is ${aTrack(type)}, which has no data range${['shoebox', 'cnvpytor', 'merged'].includes(type) ? ' igv-bot sets' : ''}.`
+        return `"${name}" is ${aTrack(type)}, which has no data range${OWN_RANGE_TYPES.has(type) ? ' igv-bot sets' : ''}.`
       }
       const { heatmap, nestedArcs } = drawing(index)
       if (heatmap) return `"${name}" is drawn as a heatmap, whose range is set by set_signal_style's colorScale.`
