@@ -98,7 +98,15 @@ export interface TrackSummary {
   url?: string
   /** In whole pixels: "shorter" can leave a track a part of one. */
   height: number
+  /**
+   * The Track options a track tool controls that the track's saved state records, each as
+   * igv.js saves it. Absent when there are none, so replies stay short.
+   */
+  options?: TrackOptions
 }
+
+/** Track options by igv.js's own name for each, such as `color` or `displayMode`. */
+export type TrackOptions = Record<string, unknown>
 
 /** The compact account of the Session and the Viewer settings the model is given with every tool reply. */
 export interface SessionSummary {

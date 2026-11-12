@@ -76,6 +76,35 @@ describe('sessionSummary', () => {
     ])
   })
 
+  it.each([
+    ['genes', 'annotation'],
+    ['feature', 'annotation'],
+    ['snp', 'annotation'],
+    ['fusionjuncspan', 'annotation'],
+    ['interaction', 'interact'],
+    ['maf', 'seg'],
+    ['mut', 'seg'],
+    ['eqtl', 'qtl'],
+    ['junctions', 'junction'],
+    ['splicejunctions', 'junction'],
+  ])('gives a track of type %s the Track type igv.js folds it into: %s', (type, folded) => {
+    const tracks = [{ name: 'a track', type, order: 1, height: 50 }]
+
+    expect(summaryOf(session({ tracks })).tracks[0].type).toBe(folded)
+  })
+
+  it.each(['annotation', 'wig', 'alignment', 'variant', 'interact', 'seg', 'sequence'])('keeps the Track type %s as it is', (type) => {
+    const tracks = [{ name: 'a track', type, order: 1, height: 50 }]
+
+    expect(summaryOf(session({ tracks })).tracks[0].type).toBe(type)
+  })
+
+  it('leaves out the options of a track whose saved state records none that a track tool controls', () => {
+    const tracks = [{ name: 'grouped', type: 'wig', url: 'https://example.org/a.bw', autoscaleGroup: '1', order: 1, height: 50 }]
+
+    expect(summaryOf(session({ tracks })).tracks).toEqual([{ name: 'grouped', type: 'wig', url: 'https://example.org/a.bw', height: 50 }])
+  })
+
   it('gives a height in whole pixels: "shorter" leaves a track a part of a pixel', () => {
     const tracks = [
       { name: 'two thirds of 50', type: 'wig', order: 1, height: 33.333333333333336 },

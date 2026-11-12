@@ -22,7 +22,9 @@ The tools the Connector gives the model, and how each is used. The wording the m
 
 **`room`.** `open_viewer` names a Room id in its reply. Every other tool takes it as the optional argument `room`, and the model passes it on every call, so that the call reaches the same igv-bot whichever MCP session it arrives through (ADR 0003). It is left out of the examples below.
 
-**The reply.** Every tool but `open_viewer` replies with the Session summary: the genome, the loci, the tracks in display order (name, type, URL and height in whole pixels), whether the crosshairs and centre line are showing, and whether the controls are. A person also changes the Viewer by hand, and the model is not told when they do: the Session summary of the latest reply is how it learns.
+**The reply.** Every tool but `open_viewer` replies with the Session summary: the genome, the loci, the tracks in display order (name, Track type, URL, height in whole pixels and `options`), whether the crosshairs and centre line are showing, and whether the controls are. A person also changes the Viewer by hand, and the model is not told when they do: the Session summary of the latest reply is how it learns.
+
+A track's type is igv.js's canonical name for its Track type, with igv.js's aliases folded in: genes, feature, snp and fusionjuncspan read `annotation`; interaction reads `interact`; maf and mut read `seg`; eqtl reads `qtl`; junctions and splicejunctions read `junction`. A track's `options` holds the Track options a track tool sets, each as igv.js saves it, and only those set on the track in the Session; it is left out when there are none. The tools that add to it say so.
 
 **Errors.** A reply that begins `Error:` says what went wrong, and still carries the Session summary when a Viewer answered. Three replies are not about the tool itself:
 
