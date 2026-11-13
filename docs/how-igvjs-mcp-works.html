@@ -269,7 +269,7 @@ td.how { white-space: nowrap; }
     <text class="t-h" x="395" y="85" text-anchor="middle">igv-bot Worker</text>
     <text class="t-s t-m" x="395" y="102" text-anchor="middle">igv-mcp-dev.3dg.io</text>
     <text class="t-m" x="306" y="132" style="font-size:10.5px">/mcp</text>
-    <text class="t-s" x="346" y="132">14 tools, for the Host</text>
+    <text class="t-s" x="346" y="132">25 tools, for the Host</text>
     <text class="t-m" x="306" y="152" style="font-size:10.5px">/ws</text>
     <text class="t-s" x="346" y="152">for the Viewer</text>
     <rect class="bx" x="304" y="196" width="182" height="40"/>
@@ -601,7 +601,7 @@ td.how { white-space: nowrap; }
     <tr><td class="n">4</td><td>D</td><td>The Viewer applies the Command to igv.js, one at a time and in the order they arrive. igv.js looks MYC up and fetches what the new view needs directly from the data hosts, not through the Worker.</td></tr>
     <tr><td class="n">5</td><td>B</td><td>The Viewer acks with the request id, <code>ok</code> or igv.js’s own error, and the Session summary as it now stands. The Room keeps the summary.</td></tr>
     <tr><td class="n">6</td><td></td><td>The Room hands the outcome back to the Worker. A later ack of the same Command, from a second Viewer, finds nothing waiting and is dropped.</td></tr>
-    <tr><td class="n">7</td><td>A</td><td>The Worker replies “Done.” with the Session summary: genome, loci, the tracks in display order with their heights, and whether the crosshairs, centre line and Controls are showing. The model turns it into its answer.</td></tr>
+    <tr><td class="n">7</td><td>A</td><td>The Worker replies “Done.” with the Session summary: genome, loci, the tracks in display order with their Track types, heights and Track options, and whether the crosshairs, centre line and Controls are showing. When the Viewer carried the Command out other than as asked, the reply begins with its one-line <code>Note:</code> instead (ADR 0006). The model turns it into its answer.</td></tr>
     <tr><td class="n">8</td><td>B</td><td>igv.js announced the move, so once it has been quiet for a quarter of a second the Viewer sends the Session and its summary. The Room keeps both, for a Viewer that opens later.</td></tr>
   </tbody>
 </table>
@@ -621,7 +621,7 @@ td.how { white-space: nowrap; }
 
 <h2 id="server">Calls that stop at the server</h2>
 
-<p>Of the 14 tools, 12 are Commands and follow Figure 4. Two never reach the Viewer at all, and one Command is checked against the genome list before it is sent.</p>
+<p>Of the 25 tools, 23 are Commands and follow Figure 4. Two never reach the Viewer at all, and one Command is checked against the genome list before it is sent.</p>
 
 <div class="tablewrap wide">
 <table>
@@ -651,7 +651,7 @@ td.how { white-space: nowrap; }
     <tr><th>Worker, at <code>/mcp</code></th><td>Nothing per request: each gets a fresh MCP server. Per Worker instance, the genome list and one genome’s Catalogue tables.</td><td>An hour each, then fetched again</td></tr>
     <tr><th>Room</th><td>The Viewer’s socket, Commands waiting for an ack, the latest Session summary, the last Session, and the last Viewer settings</td><td>Deleted 24 hours after the last message from a Viewer, unless a Viewer is still connected; the Room is then marked expired</td></tr>
     <tr><th>Join card</th><td>The Join link</td><td>As long as the conversation shows it</td></tr>
-    <tr><th class="igv">Viewer</th><td>The Session: genome, loci, tracks, heights, crosshairs, centre line. Beside it, the Viewer settings: whether the Controls are shown</td><td>Until the page closes; restored from the Room when the Join link is opened again</td></tr>
+    <tr><th class="igv">Viewer</th><td>The Session: genome, loci, tracks, heights, Track options, crosshairs, centre line. Beside it, the Viewer settings: whether the Controls are shown</td><td>Until the page closes; restored from the Room when the Join link is opened again</td></tr>
   </tbody>
 </table>
 </div>
@@ -699,7 +699,7 @@ td.how { white-space: nowrap; }
 
 <p>Locally the Worker runs on <code>localhost:8787</code> and the Viewer on <code>localhost:5173</code>, and the Viewer reaches its Room through its own address: the Vite dev server passes <code>/ws</code> on to the Worker. Claude desktop’s Side panel blocks a page from opening a socket to another local address.</p>
 
-<p>The words used here (Host, Connector, Side panel, Viewer, Room, Command, Session, Session summary, Join link, Join card, Catalogue, Shareable URL) are defined in <code>GLOSSARY.md</code>. The decision to show the Viewer as a web page in the Side panel is ADR 0001, the decision to push Commands through a Room is ADR 0002, and the decision to have the model carry the Room id is ADR 0003.</p>
+<p>The words used here (Host, Connector, Side panel, Viewer, Room, Command, Session, Session summary, Track type, Track option, Join link, Join card, Catalogue, Shareable URL) are defined in <code>GLOSSARY.md</code>. The decision to show the Viewer as a web page in the Side panel is ADR 0001, the decision to push Commands through a Room is ADR 0002, the decision to have the model carry the Room id is ADR 0003, the decision to name track tools for what a person asks to change is ADR 0005, and the decision that a reply says when a request was carried out other than as asked is ADR 0006. Every tool is listed in <code>docs/tools.md</code>.</p>
 
 <p class="end">Written 21 October 2026 from the code at commit 1c7ebda.</p>
 

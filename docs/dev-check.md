@@ -35,6 +35,15 @@ The script adds `room` to the arguments itself. It prints the reply, which ends 
 | Load a track by URL | `node scripts/dev-check.mjs SMKTEST001 load_tracks '{"tracks":[{"url":"https://hgdownload.soe.ucsc.edu/goldenPath/hg38/phyloP100way/hg38.phyloP100way.bw","name":"phyloP"}]}'` |
 | Remove a track | `node scripts/dev-check.mjs SMKTEST001 remove_track '{"name":"phyloP"}'` (or `{"position":2}`) |
 | Set track height | `node scripts/dev-check.mjs SMKTEST001 set_track_height '{"height":"taller","all":true}'` |
+| Rename a track | `node scripts/dev-check.mjs SMKTEST001 rename_track '{"name":"phyloP","newName":"Conservation"}'` |
+| Color tracks | `node scripts/dev-check.mjs SMKTEST001 set_track_color '{"color":"#1f77b4","names":["Conservation"]}'` (`"unset"` restores the loaded color) |
+| Set a data range | `node scripts/dev-check.mjs SMKTEST001 set_data_range '{"min":0,"max":5,"names":["Conservation"]}'` (or `{"autoscale":true}`, `{"logScale":true}`) |
+| Signal style | `node scripts/dev-check.mjs SMKTEST001 set_signal_style '{"graphType":"points","positions":[2]}'` |
+| Display mode | `node scripts/dev-check.mjs SMKTEST001 set_display_mode '{"mode":"expanded","all":true}'` |
+| Color by, group reads | `node scripts/dev-check.mjs SMKTEST001 set_color_by '{"by":"strand","all":true}'` (also `group_reads`, with `by`) |
+| Show or hide track parts | `node scripts/dev-check.mjs SMKTEST001 show_track_parts '{"showCoverage":false,"all":true}'` |
+| Visibility window | `node scripts/dev-check.mjs SMKTEST001 set_visibility_window '{"window":1000000,"all":true}'` |
+| Arcs | `node scripts/dev-check.mjs SMKTEST001 set_arcs '{"arcType":"proportional","all":true}'` |
 | Crosshairs, centre line | `node scripts/dev-check.mjs SMKTEST001 set_crosshairs '{"show":true}'` (also `set_centre_line`) |
 | Show or hide the Controls | `node scripts/dev-check.mjs SMKTEST001 set_controls '{"show":true}'` |
 | Get a Shareable URL | `node scripts/dev-check.mjs SMKTEST001 get_shareable_url` |

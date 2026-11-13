@@ -75,11 +75,23 @@ Each Command has one applier, and each applier calls igv.js's browser API:
 | `load_tracks` | `browser.loadTrack({ url, name })`, once per track |
 | `remove_track` | `browser.removeTrack(track)` |
 | `set_track_height` | `track.trackView.setTrackHeight(height, true)`, then a repaint |
+| `rename_track` | sets `track.name` (and its config's), then `browser.fireEvent('tracknamechange', [track])` |
+| `set_track_color` | sets `track.color` and `track.altColor`, then a repaint |
+| `set_data_range` | `track.setDataRange(range)`, or sets `track.autoscale` and then `browser.updateViews()`; sets `track.logScale` |
+| `set_signal_style` | sets `graphType`, `windowFunction`, `flipAxis` and `_colorScale` on the track; refetches with `trackView.updateViews()` when the window function changes or for dynseq |
+| `set_display_mode` | sets `displayMode` on the track, or on its reads (`track.alignmentTrack`), and repacks them |
+| `set_color_by` | sets `colorBy` on the reads, the variant track or the SNP track |
+| `group_reads` | sets `groupBy` on the reads and repacks them |
+| `show_track_parts` | sets `showCoverage`, `showAlignments` and the reads' `viewAsPairs`, `showMismatches`, `showSoftClips`, `showInsertions`, or a variant track's `showGenotypes` with the sample name and info controls |
+| `set_visibility_window` | sets `track.visibilityWindow`, then `trackView.updateViews()`, not waited for |
+| `set_arcs` | sets `arcType`, `arcOrientation`, `thickness` and `alpha` on the interact track, and `useScore` in its config |
 | `set_crosshairs` | `browser.setCursorGuideVisibility(show)` |
 | `set_centre_line` | `browser.setCenterLineVisibility(show)` |
 | `set_controls` | none of its own: the Controls' `showControls(show)`, which shows or hides the Navigation bar (section 4) |
 | `read_session_summary` | none; the reply reads the Session |
 | `get_shareable_url` | `browser.compressedSession()` |
+
+The track tools act as igv.js's own gear-menu items do, since igv.js has no public call for most of them. Where igv.js's Session would save the track's config over the value just set, the applier also writes it into the config (`keepInSession`), so a reload keeps it. Each tool's checks, legal values and notes are in its own `viewer/src/track*.ts` file, and the rules they share are in `trackTools.ts`.
 
 After every Command, `captureSession()` reads the Session with `browser.toJSON()`. igv.js leaves some things out of what it writes, such as default track heights and the crosshairs and centre line, so `captureSession()` adds them. `session.ts` then turns the Session, with the Viewer settings, into the Session summary the model receives.
 
@@ -132,6 +144,9 @@ Several workarounds exist because of how igv.js behaves. Each was checked agains
 | `autoHeight` cleared on the track, not its view | `commands.ts` (`resize`) | 3.8's own "Set track height" clears it where nothing reads it |
 | Height and name filled in by `captureSession()` | `commands.ts` | `toJSON()` leaves out default heights and names |
 | Crosshairs and centre line filled in by `captureSession()` | `commands.ts` | `toJSON()` does not write them |
+| Track options written into the track's config (`keepInSession`) | `commands.ts` | `toJSON()` saves the config over the track's own state for range, autoscale, display mode, color-by, grouping, visibility window, arc type and `useScore` |
+| Reads not yet loaded are repacked by the Viewer, not by igv.js's `setDisplayMode` or `repackAlignments` | `commands.ts` | Those calls fail on reads not yet loaded |
+| A heatmap's color scale made by constructing an unseen wig track | `commands.ts` (`igvColorScale`) | igv.js exports no way to make a color scale |
 | Click treated as a possible change | `main.ts` | No event for the crosshairs or centre line buttons |
 | `search()` resolving `false` treated as "Unrecognized locus" | `commands.ts` | Behaviour not stated in the typings |
 
