@@ -1,7 +1,8 @@
 /**
  * Loading and removing tracks, round trip: the built Viewer runs igv.js in a
  * headless browser, and igv.js fetches the tracks' files from UCSC and
- * ENCODE, and the local Worker reads the real ENCODE Catalogue.
+ * 4DN, and the local Worker reads the real Catalogues. ENCODE answers a
+ * headless browser with HTTP 405, so the Catalogue track loaded is 4DN's.
  */
 import { describe, it, expect, afterAll } from 'vitest'
 import type { Browser } from 'playwright'
@@ -50,13 +51,14 @@ describe('loading tracks, round trip', () => {
     expect((await callTool(room, 'read_session_summary')).summary.tracks).toEqual([SEQUENCE, PHASTCONS, PHYLOP, REFSEQ])
   })
 
-  it('a track found by search_catalogues in the ENCODE Catalogue loads from its url, under its name', async () => {
+  it('a track found by search_catalogues in the 4DN Catalogue loads from its url, under its name', async () => {
     const room = await roomWithViewer()
-    const found = await toolReply(room, 'search_catalogues', { text: 'CTCF K562', outputType: 'fold change over control' })
+    const found = await toolReply(room, 'search_catalogues', { text: 'HUVEC', outputType: 'compartments' })
     const rows = found.text.slice(found.text.indexOf('Tracks:\n') + 'Tracks:\n'.length, found.text.indexOf('\n\nSession summary:'))
-    const [{ catalogue, name, url }] = JSON.parse(rows) as Array<{ catalogue: string; name: string; url: string }>
-    expect(catalogue).toBe('ENCODE')
-    expect(url).toMatch(/^https:\/\/www\.encodeproject\.org\/files\/.+\.bigWig$/)
+    const fourDn = (JSON.parse(rows) as Array<{ catalogue: string; name: string; url: string }>).filter((row) => row.catalogue === '4DN')
+    expect(fourDn.length).toBeGreaterThan(0)
+    const [{ name, url }] = fourDn
+    expect(url).toMatch(/^https:\/\/4dn-open-data-public\.s3\.amazonaws\.com\/.+\.bw$/)
 
     const reply = await callTool(room, 'load_tracks', { tracks: [{ url, name }] })
 
