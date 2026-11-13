@@ -1,4 +1,4 @@
-import { ALIGNMENT_PARTS, TRACK_PARTS, VARIANT_PARTS, type SessionSummary, type TrackOptions, type TrackSummary, type ViewerSettings } from './protocol.ts'
+import { ALIGNMENT_PARTS, ARC_OPTIONS, TRACK_PARTS, VARIANT_PARTS, type SessionSummary, type TrackOptions, type TrackSummary, type ViewerSettings } from './protocol.ts'
 
 /** One track of a Session: the fields the Session summary reads. igv.js writes many more. */
 export interface SessionTrack {
@@ -65,7 +65,7 @@ function trackType(type: string): string {
  * track carries only the ones set on it. Grows as each track tool lands; height is not here,
  * as every track summary gives it.
  */
-const TOOL_TRACK_OPTIONS: readonly string[] = ['color', 'altColor', 'min', 'max', 'autoscale', 'logScale', 'graphType', 'windowFunction', 'flipAxis', 'colorScale', 'displayMode', 'colorBy', 'groupBy', ...TRACK_PARTS, 'visibilityWindow']
+const TOOL_TRACK_OPTIONS: readonly string[] = ['color', 'altColor', 'min', 'max', 'autoscale', 'logScale', 'graphType', 'windowFunction', 'flipAxis', 'colorScale', 'displayMode', 'colorBy', 'groupBy', ...TRACK_PARTS, 'visibilityWindow', ...ARC_OPTIONS]
 
 /**
  * A color-by or grouping as set_color_by and group_reads take it, `option` naming it: igv.js
@@ -80,12 +80,12 @@ function byOption(option: 'colorBy' | 'groupBy', value: string, type: string): T
 
 /**
  * A Track option as the Session summary gives it, as an object of one or two fields: a display
- * mode in lower case, as set_display_mode takes it, not as igv.js saves it; a color-by or grouping
- * as `byOption` gives it.
+ * mode and an arc orientation in lower case, as set_display_mode and set_arcs take them, not as
+ * igv.js saves them; a color-by or grouping as `byOption` gives it.
  */
 function optionFields(option: string, value: unknown, type: string): TrackOptions {
   if (typeof value !== 'string') return { [option]: value }
-  if (option === 'displayMode') return { displayMode: value.toLowerCase() }
+  if (option === 'displayMode' || option === 'arcOrientation') return { [option]: value.toLowerCase() }
   if (option === 'colorBy' || option === 'groupBy') return byOption(option, value, type)
   return { [option]: value }
 }
@@ -96,7 +96,7 @@ function optionFields(option: string, value: unknown, type: string): TrackOption
  * groupBy a sample attribute, and no tool sets those. The parts show_track_parts shows or hides
  * are those of alignment and variant tracks only, whatever else a track was loaded with. A
  * visibility window is set_visibility_window's on annotation, variant and alignment tracks: igv.js
- * saves one for a wig track too, which no tool sets.
+ * saves one for a wig track too, which no tool sets. The arcs are set_arcs' on interact tracks.
  */
 const SET_BY_TOOL: Readonly<Record<string, readonly string[]>> = {
   colorBy: ['alignment', 'variant', 'snp'],
@@ -104,16 +104,19 @@ const SET_BY_TOOL: Readonly<Record<string, readonly string[]>> = {
   ...Object.fromEntries(ALIGNMENT_PARTS.map((part) => [part, ['alignment']])),
   ...Object.fromEntries(VARIANT_PARTS.map((part) => [part, ['variant']])),
   visibilityWindow: ['annotation', 'feature', 'genes', 'snp', 'fusionjuncspan', 'variant', 'alignment'],
+  ...Object.fromEntries(ARC_OPTIONS.map((option) => [option, ['interact', 'interaction']])),
 }
 
-/** Whether `option` of a track of igv.js's Track type `igvType` is one a track tool sets. */
-function toolSets(option: string, igvType: string | undefined): boolean {
+/** Whether `option` of `track` is one a track tool sets. igv.js gives every .hic interact track useScore, which set_arcs does not set. */
+function toolSets(option: string, track: SessionTrack): boolean {
+  if (option === 'useScore' && track.format === 'hic') return false
+  const igvType = track.type
   return !Object.hasOwn(SET_BY_TOOL, option) || (igvType !== undefined && SET_BY_TOOL[option].includes(igvType))
 }
 
 /** The Track options of `track`, of Track type `type`, that a track tool controls, or none when it records none. */
 function trackOptions(track: SessionTrack, type: string): TrackOptions | undefined {
-  const recorded = TOOL_TRACK_OPTIONS.filter((option) => track[option] !== undefined && toolSets(option, track.type))
+  const recorded = TOOL_TRACK_OPTIONS.filter((option) => track[option] !== undefined && toolSets(option, track))
   return recorded.length > 0 ? Object.assign({}, ...recorded.map((option) => optionFields(option, track[option], type))) : undefined
 }
 

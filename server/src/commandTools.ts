@@ -1,5 +1,5 @@
 import { z, type ZodRawShape } from 'zod'
-import { COLOR_BY, COLOR_SCALE_TYPES, DISPLAY_MODES, GRAPH_TYPES, GROUP_BY, WINDOW_FUNCTIONS, type CommandType } from 'igvjs-mcp-viewer/protocol'
+import { ARC_ORIENTATIONS, ARC_TYPES, COLOR_BY, COLOR_SCALE_TYPES, DISPLAY_MODES, GRAPH_TYPES, GROUP_BY, WINDOW_FUNCTIONS, type CommandType } from 'igvjs-mcp-viewer/protocol'
 
 /**
  * A tool whose whole job is to send the Viewer one command. Its arguments are
@@ -263,6 +263,23 @@ export const COMMAND_TOOLS: CommandTool[] = [
       all: z.boolean().optional().describe('True for every annotation, variant and alignment track, in place of names and positions'),
     },
     commandType: 'set_visibility_window',
+  },
+  {
+    name: 'set_arcs',
+    title: 'Set how arcs are drawn',
+    description: `Set how one, several or all interact tracks of igv-bot draw their arcs, as igv.js's own interact track menu does. arcType is nested, each arc as high as it is wide, or proportional, each as high as its score: proportional draws every arc, inView only those with both ends in view, partialInView those with one or both. arcOrientation draws the arcs up or down. thickness is the width of each arc in pixels. alpha, from 0 to 1, is how opaque a proportional arc is filled, and, unless shaded by score, how a nested arc reaching out of view is faded. useScore true shades each arc by its score. Give any of these, or several; one left out is left as it is. Only interact tracks have arcs. An interact track read from a .hic file takes only arcOrientation and thickness: igv.js shades its arcs by their scores itself. A track whose features have no scores takes no arcType but nested and no useScore true. Address the tracks by their names, by their positions in the tracks of the Session summary, counted from 1 at the top, or pass all for every interact track. Change every track a request means in one call. The user also reorders and changes tracks by hand, so take positions from the Session summary of the reply just before, or call read_session_summary first. A call is all or nothing: a track named or placed that does not take every option given is an error saying why, and so is a value none takes; either way nothing is changed. The data range of proportional arcs is set_data_range's. The Session summary gives the arcs as the track's options' arcType, arcOrientation, thickness, alpha and useScore, where igv.js saves them: a track without one has igv.js's default, nested arcs drawn up, thickness 1, alpha 0.02 and no shading by score. A reply begins with a note when all passed over tracks that have no arcs, or when every track already had the arcs as asked, so nothing changed. ${REPLY} ${NOTE_LINE}`,
+    inputSchema: {
+      arcType: z.enum(ARC_TYPES).optional().describe('nested, each arc as high as it is wide; or proportional, inView or partialInView, each as high as its score, drawing every arc, those with both ends in view, or those with one or both'),
+      arcOrientation: z.enum(ARC_ORIENTATIONS).optional().describe('up or down: which way the arcs are drawn'),
+      thickness: z.number().optional().describe('The width of each arc, in pixels: above 0'),
+      alpha: z.number().optional().describe('From 0, clear, to 1, opaque: how a proportional arc is filled, and, unless shaded by score, how a nested arc reaching out of view is faded'),
+      useScore: z.boolean().optional().describe('True shades each arc by its score; false does not'),
+      names: z.array(z.string()).optional().describe('The names of the tracks as the Session summary gives them. Case does not matter.'),
+      // Any numbers: one that is no position is answered by the Viewer, which can list the tracks.
+      positions: z.array(z.number()).optional().describe('The positions of the tracks in the tracks of the Session summary: 1 is the top track'),
+      all: z.boolean().optional().describe('True for every interact track, in place of names and positions'),
+    },
+    commandType: 'set_arcs',
   },
   {
     name: 'set_crosshairs',

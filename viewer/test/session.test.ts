@@ -139,6 +139,24 @@ describe('sessionSummary', () => {
     expect(summaryOf(session({ tracks })).tracks.map((track) => track.options)).toEqual([{ displayMode: 'squished' }, { displayMode: 'full' }])
   })
 
+  it("gives the arcs an interact track's saved state records, its orientation in lower case as set_arcs takes it, on interact tracks only", () => {
+    const tracks = [
+      { name: 'loops', type: 'interact', arcType: 'proportional', arcOrientation: 'DOWN', thickness: 2, alpha: 0.1, useScore: true, order: 1, height: 250 },
+      { name: 'links', type: 'interaction', arcOrientation: 'UP', order: 2, height: 250 },
+      // igv.js gives every .hic interact track useScore, which no tool set.
+      { name: 'contacts', type: 'interact', format: 'hic', useScore: true, thickness: 2, order: 4, height: 250 },
+      // A thickness some other Track type was loaded with is no arc.
+      { name: 'peaks', type: 'annotation', thickness: 3, alpha: 0.5, order: 3, height: 50 },
+    ]
+
+    expect(summaryOf(session({ tracks })).tracks.map((track) => track.options)).toEqual([
+      { arcType: 'proportional', arcOrientation: 'down', thickness: 2, alpha: 0.1, useScore: true },
+      { arcOrientation: 'up' },
+      undefined,
+      { thickness: 2 },
+    ])
+  })
+
   it("gives the visibility window a track's saved state records, on the Track types set_visibility_window sets it on", () => {
     const tracks = [
       { name: 'genes', type: 'genes', visibilityWindow: 100000, order: 1, height: 50 },

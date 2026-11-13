@@ -66,6 +66,7 @@ export type Command =
   | ({ type: 'group_reads'; by: string; tag?: string } & TrackSelection)
   | ({ type: 'show_track_parts' } & PartsAsk & TrackSelection)
   | ({ type: 'set_visibility_window'; window: number } & TrackSelection)
+  | ({ type: 'set_arcs' } & ArcsAsk & TrackSelection)
   | { type: 'set_crosshairs'; show: boolean }
   | { type: 'set_centre_line'; show: boolean }
   | { type: 'set_controls'; show: boolean }
@@ -108,6 +109,27 @@ export const TRACK_PARTS = [...ALIGNMENT_PARTS, ...VARIANT_PARTS] as const
 
 /** What a show_track_parts call asks for: each part given, shown (true) or hidden (false). */
 export type PartsAsk = { [part in (typeof TRACK_PARTS)[number]]?: boolean }
+
+/** The arc types igv.js's interact track menu offers (its "Arc Type" items), as igv.js keys them. */
+export const ARC_TYPES = ['nested', 'proportional', 'inView', 'partialInView'] as const
+
+/** The ways igv.js draws an interact track's arcs ("Toggle arc direction"): in lower case, as igv.js reads them from a config. */
+export const ARC_ORIENTATIONS = ['up', 'down'] as const
+
+/** The options set_arcs sets, each as igv.js names it. */
+export const ARC_OPTIONS = ['arcType', 'arcOrientation', 'thickness', 'alpha', 'useScore'] as const
+
+/** What a set_arcs call asks for: any of how an interact track draws its arcs, each as igv.js names the option. */
+export interface ArcsAsk {
+  arcType?: string
+  arcOrientation?: string
+  /** The width of each arc, in pixels. */
+  thickness?: number
+  /** How opaque igv.js fills or shades the arcs, from 0 to 1. */
+  alpha?: number
+  /** Whether each arc is shaded by its feature's score. */
+  useScore?: boolean
+}
 
 /** The two kinds of color scale igv.js's "Set color scale" edits. */
 export const COLOR_SCALE_TYPES = ['gradient', 'diverging'] as const
