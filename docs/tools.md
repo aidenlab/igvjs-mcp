@@ -280,6 +280,7 @@ Any of them together. The Session summary gives them in the track's `options`, a
 ```text
 "show the conservation as a line"          set_signal_style { graphType: "line", names: ["Conservation"] }
 "draw all the signal as heatmaps"          set_signal_style { graphType: "heatmap", all: true }
+"show the bases at the height of the CTCF" set_signal_style { graphType: "dynseq", names: ["K562 CTCF"] }
 "heatmap from 0 to 5, white to black"      set_signal_style { colorScale: { min: 0, max: 5, minColor: "#ffffff", maxColor: "#000000" }, positions: [2] }
 "flip the second track"                    set_signal_style { flipAxis: true, positions: [2] }
 "show the peaks, not the average"          set_signal_style { windowFunction: "max", names: ["K562 CTCF"] }
